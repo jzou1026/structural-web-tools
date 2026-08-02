@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beams v0.4.3 — Continuous Beam Analysis</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script>window.MathJax={tex:{inlineMath:[["\\(","\\)"],["$","$"]],displayMath:[["\\[","\\]"],["$$","$$"]]},startup:{typeset:false}};</script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d1117; color: #e6edf3; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; }
+    input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+    select { -webkit-appearance: none; appearance: none; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0d1117; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+
+    /* ── PRINT / PDF REPORT STYLES ─────────────────────────────────────────── */
+    .print-report-header { display: none; }
+    .print-only { display: none; }
+    .screen-only { display: inherit; }
+    .print-avoid { break-inside: avoid; page-break-inside: avoid; }
+
+    .theory-static{font-size:13px;color:#8b949e;line-height:1.75}.theory-title,.theory-static h3{font-size:16px;font-weight:800;color:#58a6ff;margin:1.2rem 0 .6rem}.theory-static p{margin:0 0 .8rem}.theory-equation{background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:.8rem 1rem;margin:.7rem 0;color:#e6edf3;break-inside:avoid}.theory-equation span{display:block;text-align:right;font-size:10px;color:#8b949e}.theory-references{padding-left:1.4rem;text-indent:-1.4rem}
+    @media print {
+      @page { size: letter portrait; margin: 0.55in; }
+
+      html, body {
+        background: #ffffff !important;
+        color: #111827 !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 10pt !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      * {
+        color: #111827 !important;
+        border-color: #c9ced6 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+
+      header, nav, .screen-only { display: none !important; }
+      .print-only { display: block !important; }
+
+      #root, main {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+      }
+
+      .print-report-header {
+        display: block !important;
+        margin: 0 0 14pt 0 !important;
+        padding-bottom: 10pt !important;
+        border-bottom: 2px solid #111827 !important;
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      .print-report-header h1 {
+        font-size: 18pt !important;
+        line-height: 1.2 !important;
+        margin: 0 0 4pt 0 !important;
+        font-weight: 800 !important;
+      }
+
+      .print-report-header .meta {
+        font-size: 8.5pt !important;
+        line-height: 1.45 !important;
+        color: #374151 !important;
+      }
+
+      .print-avoid {
+        background: #ffffff !important;
+        border: 1px solid #c9ced6 !important;
+        border-radius: 0 !important;
+        margin: 0 0 12pt 0 !important;
+        padding: 10pt !important;
+        overflow: visible !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      .print-table-section { padding: 0 !important; }
+
+      .print-table-section > div:first-child,
+      .print-diagram-section > div:first-child {
+        padding: 8pt 9pt !important;
+        background: #eef2f7 !important;
+        border-bottom: 1px solid #c9ced6 !important;
+      }
+
+      .print-table-section > div:nth-child(2) { overflow: visible !important; }
+
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 8.3pt !important;
+        page-break-inside: auto !important;
+      }
+
+      thead { display: table-header-group !important; }
+      tfoot { display: table-footer-group !important; }
+
+      tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+
+      th, td {
+        padding: 4pt 4.5pt !important;
+        border: 1px solid #c9ced6 !important;
+        background: #ffffff !important;
+        color: #111827 !important;
+      }
+
+      th {
+        background: #e8edf5 !important;
+        font-size: 7.6pt !important;
+        font-weight: 700 !important;
+      }
+
+      svg {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      .print-diagram-section {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      .print-diagram-section svg { max-height: 2.45in !important; }
+      .report-results-block { display: block !important; }
+      .print-page-break { break-before: page !important; page-break-before: always !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useCallback, useEffect, useRef, useMemo } = React;
+
+    // ── COLORS ─────────────────────────────────────────────────────────────────
+    const CLR = {
+      bg: "#0d1117", surface: "#161b22", card: "#1c2333", border: "#30363d",
+      accent: "#58a6ff", green: "#3fb950", red: "#f85149", yellow: "#d29922",
+      text: "#e6edf3", muted: "#8b949e", teal: "#39d353", violet: "#bc8cff",
+      orange: "#f0883e",
+    };
+
+    // ── STYLES ─────────────────────────────────────────────────────────────────
+    const S = {
+      app: { minHeight:"100vh", background:CLR.bg, color:CLR.text, fontFamily:"'JetBrains Mono','Fira Code','Cascadia Code',monospace", display:"flex", flexDirection:"column" },
+      header: { background:CLR.surface, borderBottom:`1px solid ${CLR.border}`, padding:"0 2rem", display:"flex", alignItems:"center", gap:"2rem", minHeight:60 },
+      nav: { display:"flex", gap:0, marginLeft:"auto" },
+      navBtn: active => ({ background:"none", border:"none", borderBottom: active ? `2px solid ${CLR.accent}` : "2px solid transparent", color: active ? CLR.accent : CLR.muted, padding:"18px 20px", cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight: active ? 700 : 400, letterSpacing:"0.05em", transition:"color 0.15s,border-color 0.15s" }),
+      main: { flex:1, padding:"2rem", maxWidth:1400, margin:"0 auto", width:"100%" },
+      card: { background:CLR.card, border:`1px solid ${CLR.border}`, borderRadius:8, padding:"1.5rem", marginBottom:"1.5rem" },
+      h2: { fontSize:14, fontWeight:700, color:CLR.accent, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"1rem" },
+      table: { width:"100%", borderCollapse:"collapse", fontSize:12 },
+      th: { background:"#21262d", color:CLR.muted, padding:"7px 10px", textAlign:"center", fontWeight:600, letterSpacing:"0.06em", fontSize:11, textTransform:"uppercase", borderBottom:`1px solid ${CLR.border}` },
+      td: { padding:"6px 10px", textAlign:"center", borderBottom:"1px solid #21262d", color:CLR.text },
+      input: { background:"#0d1117", border:`1px solid ${CLR.border}`, borderRadius:4, color:CLR.text, fontFamily:"inherit", fontSize:12, padding:"4px 7px", width:"100%", textAlign:"center", outline:"none" },
+      select: { background:"#0d1117", border:`1px solid ${CLR.border}`, borderRadius:4, color:CLR.text, fontFamily:"inherit", fontSize:12, padding:"4px 7px", width:"100%", textAlign:"center", outline:"none", cursor:"pointer" },
+      btn: (v="primary") => ({ background: v==="primary"?CLR.accent : v==="danger"?"#3d1f1f":"#21262d", color: v==="danger"?CLR.red : v==="primary"?"#000":CLR.text, border:`1px solid ${v==="danger"?CLR.red : v==="primary"?CLR.accent:CLR.border}`, borderRadius:6, padding:"8px 18px", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, letterSpacing:"0.08em" }),
+      badge: color => ({ display:"inline-block", background:color+"22", color, border:`1px solid ${color}55`, borderRadius:4, padding:"2px 8px", fontSize:11, fontWeight:700 }),
+    };
+
+    // ── UNIT SETS ─────────────────────────────────────────────────────────────
+    const UNIT_SETS = {
+      "kN/m":  { force:"kN",   dist:"m",  moment:"kN·m",  settle:"mm" },
+      "kN/mm": { force:"kN",   dist:"mm", moment:"kN·mm", settle:"mm" },
+      "N/m":   { force:"N",    dist:"m",  moment:"N·m",   settle:"mm" },
+      "kip/ft":{ force:"kips", dist:"ft", moment:"kip·ft",settle:"in" },
+      "kip/in":{ force:"kips", dist:"in", moment:"kip·in",settle:"in" },
+    };
+
+    // Settlement unit conversion factors (settle unit → dist unit)
+    const DEFAULT_UNITS = "kN/m";
+    const DEFAULT_MOMENT_TOLERANCE = 0.001;
+
+    const SETTLE_CONV = {
+      "kN/m":   1/1000,   // mm → m
+      "kN/mm":  1,        // mm → mm
+      "N/m":    1/1000,   // mm → m
+      "kip/ft": 1/12,     // in → ft
+      "kip/in": 1,        // in → in
+    };
+
+    const NODE_TYPES = ["Pin", "Fix", "Free"];
+
+    // ── DEFAULT DATA — FIG. P16.12 / P16.16 ────────────────────────────────────
+    // 3-span continuous beam: A–C–E–G (4 pin supports)
+    // B, D, F are load points WITHIN spans, not supports.
+    // Spans: AC = 10 m (I), CE = 10 m (2I), EG = 8 m (I)
+    // Point loads within spans: 120 kN at B (a=6 from A in span AC),
+    //                           120 kN at D (a=6 from C in span CE),
+    //                           150 kN at F (a=4 from E in span EG)
+    // E = 200 GPa = 200×10⁶ kN/m²,  I = 500×10⁶ mm⁴ = 5×10⁻⁴ m⁴
+    // Settlements (downward, mm): A=10, C=65, E=40, G=25
+    const DEFAULT_NODES = [
+      { id:1, label:"A", x:0,  type:"Pin", settle:10, Pz:0, kZ:0, kTheta:0 },
+      { id:2, label:"C", x:10, type:"Pin", settle:65, Pz:0, kZ:0, kTheta:0 },
+      { id:3, label:"E", x:20, type:"Pin", settle:40, Pz:0, kZ:0, kTheta:0 },
+      { id:4, label:"G", x:28, type:"Pin", settle:25, Pz:0, kZ:0, kTheta:0 },
+    ];
+    // E=200×10⁶ kN/m², I_base=5×10⁻⁴ m⁴ (I), 2I=10⁻³ m⁴
+    const DEFAULT_MEMBERS = [
+      { id:1, near:"A", far:"C", name:"AC", E:200e6, I:5e-4, wa:0, wb:0, P:0, a:6, b:4 },
+      { id:2, near:"C", far:"E", name:"CE", E:200e6, I:1e-3, wa:0, wb:0, P:0, a:6, b:4 },
+      { id:3, near:"E", far:"G", name:"EG", E:200e6, I:5e-4, wa:0, wb:0, P:0, a:4, b:4 },
+    ];
+
+    // ── LOAD CASE MANAGER DATA — COPIED FROM FRAMES v0.6.6 PATTERN ─────────
+    // Geometry, stiffness, supports, settlements, and springs are model data.
+    // Nodal/member loads are stored per load case and copied onto the analysis
+    // model only when that case or combination is solved.
+    const LOAD_TYPES = ["Dead", "Live", "Snow", "Wind", "Seismic", "Other"];
+    const COMBO_TYPES = ["Strength", "Service", "Envelope", "Other"];
+    const EMPTY_NODE_LOAD = { Pz:0 };
+    const EMPTY_MEMBER_LOAD = { wa:0, wb:0, P:0, a:0 };
+    const DEFAULT_LOAD_CASES = [
+      {
+        id:1, name:"LC1", type:"Dead", factor:1.0,
+        nodalLoads:{},
+        memberLoads:{
+          "1":{ wa:0, wb:0, P:120, a:6 },
+          "2":{ wa:0, wb:0, P:120, a:6 },
+          "3":{ wa:0, wb:0, P:150, a:4 },
+        }
+      }
+    ];
+    const DEFAULT_LOAD_COMBINATIONS = [];
+    const cloneDeep = obj => JSON.parse(JSON.stringify(obj));
+    function nodeLoadFor(loadCase, nodeId) { return { ...EMPTY_NODE_LOAD, ...(((loadCase || {}).nodalLoads || {})[String(nodeId)] || {}) }; }
+    function memberLoadFor(loadCase, memberId) { return { ...EMPTY_MEMBER_LOAD, ...(((loadCase || {}).memberLoads || {})[String(memberId)] || {}) }; }
+    function mergeBeamLoadCaseLoads(nodes, members, loadCase) {
+      const f = +((loadCase || {}).factor ?? 1) || 0;
+      return {
+        nodes: nodes.map(n => {
+          const L = nodeLoadFor(loadCase, n.id);
+          return { ...n, Pz:(+L.Pz || 0) * f };
+        }),
+        members: members.map(m => {
+          const L = memberLoadFor(loadCase, m.id);
+          const a = (L.a === undefined || L.a === null || L.a === "") ? (+m.a || 0) : (+L.a || 0);
+          return { ...m, wa:(+L.wa || 0)*f, wb:(+L.wb || 0)*f, P:(+L.P || 0)*f, a, b:Math.max(0, (+m.b || 0)) };
+        })
+      };
+    }
+
+    // ── SOLVER ────────────────────────────────────────────────────────────────
+    // Continuous beam by Moment Distribution Method (rotational DOFs only).
+    // Supports support settlements: each Pin/Fix node may have a prescribed
+    // downward settlement δ (in the SAME distance unit as x-coordinates).
+    // Settlement contribution to member FEMs (chord rotation ψ = (δ_far−δ_near)/L):
+    //   FEM_near_settle = FEM_far_settle = −6EI/L² · (δ_far − δ_near)
+    // Nodal point loads Pz (downward positive) do not enter the moment equations
+    // for supported nodes but are added to reactions for equilibrium.
+
+    function solveBeam(nodes, members, settleConv, momentTolerance) {
+      const rawNodes=nodes.filter(n=>String(n.label||"").trim());
+      if(rawNodes.length<2)return {error:"Need at least two labelled nodes."};
+      const labels=rawNodes.map(n=>String(n.label).trim());
+      if(new Set(labels).size!==labels.length)return {error:"Node labels must be unique."};
+      if(rawNodes.some(n=>!Number.isFinite(+n.x)))return {error:"Every node coordinate must be a finite number."};
+      const ns=rawNodes.slice().sort((a,b)=>(+a.x)-(+b.x));
+      for(let i=1;i<ns.length;i++)if(Math.abs((+ns[i].x)-(+ns[i-1].x))<1e-12)return {error:"Two nodes cannot occupy the same coordinate."};
+      const ni={};ns.forEach((n,i)=>ni[String(n.label).trim()]=i);
+      const ms=members.filter(m=>ni[String(m.near||"").trim()]!==undefined&&ni[String(m.far||"").trim()]!==undefined);
+      if(!ms.length)return {error:"Need at least one valid member."};
+      if(ns.some(n=>(n.type||"Pin")==="Free"||Math.abs(+n.kZ||0)>1e-12||Math.abs(+n.kTheta||0)>1e-12))return {error:"This moment-distribution release supports vertically restrained Pin and Fix joints without elastic springs."};
+      const tol=+momentTolerance;
+      if(!Number.isFinite(tol)||tol<=0)return {error:"Bending-moment tolerance must be a positive number in the active moment unit."};
+      const conv=settleConv||1,ends=[],built=[];
+
+      for(let idx=0;idx<ms.length;idx++){
+        const mem=ms[idx];
+        const inputNear=ns[ni[String(mem.near).trim()]],inputFar=ns[ni[String(mem.far).trim()]];
+        const reversed=(+inputNear.x)>(+inputFar.x);
+        const aN=reversed?inputFar:inputNear,bN=reversed?inputNear:inputFar;
+        const i=ni[String(aN.label).trim()],j=ni[String(bN.label).trim()];
+        const L=(+bN.x)-(+aN.x);
+        const E=+mem.E,I=+mem.I;
+        if(!(L>1e-12))return {error:`Member ${mem.name||idx+1} has zero length.`};
+        if(!Number.isFinite(E)||E<=0||!Number.isFinite(I)||I<=0)return {error:`Member ${mem.name||idx+1} requires positive finite E and I values.`};
+        const EI=E*I;
+        const wa0=+mem.wa||0,wb0=+mem.wb||0,P=+mem.P||0;
+        const wa=reversed?wb0:wa0,wb=reversed?wa0:wb0;
+        const inputA=Math.max(0,Math.min(L,+mem.a||0));
+        const a=reversed?L-inputA:inputA,b=L-a;
+        const chord=-6*EI*(((+bN.settle||0)-(+aN.settle||0))*conv)/(L*L);
+        const femA=L*L*(3*wa+2*wb)/60+(P?P*a*b*b/(L*L):0)+chord;
+        const femB=-L*L*(2*wa+3*wb)/60-(P?P*a*a*b/(L*L):0)+chord;
+        const o={mem,idx,i,j,aN,bN,L,E,I,EI,wa,wb,P,a,b,ends:[]};
+        o.ends=[{end:`${aN.label}${bN.label}`,node:i,m:femA,fem:femA,K:4*EI/L,df:0,cof:.5,o},{end:`${bN.label}${aN.label}`,node:j,m:femB,fem:femB,K:4*EI/L,df:0,cof:.5,o}];
+        ends.push(...o.ends);built.push(o);
+      }
+
+      const inc=ns.map((_,i)=>ends.filter(e=>e.node===i));
+      const orphan=ns.find((_,i)=>inc[i].length===0);
+      if(orphan)return {error:`Node ${orphan.label} is not connected to a member.`};
+      inc.forEach((list,i)=>{if((ns[i].type||"Pin")==="Fix")return;const sk=list.reduce((q,e)=>q+e.K,0);list.forEach(e=>e.df=sk?e.K/sk:0);});
+      const mdRows=[];ends.forEach(e=>mdRows.push({step:0,action:"FEM",end:e.end,increment:e.fem,total:e.m,df:e.df}));
+      const rotations=new Array(ns.length).fill(0),free=ns.map((n,i)=>({n,i})).filter(x=>(x.n.type||"Pin")!=="Fix");
+      let cycle=0,ok=false;
+      for(cycle=1;cycle<=500;cycle++){
+        let maxBefore=0;const carry=[];
+        free.forEach(({i})=>{
+          const list=inc[i],U=list.reduce((q,e)=>q+e.m,0);maxBefore=Math.max(maxBefore,Math.abs(U));
+          if(Math.abs(U)<=tol)return;
+          const sk=list.reduce((q,e)=>q+e.K,0);rotations[i]+=sk?-U/sk:0;
+          list.forEach(e=>{const dm=-U*e.df;e.m+=dm;mdRows.push({step:cycle,action:"Balance",end:e.end,increment:dm,total:e.m,df:e.df});const other=e.o.ends.find(x=>x!==e);carry.push({to:other,v:dm*e.cof});});
+        });
+        carry.forEach(c=>{c.to.m+=c.v;mdRows.push({step:cycle,action:"Carryover",end:c.to.end,increment:c.v,total:c.to.m,df:c.to.df});});
+        const maxAfter=Math.max(0,...free.map(({i})=>Math.abs(inc[i].reduce((q,e)=>q+e.m,0))));
+        if(maxAfter<=tol){ok=true;break;}
+        if(maxBefore<=tol&&!carry.length){ok=true;break;}
+      }
+      if(!ok)return {error:"Moment distribution did not converge within 500 cycles."};
+      ends.forEach(e=>mdRows.push({step:cycle,action:"Final",end:e.end,increment:null,total:e.m,df:e.df}));
+
+      const memberResults=built.map(o=>{
+        const M_near=o.ends[0].m,M_far=o.ends[1].m;
+        const W=o.L*(o.wa+o.wb)/2+o.P;
+        const loadMomentAboutNear=o.L*o.L*(o.wa+2*o.wb)/6+o.P*o.a;
+        const V_far=(loadMomentAboutNear-M_near-M_far)/o.L;
+        const V_near=W-V_far;
+        const regular=Array.from({length:81},(_,k)=>k*o.L/80);
+        const xs=[...new Set([...regular,(o.P&&o.a>1e-12&&o.a<o.L-1e-12)?o.a:null].filter(x=>x!==null).map(x=>+x.toPrecision(14)))].sort((a,b)=>a-b);
+        const sfd=[],bmd=[],raw=[];
+        const lineLoadLeft=x=>o.wa*x+(o.wb-o.wa)*x*x/(2*o.L);
+        const lineMomentLeft=x=>o.wa*x*x/2+(o.wb-o.wa)*x*x*x/(6*o.L);
+        xs.forEach(x=>{
+          const vBefore=V_near-lineLoadLeft(x);
+          const pointActive=x>=o.a-1e-12&&Math.abs(o.P)>1e-12;
+          if(Math.abs(x-o.a)<1e-10&&o.P&&x>0&&x<o.L)sfd.push({x,V:vBefore});
+          const V=vBefore-(pointActive?o.P:0);
+          const M=-M_near+V_near*x-lineMomentLeft(x)-(pointActive?o.P*(x-o.a):0);
+          sfd.push({x,V});bmd.push({x,M});raw.push({x,M});
+        });
+        const momentClosure=Math.abs((bmd[bmd.length-1]?.M||0)-M_far);
+        const shearClosure=Math.abs((sfd[sfd.length-1]?.V||0)+V_far);
+        const scale=Math.max(1,Math.abs(M_near),Math.abs(M_far),Math.abs(W*o.L));
+        if(momentClosure>1e-8*scale||shearClosure>1e-8*Math.max(1,Math.abs(W)))return {error:`Member ${o.mem.name||o.idx+1} failed the internal equilibrium closure check.`};
+        const tr=[0],vr=[0];
+        for(let k=1;k<raw.length;k++){const dx=raw[k].x-raw[k-1].x,th=tr[k-1]+.5*(-raw[k-1].M/o.EI-raw[k].M/o.EI)*dx;tr.push(th);vr.push(vr[k-1]+.5*(tr[k-1]+th)*dx);}
+        const v1=(+o.aN.settle||0)*conv,v2=(+o.bN.settle||0)*conv,C1=(v2-v1-vr[vr.length-1])/o.L;
+        const defl=raw.map((p,k)=>({x:p.x,vLocal:(vr[k]+C1*p.x+v1)/conv,thetaLocal:tr[k]+C1}));
+        return{name:o.mem.name||`${o.aN.label}-${o.bN.label}`,near:o.aN.label,far:o.bN.label,L:o.L,V_near,M_near,V_far,M_far,sfd,bmd,defl,momentClosure,shearClosure};
+      });
+      const failed=memberResults.find(r=>r.error);if(failed)return failed;
+      const reactions=ns.map((n,i)=>{const l=memberResults.find(m=>m.far===n.label),r=memberResults.find(m=>m.near===n.label);return{label:n.label,type:n.type,supportLabel:n.type,hasSpring:false,Rz:(l?l.V_far:0)+(r?r.V_near:0)+(+n.Pz||0),Rm:n.type==="Fix"?-inc[i].reduce((q,e)=>q+e.m,0):0,settle:+n.settle||0};});
+      const rr=ns.map((n,i)=>({label:n.label,type:n.type,supportLabel:n.type,hasSpring:false,dz:+n.settle||0,theta:n.type==="Fix"?0:rotations[i],settle:+n.settle||0}));
+      const allSFD=[],allBMD=[];memberResults.forEach(m=>{const x0=+ns[ni[m.near]].x;m.sfd.forEach(p=>allSFD.push({x:x0+p.x,V:p.V}));m.bmd.forEach(p=>allBMD.push({x:x0+p.x,M:p.M}));});
+      return{rotations:rr,displacements:rr,memberResults,reactions,allSFD,allBMD,nodes:ns,members:ms,mdRows,mdTolerance:tol,method:"Moment distribution"};
+    }
+
+    function combineSeries(terms, getter, key) {
+      const ref = terms.find(t => getter(t.result) && getter(t.result).length);
+      const base = ref ? getter(ref.result) : [];
+      return base.map((pt, idx) => ({
+        ...pt,
+        [key]: terms.reduce((sum, t) => sum + (+t.factor || 0) * ((((getter(t.result) || [])[idx] || {})[key]) || 0), 0)
+      }));
+    }
+
+    function combineBeamResults(combo, solvedCases) {
+      const caseMap = {};
+      (solvedCases || []).forEach(c => { caseMap[String(c.loadCase.id)] = c; });
+      const terms = (combo.terms || [])
+        .map(t => ({ factor:+t.factor || 0, case:caseMap[String(t.loadCaseId)] }))
+        .filter(t => t.case && t.case.result && !t.case.result.error);
+      if (!terms.length) return { error:"Load combination could not be solved: no valid load cases were selected." };
+
+      const base = terms[0].case.result;
+      const combineAt = (arrName, fields) => (base[arrName] || []).map((row, i) => {
+        const out = { ...row };
+        fields.forEach(f => {
+          out[f] = terms.reduce((sum,t)=>sum+(+t.factor||0)*(((((t.case.result || {})[arrName] || [])[i] || {})[f])||0),0);
+        });
+        return out;
+      });
+
+      const memberResults = (base.memberResults || []).map((mr, mi) => {
+        const out = { ...mr };
+        ["V_near","M_near","V_far","M_far"].forEach(f => {
+          out[f] = terms.reduce((sum,t)=>sum + (+t.factor || 0) * (((t.case.result.memberResults || [])[mi] || {})[f] || 0), 0);
+        });
+        out.sfd = combineSeries(terms.map(t=>({factor:t.factor,result:((t.case.result.memberResults || [])[mi] || {})})), r=>r.sfd, "V");
+        out.bmd = combineSeries(terms.map(t=>({factor:t.factor,result:((t.case.result.memberResults || [])[mi] || {})})), r=>r.bmd, "M");
+        out.defl = combineSeries(terms.map(t=>({factor:t.factor,result:((t.case.result.memberResults || [])[mi] || {})})), r=>r.defl, "vLocal").map((p,idx)=>({
+          ...p,
+          thetaLocal: terms.reduce((sum,t)=>sum+(+t.factor||0)*(((((t.case.result.memberResults || [])[mi] || {}).defl || [])[idx] || {}).thetaLocal || 0),0)
+        }));
+        return out;
+      });
+
+      return {
+        ...base,
+        isLoadCombination:true,
+        loadCombination:{ ...combo, terms:terms.map(t=>({ factor:t.factor, loadCase:t.case.loadCase })) },
+        rotations:combineAt("rotations", ["dz","theta"]),
+        displacements:combineAt("displacements", ["dz","theta"]),
+        reactions:combineAt("reactions", ["Rz","Rm"]),
+        memberResults,
+        allSFD:memberResults.flatMap(m=>m.sfd || []),
+        allBMD:memberResults.flatMap(m=>m.bmd || [])
+      };
+    }
+
+    function solveLoadCases(nodes, members, loadCases, loadCombinations, units, momentTolerance) {
+      const conv = SETTLE_CONV[units];
+      const activeCases = (loadCases || []).filter(lc => String(lc.name || '').trim());
+      const cases = activeCases.map(lc => {
+        const model = mergeBeamLoadCaseLoads(nodes, members, lc);
+        const solved = solveBeam(model.nodes, model.members, conv, momentTolerance);
+        return { loadCase:{ id:lc.id, name:lc.name, type:lc.type, factor:+lc.factor || 0 }, result:{ ...solved, modelNodes:model.nodes, modelMembers:model.members } };
+      });
+      const caseById={};activeCases.forEach(lc=>{caseById[String(lc.id)]=lc;});
+      const combos = (loadCombinations || []).filter(c => c.enabled !== false && String(c.name || '').trim()).map(combo => {
+        const terms=(combo.terms||[]).map(t=>({factor:+t.factor||0,lc:caseById[String(t.loadCaseId)]})).filter(t=>t.lc&&Math.abs(t.factor)>0);
+        const meta={id:2000000+(+combo.id||0),comboId:combo.id,name:combo.name,type:`Combination · ${combo.type||"Service"}`,factor:1};
+        if(!terms.length)return {loadCase:meta,result:{error:"Load combination has no valid nonzero terms."}};
+        const comboNodes=nodes.map(n=>({...n,Pz:terms.reduce((sum,t)=>sum+t.factor*(+t.lc.factor||0)*(+nodeLoadFor(t.lc,n.id).Pz||0),0)}));
+        let locationError="";
+        const comboMembers=members.map(m=>{
+          const activePointTerms=terms.map(t=>{const L=memberLoadFor(t.lc,m.id);return {P:t.factor*(+t.lc.factor||0)*(+L.P||0),a:(L.a===undefined||L.a===null||L.a==="")?(+m.a||0):(+L.a||0)};}).filter(x=>Math.abs(x.P)>1e-12);
+          const locations=[...new Set(activePointTerms.map(x=>+x.a.toPrecision(12)))];
+          if(locations.length>1)locationError=`Combination ${combo.name} contains point loads at different positions on member ${m.name||m.id}. Split the member at load points or use aligned point-load locations.`;
+          return {...m,wa:terms.reduce((sum,t)=>sum+t.factor*(+t.lc.factor||0)*(+memberLoadFor(t.lc,m.id).wa||0),0),wb:terms.reduce((sum,t)=>sum+t.factor*(+t.lc.factor||0)*(+memberLoadFor(t.lc,m.id).wb||0),0),P:activePointTerms.reduce((sum,x)=>sum+x.P,0),a:locations.length?locations[0]:(+m.a||0)};
+        });
+        if(locationError)return {loadCase:meta,result:{error:locationError}};
+        const solved=solveBeam(comboNodes,comboMembers,conv,momentTolerance);
+        return {loadCase:meta,result:{...solved,isLoadCombination:true,loadCombination:combo,modelNodes:comboNodes,modelMembers:comboMembers}};
+      });
+      return [...cases, ...combos];
+    }
+
+    function gaussElim(A, b) {
+      const n = b.length;
+      const M = A.map((r, i) => [...r, b[i]]);
+      for (let col = 0; col < n; col++) {
+        let maxRow = col;
+        for (let row = col+1; row < n; row++)
+          if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+        [M[col], M[maxRow]] = [M[maxRow], M[col]];
+        if (Math.abs(M[col][col]) < 1e-14) return null;
+        for (let row = col+1; row < n; row++) {
+          const f = M[row][col] / M[col][col];
+          for (let k = col; k <= n; k++) M[row][k] -= f * M[col][k];
+        }
+      }
+      const x = new Array(n).fill(0);
+      for (let i = n-1; i >= 0; i--) {
+        x[i] = M[i][n];
+        for (let j = i+1; j < n; j++) x[i] -= M[i][j] * x[j];
+        x[i] /= M[i][i];
+      }
+      return x;
+    }
+
+    const fmt3 = v => typeof v === "number" ? (Math.abs(v) < 1e-9 ? "0" : v.toFixed(3)) : v;
+    const fmt4 = v => typeof v === "number" ? (Math.abs(v) < 1e-9 ? "0" : v.toFixed(4)) : v;
+
+    // ── BEAM DIAGRAM SVG ──────────────────────────────────────────────────────
+    function BeamDiagram({ nodes, members, result=null, overlayMode="none", overlayScale=1 }) {
+      const validNodes = nodes.filter(n => n.label.trim());
+      if (validNodes.length < 2) return <div style={{ color:CLR.muted, textAlign:"center", padding:"2rem" }}>Add at least 2 nodes.</div>;
+
+      const xs = validNodes.map(n => +n.x || 0);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const W = 700, H = 175, PAD = 56;
+      const rangeX = maxX - minX || 1;
+      const scX = (W - 2*PAD) / rangeX;
+      const beamY = 72;
+      const toSvgX = x => PAD + (x - minX) * scX;
+      const nodeMap = {};
+      validNodes.forEach(n => { nodeMap[n.label] = +n.x || 0; });
+
+      const SupportSymbol = ({ type, sx, settle }) => {
+        const hasSettle = Math.abs(settle || 0) > 1e-9;
+        if (type === "Pin") return (
+          <g>
+            <polygon points={`${sx},${beamY+4} ${sx-10},${beamY+22} ${sx+10},${beamY+22}`} fill="none" stroke={hasSettle ? CLR.orange : CLR.green} strokeWidth={1.5} />
+            <line x1={sx-13} y1={beamY+23} x2={sx+13} y2={beamY+23} stroke={hasSettle ? CLR.orange : CLR.green} strokeWidth={1.5} />
+            {hasSettle
+              ? [0,1,2,3].map(k => <line key={k} x1={sx-13+k*7} y1={beamY+26} x2={sx-9+k*7} y2={beamY+23} stroke={CLR.orange} strokeWidth={1} />)
+              : [0,1,2,3].map(k => <line key={k} x1={sx-13+k*7} y1={beamY+26} x2={sx-9+k*7} y2={beamY+23} stroke={CLR.green} strokeWidth={1} />)
+            }
+          </g>
+        );
+        if (type === "Fix") return (
+          <g>
+            <rect x={sx-3} y={beamY+4} width={6} height={20} fill={CLR.green} />
+            {[0,1,2,3].map(k => <line key={k} x1={sx+3} y1={beamY+6+k*5} x2={sx+11} y2={beamY+2+k*5} stroke={CLR.green} strokeWidth={1.5} />)}
+          </g>
+        );
+        return null;
+      };
+
+      const SpringSupports = ({ n, sx }) => {
+        const kZ = Math.max(0, +n.kZ || 0);
+        const kTheta = Math.max(0, +n.kTheta || 0);
+        if (kZ <= 1e-12 && kTheta <= 1e-12) return null;
+        const color = CLR.violet;
+        return (
+          <g>
+            {kZ > 1e-12 && <g>
+              <title>{`Vertical spring support kZ = ${fmt3(kZ)}`}</title>
+              <polyline points={`${sx},${beamY+8} ${sx-6},${beamY+14} ${sx+6},${beamY+20} ${sx-6},${beamY+26} ${sx+6},${beamY+32} ${sx},${beamY+38}`} fill="none" stroke={color} strokeWidth="1.6" />
+              <line x1={sx-14} y1={beamY+40} x2={sx+14} y2={beamY+40} stroke={color} strokeWidth="1.2" />
+              <text x={sx+20} y={beamY+30} fill={color} fontSize="9" fontWeight="800">kZ</text>
+            </g>}
+            {kTheta > 1e-12 && <g>
+              <title>{`Rotational spring support kθ = ${fmt3(kTheta)}`}</title>
+              <path d={`M ${sx-18} ${beamY-7} A 15 15 0 1 1 ${sx+10} ${beamY-13}`} fill="none" stroke={color} strokeWidth="1.6" />
+              <polygon points={`${sx+10},${beamY-13} ${sx+4},${beamY-15} ${sx+8},${beamY-8}`} fill={color}/>
+              <text x={sx+22} y={beamY-12} fill={color} fontSize="9" fontWeight="800">kθ</text>
+            </g>}
+          </g>
+        );
+      };
+
+      return (
+        <svg width={W} height={H} style={{ display:"block", margin:"0 auto", background:"transparent", overflow:"visible" }}>
+          {members.filter(m => m.near.trim() && m.far.trim() && nodeMap[m.near.trim()] !== undefined && nodeMap[m.far.trim()] !== undefined).map((m, i) => {
+            const x1 = toSvgX(nodeMap[m.near.trim()]);
+            const x2 = toSvgX(nodeMap[m.far.trim()]);
+            const hasUDL = Math.abs(+m.wa || 0) > 1e-10 || Math.abs(+m.wb || 0) > 1e-10;
+            const wa_val = +m.wa || 0, wb_val = +m.wb || 0;
+            const wMax   = Math.max(Math.abs(wa_val), Math.abs(wb_val)) || 1;
+            const midX = (x1 + x2) / 2;
+            const spanW = Math.abs(x2 - x1);
+            return (
+              <g key={i}>
+                <line x1={x1} y1={beamY} x2={x2} y2={beamY} stroke={CLR.accent} strokeWidth={5} strokeLinecap="butt" />
+                <text x={midX} y={beamY + 62} textAnchor="middle" fontSize={10} fill={CLR.muted} fontFamily="monospace">{m.name || `${m.near}${m.far}`}</text>
+                {hasUDL && (() => {
+                  const nArr = Math.max(4, Math.round(spanW / 20));
+                  const arrows = Array.from({ length: nArr }).map((_, j) => {
+                    const t = nArr > 1 ? j / (nArr - 1) : 0.5;
+                    const ax = x1 + t * (x2 - x1);
+                    const wLocal = wa_val + (wb_val - wa_val) * t;
+                    const h = 6 + 14 * Math.abs(wLocal) / wMax;
+                    return { ax, h };
+                  });
+                  const topPts = arrows.map(({ax, h}) => `${ax},${beamY - h}`).join(" ");
+                  return (
+                    <g>
+                      <polyline points={topPts} fill="none" stroke={CLR.yellow} strokeWidth={1.2}/>
+                      {arrows.map(({ax, h}, j) => (
+                        <g key={j}>
+                          <line x1={ax} y1={beamY - h} x2={ax} y2={beamY - 2} stroke={CLR.yellow} strokeWidth={1.2}/>
+                          <polygon points={`${ax},${beamY-2} ${ax-3},${beamY-8} ${ax+3},${beamY-8}`} fill={CLR.yellow}/>
+                        </g>
+                      ))}
+                    </g>
+                  );
+                })()}
+                {Math.abs(+m.P || 0) > 1e-10 && (() => {
+                  const nearX = nodeMap[m.near.trim()], farX = nodeMap[m.far.trim()];
+                  const px = toSvgX(nearX + (+m.a||0) * (farX > nearX ? 1 : -1));
+                  return (<g><line x1={px} y1={beamY-8} x2={px} y2={beamY-28} stroke={CLR.orange} strokeWidth={2}/><polygon points={`${px},${beamY-8} ${px-4},${beamY-16} ${px+4},${beamY-16}`} fill={CLR.orange}/><text x={px+6} y={beamY-18} fontSize={9} fill={CLR.orange}>{m.P}</text></g>);
+                })()}
+              </g>
+            );
+          })}
+          {result && overlayMode === "deformed" && (result.memberResults || []).map((mr, idx) => {
+            const nearX = nodeMap[String(mr.near || "").trim()];
+            const farX  = nodeMap[String(mr.far || "").trim()];
+            if (nearX === undefined || farX === undefined || !(mr.defl || []).length) return null;
+            const sign = farX >= nearX ? 1 : -1;
+            const pts = (mr.defl || []).map(p => {
+              const gx = nearX + sign*(+p.x || 0);
+              const sx = toSvgX(gx);
+              const sy = beamY + (+p.vLocal || 0) * (+overlayScale || 1);
+              return `${sx},${sy}`;
+            }).join(" ");
+            return <polyline key={`defl-${idx}`} points={pts} fill="none" stroke={CLR.yellow} strokeWidth={2.2} strokeDasharray="6,4"/>;
+          })}
+          {result && (overlayMode === "sfd" || overlayMode === "bmd") && (() => {
+            const key = overlayMode === "sfd" ? "V" : "M";
+            const seriesKey = overlayMode === "sfd" ? "sfd" : "bmd";
+            const color = overlayMode === "sfd" ? CLR.teal : CLR.orange;
+            const label = overlayMode === "sfd" ? "SFD" : "BMD";
+            const allValues = (result.memberResults || []).flatMap(mr => (mr[seriesKey] || []).map(p => +p[key] || 0));
+            const maxAbs = Math.max(1e-12, ...allValues.map(v => Math.abs(v)));
+            const svgScale = (+overlayScale || 1) * 7 / maxAbs;
+            return (result.memberResults || []).map((mr, idx) => {
+              const nearX = nodeMap[String(mr.near || "").trim()];
+              const farX  = nodeMap[String(mr.far || "").trim()];
+              const data = mr[seriesKey] || [];
+              if (nearX === undefined || farX === undefined || !data.length) return null;
+              const sign = farX >= nearX ? 1 : -1;
+              const pts = data.map(p => {
+                const gx = nearX + sign*(+p.x || 0);
+                const sx = toSvgX(gx);
+                const sy = beamY - (+p[key] || 0) * svgScale;
+                return `${sx},${sy}`;
+              }).join(" ");
+              const areaPath = data.map((p, j) => {
+                const gx = nearX + sign*(+p.x || 0);
+                const sx = toSvgX(gx);
+                const sy = beamY - (+p[key] || 0) * svgScale;
+                return `${j === 0 ? "M" : "L"} ${sx},${j === 0 ? beamY : sy} ${j === 0 ? "L " + sx + "," + sy : ""}`;
+              }).join(" ") + ` L ${toSvgX(farX)},${beamY} Z`;
+              return <g key={`${seriesKey}-${idx}`}>
+                <path d={areaPath} fill={color+"24"}/>
+                <polyline points={pts} fill="none" stroke={color} strokeWidth={2.1} strokeLinejoin="round"/>
+                {idx === 0 && <text x={PAD} y={beamY-43} fill={color} fontSize="10" fontWeight="800">{label} overlay</text>}
+              </g>;
+            });
+          })()}
+          {validNodes.map((n, i) => {
+            const sx = toSvgX(+n.x || 0);
+            const hasPz = Math.abs(+n.Pz || 0) > 1e-10;
+            const hasSettle = Math.abs(+n.settle || 0) > 1e-9;
+            return (
+              <g key={i}>
+                <SpringSupports n={n} sx={sx} />
+                <SupportSymbol type={n.type} sx={sx} settle={+n.settle||0} />
+                {/* Nodal load arrow */}
+                {hasPz && (<g>
+                  <line x1={sx} y1={beamY-10} x2={sx} y2={beamY-30} stroke={CLR.red} strokeWidth={2}/>
+                  <polygon points={`${sx},${beamY-10} ${sx-4},${beamY-18} ${sx+4},${beamY-18}`} fill={CLR.red}/>
+                  <text x={sx+6} y={beamY-22} fontSize={9} fill={CLR.red}>{n.Pz}</text>
+                </g>)}
+                {/* Settlement annotation */}
+                {hasSettle && (
+                  <text x={sx} y={beamY+42} textAnchor="middle" fontSize={8} fill={CLR.orange}>δ={n.settle}</text>
+                )}
+                <circle cx={sx} cy={beamY} r={5} fill={(Math.abs(+n.kZ||0)>1e-12 || Math.abs(+n.kTheta||0)>1e-12) ? CLR.violet : (n.type === "Free" ? CLR.muted : CLR.green)} stroke={CLR.bg} strokeWidth={1.5}/>
+                <text x={sx} y={beamY-10} textAnchor="middle" fontSize={11} fill={CLR.text} fontFamily="monospace" fontWeight="700">{n.label}</text>
+                <text x={sx} y={beamY+74} textAnchor="middle" fontSize={9} fill={CLR.muted}>{+n.x||0}</text>
+              </g>
+            );
+          })}
+        </svg>
+      );
+    }
+
+    // ── DIAGRAM CHART ─────────────────────────────────────────────────────────
+    function DiagramChart({ data, yKey, color, label, unit }) {
+      if (!data || data.length === 0) return null;
+      const W = 700, H = 160, PADX = 56, PADY = 24;
+      const xs = data.map(d => d.x);
+      const ys = data.map(d => d[yKey]);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const rangeX = maxX - minX || 1;
+      const maxAbs = Math.max(Math.abs(minY), Math.abs(maxY)) || 1;
+      const scX = (W - 2*PADX) / rangeX;
+      const scY = (H - 2*PADY) / (maxAbs * 2.2);
+      const toSvg = (x, y) => ({ sx: PADX + (x - minX) * scX, sy: H/2 - y * scY });
+      const pts = data.map(d => { const {sx,sy} = toSvg(d.x, d[yKey]); return `${sx},${sy}`; }).join(" ");
+      const zeroY = H / 2;
+      const areaPath = data.map((d, i) => {
+        const {sx, sy} = toSvg(d.x, d[yKey]);
+        return (i === 0 ? `M ${sx},${zeroY} L ${sx},${sy}` : `L ${sx},${sy}`);
+      }).join(" ") + ` L ${toSvg(data[data.length-1].x, 0).sx},${zeroY} Z`;
+      const tickVals = [maxAbs/2, maxAbs, -maxAbs/2, -maxAbs].filter(v => Math.abs(v) > 1e-9);
+      return (
+        <svg width={W} height={H} style={{ display:"block", margin:"0 auto", background:"transparent", overflow:"visible" }}>
+          <line x1={PADX} y1={zeroY} x2={W-PADX} y2={zeroY} stroke={CLR.border} strokeWidth={1}/>
+          {tickVals.map((v, i) => {
+            const y = H/2 - v*scY;
+            if (y < 4 || y > H-4) return null;
+            return (<g key={i}>
+              <line x1={PADX-3} y1={y} x2={W-PADX} y2={y} stroke={CLR.border} strokeWidth={0.5} strokeDasharray="3,3"/>
+              <text x={PADX-5} y={y+4} textAnchor="end" fontSize={9} fill={CLR.muted}>{fmt3(v)}</text>
+            </g>);
+          })}
+          <path d={areaPath} fill={color+"33"}/>
+          <polyline points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round"/>
+          {(() => {
+            const step = Math.max(1, Math.round(data.length / 8));
+            return data.filter((_, i) => i % step === 0 || i === data.length - 1).map((d, i) => {
+              const {sx} = toSvg(d.x, 0);
+              return <text key={i} x={sx} y={H-4} textAnchor="middle" fontSize={9} fill={CLR.muted}>{fmt3(d.x)}</text>;
+            });
+          })()}
+          <text x={PADX} y={12} fontSize={10} fill={color} fontWeight="700">{label} [{unit}]</text>
+          <text x={W-PADX} y={H-4} textAnchor="end" fontSize={9} fill={CLR.muted}>x</text>
+          <line x1={PADX} y1={PADY} x2={PADX} y2={H-PADY} stroke={CLR.border} strokeWidth={1}/>
+        </svg>
+      );
+    }
+
+    // ── INPUTS VIEW ───────────────────────────────────────────────────────────
+    function InputsView({ nodes, setNodes, members, setMembers, units, setUnits, momentTolerance, setMomentTolerance, loadCases, setLoadCases, loadCombinations, setLoadCombinations, activeLoadCaseId, setActiveLoadCaseId, onCalculate }) {
+      const nextNodeId = useRef(nodes.length + 1);
+      const nextMemId  = useRef(members.length + 1);
+      const u = UNIT_SETS[units];
+      const activeLC = loadCases.find(lc => String(lc.id) === String(activeLoadCaseId)) || loadCases[0] || DEFAULT_LOAD_CASES[0];
+
+      const updateNode = (id, field, val) => setNodes(prev => prev.map(n => n.id===id ? {...n,[field]:val} : n));
+      const addNode    = () => { nextNodeId.current++; setNodes(prev => [...prev, { id:nextNodeId.current, label:"", x:"", type:"Pin", settle:0, Pz:0, kZ:0, kTheta:0 }]); };
+      const delNode    = id  => { setNodes(prev => prev.filter(n => n.id !== id)); setLoadCases(prev => prev.map(lc => { const nl={...(lc.nodalLoads||{})}; delete nl[String(id)]; return {...lc,nodalLoads:nl}; })); };
+
+      const updateMem  = (id, field, val) => setMembers(prev => prev.map(m => m.id===id ? {...m,[field]:val} : m));
+      const addMem     = () => { nextMemId.current++; setMembers(prev => [...prev, { id:nextMemId.current, near:"", far:"", name:"", E:1, I:1, wa:0, wb:0, P:0, a:0, b:0 }]); };
+      const delMem     = id  => { setMembers(prev => prev.filter(m => m.id !== id)); setLoadCases(prev => prev.map(lc => { const ml={...(lc.memberLoads||{})}; delete ml[String(id)]; return {...lc,memberLoads:ml}; })); };
+
+      const updateActiveNodeLoad = (nodeId, field, val) => setLoadCases(prev => prev.map(lc => {
+        if (String(lc.id) !== String(activeLC.id)) return lc;
+        const current = nodeLoadFor(lc, nodeId);
+        return { ...lc, nodalLoads:{ ...(lc.nodalLoads || {}), [String(nodeId)]:{ ...current, [field]:val } } };
+      }));
+      const updateActiveMemberLoad = (memId, field, val) => setLoadCases(prev => prev.map(lc => {
+        if (String(lc.id) !== String(activeLC.id)) return lc;
+        const current = memberLoadFor(lc, memId);
+        return { ...lc, memberLoads:{ ...(lc.memberLoads || {}), [String(memId)]:{ ...current, [field]:val } } };
+      }));
+      const updateLoadCase = (id, field, val) => setLoadCases(prev => prev.map(lc => lc.id===id ? { ...lc, [field]:val } : lc));
+      const addLoadCase = () => {
+        const id = Math.max(0, ...loadCases.map(lc => +lc.id || 0)) + 1;
+        const newCase = { id, name:`LC${id}`, type:"Live", factor:1.0, nodalLoads:{}, memberLoads:{} };
+        setLoadCases(prev => [...prev, newCase]);
+        setActiveLoadCaseId(id);
+      };
+      const duplicateLoadCase = () => {
+        const id = Math.max(0, ...loadCases.map(lc => +lc.id || 0)) + 1;
+        const copy = cloneDeep(activeLC);
+        copy.id = id; copy.name = `${activeLC.name || "LC"} Copy`;
+        setLoadCases(prev => [...prev, copy]);
+        setActiveLoadCaseId(id);
+      };
+      const deleteLoadCase = (id) => {
+        if (loadCases.length <= 1) return;
+        setLoadCases(prev => prev.filter(lc => lc.id !== id));
+        if (String(activeLoadCaseId) === String(id)) setActiveLoadCaseId((loadCases.find(lc => lc.id !== id) || loadCases[0]).id);
+      };
+      const addCombo = () => {
+        const id = Math.max(0, ...loadCombinations.map(c => +c.id || 0)) + 1;
+        const firstId = loadCases[0]?.id || 1;
+        setLoadCombinations(prev => [...prev, { id, name:`COMBO${id}`, type:"Service", enabled:true, terms:[{ id:1, loadCaseId:firstId, factor:1.0 }] }]);
+      };
+      const updateCombo = (id, updater) => setLoadCombinations(prev => prev.map(c => c.id===id ? (typeof updater === "function" ? updater(c) : { ...c, ...updater }) : c));
+      const delCombo = id => setLoadCombinations(prev => prev.filter(c => c.id !== id));
+      const addComboTerm = comboId => updateCombo(comboId, c => ({ ...c, terms:[...(c.terms || []), { id:Math.max(0, ...((c.terms || []).map(t=>+t.id||0)))+1, loadCaseId:loadCases[0]?.id || 1, factor:1.0 }] }));
+      const updateComboTerm = (comboId, termId, field, val) => updateCombo(comboId, c => ({ ...c, terms:(c.terms || []).map(t => t.id===termId ? { ...t, [field]:val } : t) }));
+      const delComboTerm = (comboId, termId) => updateCombo(comboId, c => ({ ...c, terms:(c.terms || []).filter(t => t.id !== termId) }));
+
+      const resetDefault = () => {
+        setNodes(DEFAULT_NODES.map(n => ({...n})));
+        setMembers(DEFAULT_MEMBERS.map(m => ({...m})));
+        setLoadCases(DEFAULT_LOAD_CASES.map(lc => cloneDeep(lc)));
+        setLoadCombinations(DEFAULT_LOAD_COMBINATIONS.map(c => cloneDeep(c)));
+        setActiveLoadCaseId(DEFAULT_LOAD_CASES[0].id);
+        nextNodeId.current = DEFAULT_NODES.length + 1;
+        nextMemId.current  = DEFAULT_MEMBERS.length + 1;
+      };
+
+      return (
+        <div>
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:"1.5rem", flexWrap:"wrap" }}>
+            <div>
+              <div style={{ fontSize:22, fontWeight:800, color:CLR.text, letterSpacing:"-0.02em" }}>Beam Inputs</div>
+              <div style={{ color:CLR.muted, fontSize:12, marginTop:2 }}>Define nodes, spans, loading, support settlements, and spring supports.</div>
+            </div>
+            <div style={{ marginLeft:"auto", display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+              <span style={{ color:CLR.muted, fontSize:12 }}>Units:</span>
+              <select style={{ ...S.select, width:"auto", padding:"6px 10px" }} value={units} onChange={e=>setUnits(e.target.value)}>
+                {Object.keys(UNIT_SETS).map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+              <span style={{color:CLR.muted,fontSize:12}}>Moment tolerance [{u.moment}]:</span>
+              <input style={{...S.input,width:100}} type="number" min="0" step="any" value={momentTolerance} onChange={e=>setMomentTolerance(e.target.value)}/>
+              <button style={S.btn("ghost")} onClick={resetDefault}>↺ Reset Example</button>
+              <button style={{ ...S.btn("primary"), padding:"8px 24px", fontSize:13 }} onClick={onCalculate}>▶ Analyze</button>
+            </div>
+          </div>
+
+          <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12, padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}` }}>
+              <div>
+                <div style={S.h2}>Load Case Manager</div>
+                <div style={{ fontSize:11, color:CLR.muted }}>Select the active load case, then enter nodal and span loads in the tables below. The analysis runs every load case separately.</div>
+              </div>
+              <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addLoadCase}>+ Add Case</button>
+              <button style={{ ...S.btn("ghost"), padding:"4px 12px", fontSize:11 }} onClick={duplicateLoadCase}>⧉ Duplicate Active</button>
+            </div>
+            <div style={{ overflowX:"auto" }}>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Active</th><th style={S.th}>Case</th><th style={S.th}>Type</th><th style={S.th}>Analysis Factor</th><th style={S.th}>—</th>
+                </tr></thead>
+                <tbody>
+                  {loadCases.map((lc, i) => (
+                    <tr key={lc.id} style={{ background:String(activeLC.id)===String(lc.id)?CLR.accent+"12":(i%2===0?"transparent":"#ffffff05") }}>
+                      <td style={S.td}><input type="radio" checked={String(activeLC.id)===String(lc.id)} onChange={()=>setActiveLoadCaseId(lc.id)}/></td>
+                      <td style={S.td}><input style={{ ...S.input, fontWeight:700, color:String(activeLC.id)===String(lc.id)?CLR.accent:CLR.text }} value={lc.name} onChange={e=>updateLoadCase(lc.id,"name",e.target.value)}/></td>
+                      <td style={S.td}><select style={S.select} value={lc.type || "Dead"} onChange={e=>updateLoadCase(lc.id,"type",e.target.value)}>{LOAD_TYPES.map(t=><option key={t}>{t}</option>)}</select></td>
+                      <td style={S.td}><input style={S.input} type="number" step="any" value={lc.factor} onChange={e=>updateLoadCase(lc.id,"factor",e.target.value)}/></td>
+                      <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10, opacity:loadCases.length<=1?0.4:1 }} disabled={loadCases.length<=1} onClick={()=>deleteLoadCase(lc.id)}>✕</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12, padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}` }}>
+              <div>
+                <div style={S.h2}>Load Combinations</div>
+                <div style={{ fontSize:11, color:CLR.muted }}>Optional linear combinations copied from the Frames manager workflow. Leave empty to solve only individual load cases.</div>
+              </div>
+              <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addCombo}>+ Add Combo</button>
+            </div>
+            {loadCombinations.length === 0 ? (
+              <div style={{ padding:"0.85rem 1.25rem", fontSize:11, color:CLR.muted }}>No load combinations defined.</div>
+            ) : loadCombinations.map((combo, ci) => (
+              <div key={combo.id} style={{ padding:"0.85rem 1.25rem", borderTop:ci?`1px solid ${CLR.border}`:"none" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"90px 1fr 150px 90px", gap:8, alignItems:"center", marginBottom:8 }}>
+                  <label style={{ fontSize:11, color:CLR.muted }}><input type="checkbox" checked={combo.enabled !== false} onChange={e=>updateCombo(combo.id,{enabled:e.target.checked})}/> Enabled</label>
+                  <input style={S.input} value={combo.name} onChange={e=>updateCombo(combo.id,{name:e.target.value})}/>
+                  <select style={S.select} value={combo.type || "Service"} onChange={e=>updateCombo(combo.id,{type:e.target.value})}>{COMBO_TYPES.map(t=><option key={t}>{t}</option>)}</select>
+                  <button style={{ ...S.btn("danger"), padding:"4px 10px", fontSize:10 }} onClick={()=>delCombo(combo.id)}>Delete</button>
+                </div>
+                <table style={S.table}>
+                  <thead><tr><th style={S.th}>Factor</th><th style={S.th}>Load Case</th><th style={S.th}>—</th></tr></thead>
+                  <tbody>
+                    {(combo.terms || []).map(term => (
+                      <tr key={term.id}>
+                        <td style={S.td}><input style={S.input} type="number" step="any" value={term.factor} onChange={e=>updateComboTerm(combo.id,term.id,"factor",e.target.value)}/></td>
+                        <td style={S.td}><select style={S.select} value={term.loadCaseId} onChange={e=>updateComboTerm(combo.id,term.id,"loadCaseId",e.target.value)}>{loadCases.map(lc=><option key={lc.id} value={lc.id}>{lc.name}</option>)}</select></td>
+                        <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delComboTerm(combo.id,term.id)}>✕</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button style={{ ...S.btn("ghost"), padding:"4px 12px", fontSize:11, marginTop:8 }} onClick={()=>addComboTerm(combo.id)}>+ Add Term</button>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:"1.5rem" }}>
+            {/* Table 1: Nodes */}
+            <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+              <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}`, gap:12 }}>
+                <div style={S.h2}>Table 1: Nodes</div>
+                <div style={{ color:CLR.muted, fontSize:11 }}>
+                  <span style={{ color:CLR.orange }}>Settlement</span> = downward displacement at support &nbsp;·&nbsp;
+                  <span style={{ color:CLR.red }}>Pz</span> = nodal point load (downward ↓) &nbsp;·&nbsp; <span style={{ color:CLR.violet }}>kZ / kθ</span> = spring supports
+                </div>
+                <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addNode}>+ Add</button>
+              </div>
+              <div style={{ overflowX:"auto" }}>
+                <table style={S.table}>
+                  <thead><tr>
+                    <th style={S.th}>Label</th>
+                    <th style={S.th}>x [{u.dist}]</th>
+                    <th style={S.th}>Type</th>
+                    <th style={{ ...S.th, color:CLR.orange }}>Settlement [{u.settle}] ↓</th>
+                    <th style={{ ...S.th, color:CLR.red }}>Pz [{u.force}] ↓</th>
+                    <th style={{ ...S.th, color:CLR.violet }}>kZ [{u.force}/{u.dist}]</th>
+                    <th style={{ ...S.th, color:CLR.violet }}>kθ [{u.moment}/rad]</th>
+                    <th style={S.th}>—</th>
+                  </tr></thead>
+                  <tbody>
+                    {nodes.map((n, i) => (
+                      <tr key={n.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                        <td style={S.td}><input style={S.input} value={n.label} onChange={e=>updateNode(n.id,"label",e.target.value)} placeholder="A"/></td>
+                        <td style={S.td}><input style={S.input} type="number" step="any" value={n.x} onChange={e=>updateNode(n.id,"x",e.target.value)}/></td>
+                        <td style={S.td}>
+                          <select style={S.select} value={n.type} onChange={e=>updateNode(n.id,"type",e.target.value)}>
+                            {NODE_TYPES.map(t => <option key={t}>{t}</option>)}
+                          </select>
+                        </td>
+                        <td style={S.td}><input style={{ ...S.input, borderColor: Math.abs(+n.settle||0)>1e-9 ? CLR.orange+"88" : CLR.border }} type="number" step="any" value={n.settle} onChange={e=>updateNode(n.id,"settle",e.target.value)}/></td>
+                        {(() => { const L = nodeLoadFor(activeLC, n.id); return <td style={S.td}><input style={{ ...S.input, borderColor: Math.abs(+L.Pz||0)>1e-9 ? CLR.red+"88" : CLR.border }} type="number" step="any" value={L.Pz} onChange={e=>updateActiveNodeLoad(n.id,"Pz",e.target.value)}/></td>; })()}
+                        <td style={S.td}><input style={{ ...S.input, borderColor: Math.abs(+n.kZ||0)>1e-9 ? CLR.violet+"88" : CLR.border }} type="number" step="any" value={n.kZ ?? 0} onChange={e=>updateNode(n.id,"kZ",e.target.value)}/></td>
+                        <td style={S.td}><input style={{ ...S.input, borderColor: Math.abs(+n.kTheta||0)>1e-9 ? CLR.violet+"88" : CLR.border }} type="number" step="any" value={n.kTheta ?? 0} onChange={e=>updateNode(n.id,"kTheta",e.target.value)}/></td>
+                        <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delNode(n.id)}>✕</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ padding:"0.6rem 1rem", fontSize:11, color:CLR.muted, borderTop:`1px solid ${CLR.border}` }}>
+                <strong style={{ color:CLR.yellow }}>Pin</strong> = fixed translation, free rotation &nbsp;·&nbsp;
+                <strong style={{ color:CLR.teal }}>Fix</strong> = fixed translation + rotation &nbsp;·&nbsp;
+                <strong style={{ color:CLR.violet }}>Free</strong> = free (overhang) &nbsp;·&nbsp;
+                <strong style={{ color:CLR.violet }}>Spring</strong> = finite kZ / kθ restraint &nbsp;·&nbsp;
+                <strong style={{ color:CLR.orange }}>Settlement</strong> inputs highlighted in orange when non-zero
+              </div>
+            </div>
+
+            {/* Table 2: Unit Convention */}
+            <div style={{ ...S.card }}>
+              <div style={S.h2}>Table 2: Unit Convention</div>
+              <table style={S.table}>
+                <thead><tr><th style={S.th}>Quantity</th><th style={S.th}>Unit</th></tr></thead>
+                <tbody>
+                  {[
+                    ["Length (x, L)", u.dist],
+                    ["Force / UDL (P, wa, wb)", u.force + " / " + u.force + "/" + u.dist],
+                    ["Moment (M)", u.moment],
+                    ["Modulus (E)", u.force + "/" + u.dist + "²"],
+                    ["Inertia (I)", u.dist + "⁴"],
+                    ["Settlement (δ)", u.settle + " (↓ positive)"],
+                    ["Nodal Load (Pz)", u.force + " (↓ positive)"],
+                    ["Vertical Spring (kZ)", u.force + "/" + u.dist],
+                    ["Rotational Spring (kθ)", u.moment + "/rad"],
+                    ["Sign Convention", "+M sagging · +V upward near"],
+                  ].map(([q, v], i) => (
+                    <tr key={i} style={{ background:i%2===0?"transparent":"#ffffff05" }}>
+                      <td style={S.td}>{q}</td>
+                      <td style={{ ...S.td, color:CLR.teal, fontWeight:600 }}>{v}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Table 3: Members */}
+          <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+            <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}`, gap:12 }}>
+              <div style={S.h2}>Table 3: Spans (Members)</div>
+              <div style={{ color:CLR.muted, fontSize:11, marginLeft:8 }}>
+                Loads shown are for active load case: <span style={{ color:CLR.accent, fontWeight:700 }}>{activeLC.name}</span> &nbsp;·&nbsp; wa/wb = UDL &nbsp;·&nbsp; P = point load &nbsp;·&nbsp; a = dist from near to P
+              </div>
+              <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addMem}>+ Add</button>
+            </div>
+            <div style={{ overflowX:"auto" }}>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Near</th>
+                  <th style={S.th}>Far</th>
+                  <th style={S.th}>Label</th>
+                  <th style={S.th}>E</th>
+                  <th style={S.th}>I</th>
+                  <th style={S.th}>wa [{u.force}/{u.dist}]</th>
+                  <th style={S.th}>wb [{u.force}/{u.dist}]</th>
+                  <th style={S.th}>P [{u.force}]</th>
+                  <th style={S.th}>a [{u.dist}]</th>
+                  <th style={S.th}>b [{u.dist}]</th>
+                  <th style={S.th}>—</th>
+                </tr></thead>
+                <tbody>
+                  {members.map((m, i) => (
+                    <tr key={m.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                      <td style={S.td}><input style={S.input} value={m.near} onChange={e=>updateMem(m.id,"near",e.target.value)}/></td>
+                      <td style={S.td}><input style={S.input} value={m.far}  onChange={e=>updateMem(m.id,"far",e.target.value)}/></td>
+                      <td style={S.td}><input style={S.input} value={m.name} onChange={e=>updateMem(m.id,"name",e.target.value)}/></td>
+                      <td style={S.td}><input style={S.input} type="number" step="any" value={m.E}  onChange={e=>updateMem(m.id,"E",e.target.value)}/></td>
+                      <td style={S.td}><input style={S.input} type="number" step="any" value={m.I}  onChange={e=>updateMem(m.id,"I",e.target.value)}/></td>
+                      <td style={S.td}><input style={S.input} type="number" step="any" value={memberLoadFor(activeLC,m.id).wa} onChange={e=>updateActiveMemberLoad(m.id,"wa",e.target.value)}/></td>
+                      <td style={S.td}><input style={S.input} type="number" step="any" value={memberLoadFor(activeLC,m.id).wb} onChange={e=>updateActiveMemberLoad(m.id,"wb",e.target.value)}/></td>
+                      <td style={S.td}><input style={S.input} type="number" step="any" value={memberLoadFor(activeLC,m.id).P}  onChange={e=>updateActiveMemberLoad(m.id,"P",e.target.value)}/></td>
+                      <td style={S.td}><input style={S.input} type="number" step="any" value={memberLoadFor(activeLC,m.id).a}  onChange={e=>updateActiveMemberLoad(m.id,"a",e.target.value)}/></td>
+                      <td style={S.td}><input style={S.input} type="number" step="any" value={m.b}  onChange={e=>updateMem(m.id,"b",e.target.value)}/></td>
+                      <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delMem(m.id)}>✕</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Beam Preview */}
+          <div style={{ ...S.card }}>
+            <div style={S.h2}>Figure 1: Beam Preview</div>
+            <BeamDiagram nodes={mergeBeamLoadCaseLoads(nodes, members, activeLC).nodes} members={mergeBeamLoadCaseLoads(nodes, members, activeLC).members}/>
+          </div>
+
+          <div style={{ ...S.card, background:"#161b22", fontSize:11, color:CLR.muted }}>
+            <strong style={{ color:CLR.yellow }}>⚠ Notes:</strong>&nbsp;
+            Nodes must appear in order along the beam. Near/far labels must match node labels exactly.
+            L is computed from node x-coordinates. Settlement units are separate from length units (mm for kN/m systems, in for kip systems).
+            Nodal point loads Pz are added directly to support reactions; they do not modify bending moments at supported nodes.
+            Positive shear = upward on near face. Positive moment = sagging (tension at bottom).
+          </div>
+        </div>
+      );
+    }
+
+
+    function AllSpanPrintDiagrams({ memberResults, u }) {
+      if (!memberResults || memberResults.length === 0) return null;
+      return (
+        <div className="print-only">
+          {memberResults.map((mr, i) => (
+            <div key={i} className="print-avoid print-diagram-section" style={{ ...S.card, padding:"1rem", marginBottom:"1.5rem" }}>
+              <div style={{ ...S.h2, marginBottom:"0.75rem" }}>Figures {2 + i*2} & {3 + i*2}: Diagrams — Span {mr.name}</div>
+              <div style={{ marginBottom:10 }}>
+                <div style={{ fontSize:11, color:CLR.muted, marginBottom:4, textTransform:"uppercase", fontWeight:700 }}>Shear Force Diagram — {mr.name} [{u.force}]</div>
+                <DiagramChart data={mr.sfd} yKey="V" color={CLR.teal} label="V" unit={u.force}/>
+              </div>
+              <div style={{ marginTop:16 }}>
+                <div style={{ fontSize:11, color:CLR.muted, marginBottom:4, textTransform:"uppercase", fontWeight:700 }}>Bending Moment Diagram — {mr.name} [{u.moment}]</div>
+                <DiagramChart data={mr.bmd} yKey="M" color={CLR.orange} label="M" unit={u.moment}/>
+              </div>
+              <div style={{ marginTop:16 }}>
+                <div style={{ fontSize:11, color:CLR.muted, marginBottom:4, textTransform:"uppercase", fontWeight:700 }}>Deflection Diagram — {mr.name} [{u.settle}]</div>
+                <DiagramChart data={mr.defl} yKey="vLocal" color={CLR.yellow} label="v" unit={u.settle}/>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── RESULTS VIEW ──────────────────────────────────────────────────────────
+    function ResultsView({ result, nodes, members, units, selectedResultId, setSelectedResultId }) {
+      const u = UNIT_SETS[units];
+      const [activeSpan, setActiveSpan] = useState(0);
+      const [memberDiagramType, setMemberDiagramType] = useState("V");
+      const [overlayMode, setOverlayMode] = useState("none");
+      const [overlayScale, setOverlayScale] = useState(5);
+      const [csvDivisions, setCsvDivisions] = useState(10);
+      const caseList = result && Array.isArray(result.cases) ? result.cases : [];
+      const activeOutput = caseList.find(c => String(c.loadCase.id) === String(selectedResultId)) || caseList[0];
+      const activeResult = activeOutput ? activeOutput.result : null;
+      const displayNodes = (activeResult && activeResult.modelNodes) || nodes;
+      const displayMembers = (activeResult && activeResult.modelMembers) || members;
+
+      if (!result || !activeResult) return (
+        <div style={{ textAlign:"center", padding:"4rem", color:CLR.muted }}>
+          <div style={{ fontSize:48, marginBottom:16 }}>🏗️</div>
+          <div style={{ fontSize:16, fontWeight:700, color:CLR.text }}>No results yet</div>
+          <div style={{ fontSize:13, marginTop:8 }}>Go to Inputs and press Analyze.</div>
+        </div>
+      );
+
+      if (activeResult.error) return (
+        <div style={{ ...S.card, border:`1px solid ${CLR.red}44` }}>
+          <div style={{ fontSize:14, fontWeight:700, color:CLR.red, marginBottom:8 }}>✗ Solver Error</div>
+          <div style={{ color:CLR.muted, fontSize:13 }}>{activeResult.error}</div>
+        </div>
+      );
+
+      const { rotations, memberResults, reactions } = activeResult;
+      const activeMem = memberResults[activeSpan];
+      const mdEnds=memberResults.flatMap(m=>[`${m.near}${m.far}`,`${m.far}${m.near}`]),log=activeResult.mdRows||[],fixed={},dfs={};log.filter(r=>r.action==="FEM").forEach(r=>{fixed[r.end]=r.total;dfs[r.end]=r.df;});
+      const cycles=[...new Set(log.filter(r=>+r.step>0&&r.action!=="Final").map(r=>+r.step))].sort((a,b)=>a-b),sumRows=rows=>{const z={};rows.forEach(r=>z[r.end]=(z[r.end]||0)+(+r.increment||0));return z;};
+      const mdTableRows=[{label:"Distribution factors",kind:"df",values:dfs},{label:"1. Fixed-end moments",values:fixed},...cycles.flatMap((c,i)=>[{label:`${2+i*2}. Balance joints`,values:sumRows(log.filter(r=>r.step===c&&r.action==="Balance"))},{label:`${3+i*2}. Carryover`,values:sumRows(log.filter(r=>r.step===c&&r.action==="Carryover"))}]),{label:`${2+cycles.length*2}. Final moments`,kind:"final",values:Object.fromEntries(log.filter(r=>r.action==="Final").map(r=>[r.end,r.total]))}];
+      const reportDate = new Date().toLocaleDateString();
+      const csvEscape = value => {
+        if (value === null || value === undefined) return "";
+        const s = String(value);
+        return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const downloadTextFile = (filename, content, mimeType="text/csv;charset=utf-8") => {
+        const blob = new Blob([content], { type:mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      };
+      const interpolateSeries = (series, yKey, xTarget) => {
+        const data = (series || []).filter(p => Number.isFinite(+p.x)).slice().sort((a,b) => (+a.x || 0) - (+b.x || 0));
+        if (!data.length) return "";
+        if (xTarget <= (+data[0].x || 0)) return +data[0][yKey] || 0;
+        if (xTarget >= (+data[data.length-1].x || 0)) return +data[data.length-1][yKey] || 0;
+        for (let i=1; i<data.length; i++) {
+          const x0 = +data[i-1].x || 0;
+          const x1 = +data[i].x || 0;
+          if (xTarget <= x1) {
+            const y0 = +data[i-1][yKey] || 0;
+            const y1 = +data[i][yKey] || 0;
+            const t = Math.abs(x1-x0) > 1e-12 ? (xTarget-x0)/(x1-x0) : 0;
+            return y0 + t*(y1-y0);
+          }
+        }
+        return "";
+      };
+      const exportDiagramCsv = () => {
+        if (!activeResult || !(activeResult.memberResults || []).length) return;
+        const divisions = Math.max(1, Math.round(+csvDivisions || 10));
+        const rows = [];
+        rows.push([
+          "Result Set", "Span", "Division", "x", `x unit (${u.dist})`,
+          "Shear V", `V unit (${u.force})`,
+          "Moment M", `M unit (${u.moment})`,
+          "Deflection v", `v unit (${u.settle})`,
+          "Rotation theta", "theta unit (rad)"
+        ]);
+        (activeResult.memberResults || []).forEach(mr => {
+          for (let i=0; i<=divisions; i++) {
+            const x = ((+mr.L || 0) * i) / divisions;
+            rows.push([
+              activeOutput?.loadCase?.name || "Result",
+              mr.name || `${mr.near || ""}-${mr.far || ""}`,
+              i,
+              x,
+              u.dist,
+              interpolateSeries(mr.sfd, "V", x), u.force,
+              interpolateSeries(mr.bmd, "M", x), u.moment,
+              interpolateSeries(mr.defl, "vLocal", x), u.settle,
+              interpolateSeries(mr.defl, "thetaLocal", x), "rad"
+            ]);
+          }
+        });
+        const csv = rows.map(row => row.map(csvEscape).join(",")).join("\n");
+        const safeName = String(activeOutput?.loadCase?.name || "Result").replace(/[^a-z0-9_-]+/gi, "_").replace(/^_+|_+$/g, "") || "Result";
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        downloadTextFile(`Beams_${safeName}_diagram_data_${divisions}_divisions_${timestamp}.csv`, csv);
+      };
+      const printReport = () => {
+        setTimeout(() => window.print(), 50);
+      };
+
+      const hasSettlements = rotations.some(r => Math.abs(r.settle) > 1e-9);
+
+      return (
+        <div className="report-results-block">
+          <div className="screen-only" style={{ ...S.card, display:"flex", alignItems:"center", gap:"1rem", marginBottom:"1.5rem", background:"#161b22", flexWrap:"wrap" }}>
+            <div>
+              <div style={{ ...S.h2, marginBottom:4 }}>Analysis Report</div>
+              <div style={{ fontSize:11, color:CLR.muted }}>Review individual load cases or load combinations, then print/save the selected results package as a PDF.</div>
+            </div>
+            <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:11, color:CLR.muted }}>Results:</span>
+              <select style={{ ...S.select, width:240 }} value={activeOutput?.loadCase?.id || ""} onChange={e=>setSelectedResultId(e.target.value)}>
+                {caseList.map(c => <option key={c.loadCase.id} value={c.loadCase.id}>{c.loadCase.name} — {c.loadCase.type}</option>)}
+              </select>
+              <span style={{ fontSize:11, color:CLR.muted }}>CSV divisions:</span>
+              <input style={{ ...S.input, width:72 }} type="number" min="1" step="1" value={csvDivisions} onChange={e=>setCsvDivisions(Math.max(1, Math.round(+e.target.value || 10)))}/>
+              <button style={{ ...S.btn("ghost"), padding:"8px 18px", fontSize:13 }} onClick={exportDiagramCsv}>📊 Export Diagram CSV</button>
+              <button style={{ ...S.btn("primary"), padding:"8px 20px", fontSize:13 }} onClick={printReport}>🖨 Print / Save PDF Report</button>
+            </div>
+          </div>
+
+          <div className="print-report-header">
+            <h1>Beams v0.4.3 — Continuous Beam / Cantilever Analysis Report</h1>
+            <div className="meta">
+              Generated: {reportDate}<br/>
+              Result Set: {activeOutput?.loadCase?.name || "—"} ({activeOutput?.loadCase?.type || "—"})<br/>
+              Units: force = {u.force}, distance = {u.dist}, moment = {u.moment}, settlement = {u.settle}<br/>
+              Method: Direct stiffness analysis with beam displacement + rotation DOFs, consistent member load vectors, support settlements, and nodal spring supports.
+            </div>
+          </div>
+
+          <div className="print-avoid print-diagram-section" style={{ ...S.card, marginBottom:"2rem" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap:"wrap", marginBottom:"1rem" }}>
+              <div style={{ ...S.h2, marginBottom:0 }}>Figure 1: Beam Diagram</div>
+              <div className="screen-only" style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:8, fontSize:11, color:CLR.muted }}>
+                Overlay
+                <select style={{ ...S.select, width:180 }} value={overlayMode} onChange={e=>setOverlayMode(e.target.value)}>
+                  <option value="none">None</option>
+                  <option value="deformed">Deflected shape</option>
+                  <option value="sfd">Shear force diagram</option>
+                  <option value="bmd">Bending moment diagram</option>
+                </select>
+                Scale
+                <input style={{ ...S.input, width:80 }} type="number" step="0.5" value={overlayScale} onChange={e=>setOverlayScale(+e.target.value || 1)}/>
+              </div>
+            </div>
+            <BeamDiagram nodes={displayNodes} members={displayMembers} result={activeResult} overlayMode={overlayMode} overlayScale={overlayScale}/>
+          </div>
+
+          <div className="report-results-block" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"1.5rem" }}>
+            {/* Table 1: Reactions */}
+            <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden" }}>
+              <div style={{ padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}` }}>
+                <div style={S.h2}>Table 1: Reactions</div>
+              </div>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Node</th>
+                  <th style={S.th}>Type</th>
+                  {hasSettlements && <th style={{ ...S.th, color:CLR.orange }}>δ [{u.settle}]</th>}
+                  <th style={S.th}>Rz [{u.force}]</th>
+                  <th style={S.th}>Rm [{u.moment}]</th>
+                </tr></thead>
+                <tbody>
+                  {reactions.map((r, i) => (
+                    <tr key={i} style={{ background:i%2===0?"transparent":"#ffffff05" }}>
+                      <td style={{ ...S.td, fontWeight:700, color:CLR.green }}>{r.label}</td>
+                      <td style={S.td}><span style={S.badge(r.hasSpring?CLR.violet:(r.type==="Pin"?CLR.yellow:r.type==="Fix"?CLR.teal:CLR.violet))}>{r.supportLabel || r.type}</span></td>
+                      {hasSettlements && <td style={{ ...S.td, color:Math.abs(r.settle)>1e-9?CLR.orange:CLR.muted }}>{r.settle || "0"}</td>}
+                      <td style={{ ...S.td, color:Math.abs(r.Rz)>1e-6?CLR.text:CLR.muted }}>{fmt3(r.Rz)}</td>
+                      <td style={{ ...S.td, color:Math.abs(r.Rm)>1e-6?CLR.text:CLR.muted }}>{fmt3(r.Rm)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table 2: Nodal Displacements and Rotations */}
+            <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden" }}>
+              <div style={{ padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}` }}>
+                <div style={S.h2}>Table 2: Nodal Displacements / Rotations</div>
+              </div>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Node</th>
+                  <th style={S.th}>Type</th>
+                  <th style={S.th}>Δz [{u.settle}]</th>
+                  <th style={S.th}>θ [rad]</th>
+                </tr></thead>
+                <tbody>
+                  {rotations.map((r, i) => (
+                    <tr key={i} style={{ background:i%2===0?"transparent":"#ffffff05" }}>
+                      <td style={{ ...S.td, fontWeight:700, color:CLR.violet }}>{r.label}</td>
+                      <td style={S.td}><span style={S.badge(r.hasSpring?CLR.violet:(r.type==="Pin"?CLR.yellow:r.type==="Fix"?CLR.teal:CLR.violet))}>{r.supportLabel || r.type}</span></td>
+                      <td style={{ ...S.td, color:Math.abs(r.dz)>1e-9?CLR.text:CLR.muted }}>{fmt3(r.dz || 0)}</td>
+                      <td style={{ ...S.td, color:Math.abs(r.theta)>1e-9?CLR.text:CLR.muted }}>{fmt4(r.theta)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table 3: Span End Forces */}
+            <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden" }}>
+              <div style={{ padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}` }}>
+                <div style={S.h2}>Table 3: Span End Forces</div>
+              </div>
+              <table style={S.table}>
+                <thead><tr>
+                  <th style={S.th}>Span</th>
+                  <th style={S.th}>Vnear [{u.force}]</th>
+                  <th style={S.th}>Mnear [{u.moment}]</th>
+                  <th style={S.th}>Vfar [{u.force}]</th>
+                  <th style={S.th}>Mfar [{u.moment}]</th>
+                </tr></thead>
+                <tbody>
+                  {memberResults.map((mr, i) => (
+                    <tr key={i} style={{ background:i%2===0?"transparent":"#ffffff05", cursor:"pointer", outline: activeSpan===i?`1px solid ${CLR.accent}`:undefined }} onClick={()=>setActiveSpan(i)}>
+                      <td style={{ ...S.td, fontWeight:700, color:CLR.accent }}>{mr.name}</td>
+                      <td style={{ ...S.td, color:CLR.teal }}>{fmt3(mr.V_near)}</td>
+                      <td style={{ ...S.td, color:CLR.orange }}>{fmt3(mr.M_near)}</td>
+                      <td style={{ ...S.td, color:CLR.teal }}>{fmt3(mr.V_far)}</td>
+                      <td style={{ ...S.td, color:CLR.orange }}>{fmt3(mr.M_far)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="screen-only" style={{ padding:"0.4rem 1rem", fontSize:10, color:CLR.muted, borderTop:`1px solid ${CLR.border}` }}>Click a row to view its diagrams below.</div>
+            </div>
+          </div>
+
+          <div className="print-table-section print-page-break" style={{...S.card,padding:0,overflow:"hidden",marginTop:"1.5rem"}}><div style={{padding:"1rem 1.25rem",borderBottom:`1px solid ${CLR.border}`}}><div style={S.h2}>Table 4: Moment Distribution Calculations</div><div style={{fontSize:11,color:CLR.muted}}>Traditional member-end layout. Convergence tolerance: {fmt3(activeResult.mdTolerance)} {u.moment}.</div></div><div style={{overflowX:"auto"}}><table className="moment-distribution-table" style={{...S.table,minWidth:Math.max(700,150+mdEnds.length*85)}}><thead><tr><th style={{...S.th,textAlign:"left"}}>Operation</th>{memberResults.map(m=><th key={m.name} colSpan="2" style={S.th}>Member {m.name}</th>)}</tr><tr><th style={{...S.th,textAlign:"left"}}>Member end</th>{mdEnds.map(e=><th key={e} style={S.th}>{e}</th>)}</tr></thead><tbody>{mdTableRows.map((r,i)=><tr key={i} style={{borderTop:r.kind==="final"?`2px solid ${CLR.accent}`:undefined}}><td style={{...S.td,textAlign:"left",fontWeight:r.kind==="final"?800:600}}>{r.label}</td>{mdEnds.map(e=>{const v=r.values[e];return <td key={e} style={{...S.td,color:r.kind==="final"?CLR.orange:r.kind==="df"?CLR.teal:CLR.text,fontWeight:r.kind==="final"?800:400}}>{v===undefined||Math.abs(+v)<1e-14?"":r.kind==="df"?fmt4(+v):fmt3(+v)}</td>})}</tr>)}</tbody></table></div></div>
+
+          {/* Span diagrams */}
+          <div className="screen-only" style={{ ...S.card }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:"1rem", flexWrap:"wrap" }}>
+              <div style={S.h2}>Figures 2–5: Span Diagrams</div>
+              {memberResults.map((mr, i) => (
+                <button key={i} style={{ ...S.btn(activeSpan===i?"primary":"ghost"), padding:"4px 14px", fontSize:12 }} onClick={()=>setActiveSpan(i)}>{mr.name}</button>
+              ))}
+            </div>
+            {activeMem && (() => {
+              const cfg = memberDiagramType === "V" ? { title:`Shear Force Diagram (SFD) — ${activeMem.name} [${u.force}]`, data:activeMem.sfd, key:"V", color:CLR.teal, label:"V", unit:u.force }
+                : memberDiagramType === "M" ? { title:`Bending Moment Diagram (BMD) — ${activeMem.name} [${u.moment}]`, data:activeMem.bmd, key:"M", color:CLR.orange, label:"M", unit:u.moment }
+                : memberDiagramType === "theta" ? { title:`Angular Rotation θ — ${activeMem.name} [rad]`, data:activeMem.defl, key:"thetaLocal", color:CLR.violet, label:"θ", unit:"rad" }
+                : { title:`Deflection Diagram — ${activeMem.name} [${u.settle}]`, data:activeMem.defl, key:"vLocal", color:CLR.yellow, label:"v", unit:u.settle };
+              return (
+                <div>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8, flexWrap:"wrap" }}>
+                    <div style={{ fontSize:11, color:CLR.muted }}>{cfg.title}</div>
+                    <select style={{ ...S.select, width:210, marginLeft:"auto" }} value={memberDiagramType} onChange={e=>setMemberDiagramType(e.target.value)}>
+                      <option value="V">Shear force</option>
+                      <option value="M">Bending moment</option>
+                      <option value="theta">Angular rotation</option>
+                      <option value="vLocal">Deflection</option>
+                    </select>
+                  </div>
+                  <DiagramChart data={cfg.data} yKey={cfg.key} color={cfg.color} label={cfg.label} unit={cfg.unit}/>
+                </div>
+              );
+            })()}
+          </div>
+
+          <AllSpanPrintDiagrams memberResults={memberResults} u={u}/>
+        </div>
+      );
+    }
+
+    // ── THEORY VIEW ───────────────────────────────────────────────────────────
+    function TheoryView() {
+      const hostRef=useRef(null);
+      const html=String.raw`<section class="theory-static"><div class="theory-title">Theory &amp; Documentation</div><h3>Part 1: Engineering Theory</h3><p>The Hardy Cross moment-distribution method is used for Euler-Bernoulli continuous beams. Counterclockwise member-end moments are positive.</p><div class="theory-equation">\[K_{ij}=\frac{4EI_{ij}}{L_{ij}}\]<span>Equation 1</span></div><p>where \(K_{ij}\) is member-end rotational stiffness, \(E\) is Young's modulus, \(I_{ij}\) is second moment of area, and \(L_{ij}\) is member length.</p><div class="theory-equation">\[DF_{ij}=\frac{K_{ij}}{\sum K_{im}}\]<span>Equation 2</span></div><p>where \(DF_{ij}\) is the distribution factor and \(\sum K_{im}\) is joint rotational stiffness.</p><div class="theory-equation">\[\Delta M_{ij}=-DF_{ij}U_i\]<span>Equation 3</span></div><p>where \(\Delta M_{ij}\) is the distributed moment and \(U_i=\sum M_{ij}\) is joint unbalance.</p><div class="theory-equation">\[CO_{ji}=\frac{1}{2}\Delta M_{ij}\]<span>Equation 4</span></div><p>where \(CO_{ji}\) is carryover to the restrained far end.</p><div class="theory-equation">\[FEM_{ij}=\frac{L^2(3w_i+2w_j)}{60}+\frac{Pab^2}{L^2}-\frac{6EI}{L^2}(\delta_j-\delta_i)\]<span>Equation 5</span></div><p>where \(FEM_{ij}\) is near-end fixed-end moment, \(w_i,w_j\) are line-load intensities, \(P\) is point load, \(a\) and \(b=L-a\) locate it, and \(\delta_i,\delta_j\) are support settlements.</p><div class="theory-equation">\[M_{ij}=FEM_{ij}+\sum\Delta M_{ij}+\sum CO_{ij}\]<span>Equation 6</span></div><p>where \(M_{ij}\) is final end moment. Iteration stops when every joint unbalance is within the user-entered tolerance.</p><div class="theory-equation">\[V_i=\frac{M_{ij}+M_{ji}}{L}+\frac{L(2w_i+w_j)}{6}+\frac{Pb}{L}\]<span>Equation 7</span></div><p>where \(V_i\) is near-end shear, \(b=L-a\) is the distance from the point load to the far end, and all other variables are defined above.</p><div class="theory-equation">\[M(x)=-M_{ij}+V_ix-\frac{w_ix^2}{2}-\frac{(w_j-w_i)x^3}{6L}-P\langle x-a\rangle^1\]<span>Equation 8</span></div><p>where \(M(x)\) is internal bending moment and \(\langle x-a\rangle^1\) is a Macaulay bracket.</p><h3>Part 2: Coding Theory</h3><p>The React application validates inputs, computes fixed-end moments and distribution factors, iteratively balances joints, records Table 4, and then derives reactions and diagrams by equilibrium. Each member is checked so that the BMD closes at the far-end moment and the internal SFD closes at the negative far-end reaction. Load combinations are assembled at the load level and solved once, so support-settlement effects are not duplicated across combination terms. The Theory content is inserted as an opaque static HTML subtree so MathJax cannot mutate React-managed equation nodes.</p><h3>Part 3: References</h3><div class="theory-references"><p>Kassimali, A. (2018). <em>Structural analysis</em> (6th ed.). Cengage Learning.</p><p>Cross, H. (1930). Analysis of continuous frames by distributing fixed-end moments. <em>Transactions of the American Society of Civil Engineers, 96</em>, 1-10.</p></div></section>`;
+      useEffect(()=>{const el=hostRef.current;let dead=false,t;const run=async()=>{if(dead||!el||!window.MathJax?.typesetPromise)return;try{window.MathJax.typesetClear?.([el]);await window.MathJax.typesetPromise([el]);}catch(e){console.warn("Theory MathJax rendering failed",e);}};t=setTimeout(run,100);return()=>{dead=true;clearTimeout(t);try{window.MathJax?.typesetClear?.([el]);}catch(_){}};},[]);
+      return <div style={S.card}><div ref={hostRef} dangerouslySetInnerHTML={{__html:html}}/></div>;
+    }
+
+    // ── APP ────────────────────────────────────────────────────────────────────
+    function App() {
+      const [tab, setTab]         = useState("inputs");
+      const [nodes, setNodes]     = useState(DEFAULT_NODES.map(n => ({...n})));
+      const [members, setMembers] = useState(DEFAULT_MEMBERS.map(m => ({...m})));
+      const [units, setUnits]     = useState(DEFAULT_UNITS);
+      const [momentTolerance,setMomentTolerance]=useState(DEFAULT_MOMENT_TOLERANCE);
+      const [loadCases, setLoadCases] = useState(DEFAULT_LOAD_CASES.map(lc => cloneDeep(lc)));
+      const [loadCombinations, setLoadCombinations] = useState(DEFAULT_LOAD_COMBINATIONS.map(c => cloneDeep(c)));
+      const [activeLoadCaseId, setActiveLoadCaseId] = useState(DEFAULT_LOAD_CASES[0].id);
+      const [selectedResultId, setSelectedResultId] = useState(DEFAULT_LOAD_CASES[0].id);
+      const [result, setResult]   = useState(null);
+
+      const saveWorkingFile = () => {
+        // Save the current model by producing a new HTML file with the same source code,
+        // but with the DEFAULT_* input constants replaced by the live React state.
+        // This is intentionally code-level saving: the downloaded file opens like a fresh app,
+        // with the saved model becoming the default model in the source.
+        const clone = document.documentElement.cloneNode(true);
+        const root = clone.querySelector("#root");
+        if (root) root.innerHTML = "";
+        let html = "<!DOCTYPE html>\n" + clone.outerHTML;
+
+        const safeLiteral = (value) => JSON.stringify(value, null, 2)
+          .replace(/</g, "\\u003C")
+          .replace(/>/g, "\\u003E")
+          .replace(/&/g, "\\u0026")
+          .replace(/\u2028/g, "\\u2028")
+          .replace(/\u2029/g, "\\u2029");
+
+        const replaceConstAssignment = (source, constName, literal) => {
+          const marker = "const " + constName + " =";
+          const start = source.indexOf(marker);
+          if (start < 0) return source;
+          let i = start + marker.length;
+          while (i < source.length && /\s/.test(source[i])) i++;
+          let depth = 0;
+          let quote = null;
+          let escaped = false;
+          let end = i;
+          for (; end < source.length; end++) {
+            const ch = source[end];
+            if (quote) {
+              if (escaped) {
+                escaped = false;
+              } else if (ch === "\\") {
+                escaped = true;
+              } else if (ch === quote) {
+                quote = null;
+              }
+              continue;
+            }
+            if (ch === '"' || ch === "'" || ch === "`") {
+              quote = ch;
+            } else if (ch === "[" || ch === "{") {
+              depth++;
+            } else if (ch === "]" || ch === "}") {
+              depth--;
+            } else if (ch === ";" && depth <= 0) {
+              end++;
+              break;
+            }
+          }
+          return source.slice(0, start) + "const " + constName + " = " + literal + ";" + source.slice(end);
+        };
+
+        const savedNodes = nodes.map(n => ({...n}));
+        const savedMembers = members.map(m => ({...m}));
+        const savedLoadCases = cloneDeep(loadCases);
+        const savedLoadCombinations = cloneDeep(loadCombinations);
+
+        html = replaceConstAssignment(html, "DEFAULT_UNITS", safeLiteral(units));
+        html = replaceConstAssignment(html, "DEFAULT_MOMENT_TOLERANCE", safeLiteral(+momentTolerance||DEFAULT_MOMENT_TOLERANCE));
+        html = replaceConstAssignment(html, "DEFAULT_NODES", safeLiteral(savedNodes));
+        html = replaceConstAssignment(html, "DEFAULT_MEMBERS", safeLiteral(savedMembers));
+        html = replaceConstAssignment(html, "DEFAULT_LOAD_CASES", safeLiteral(savedLoadCases));
+        html = replaceConstAssignment(html, "DEFAULT_LOAD_COMBINATIONS", safeLiteral(savedLoadCombinations));
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Beams_v0_3_6_working_${timestamp}.html`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      };
+
+      const handleCalculate = () => {
+        const cases = solveLoadCases(nodes, members, loadCases, loadCombinations, units, momentTolerance);
+        const preferred = cases.find(c => String(c.loadCase.id) === String(activeLoadCaseId)) || cases[0];
+        setResult({ cases });
+        setSelectedResultId(preferred ? preferred.loadCase.id : "");
+        setTab("results");
+      };
+
+      const tabs = [
+        { id:"inputs",  label:"Inputs" },
+        { id:"results", label:"Results" },
+        { id:"theory",  label:"Theory" },
+      ];
+
+      return (
+        <div style={S.app}>
+          <header style={S.header}>
+            <div>
+              <div style={{ fontSize:16, fontWeight:800, color:CLR.accent, letterSpacing:"0.05em" }}>Beams v0.4.3</div>
+              <div style={{ fontSize:10, color:CLR.muted, letterSpacing:"0.1em" }}>CONTINUOUS BEAM ANALYSIS · MOMENT DISTRIBUTION METHOD</div>
+            </div>
+            <nav style={S.nav}>
+              {tabs.map(t => (
+                <button key={t.id} style={S.navBtn(tab===t.id)} onClick={() => setTab(t.id)}>
+                  {t.label}
+                  {t.id==="results" && result && Array.isArray(result.cases) && result.cases.some(c=>c.result && !c.result.error) && <span style={{ marginLeft:6, ...S.badge(CLR.green), fontSize:9, padding:"1px 5px" }}>✓</span>}
+                  {t.id==="results" && result && Array.isArray(result.cases) && result.cases.every(c=>c.result && c.result.error) && <span style={{ marginLeft:6, ...S.badge(CLR.red),   fontSize:9, padding:"1px 5px" }}>✗</span>}
+                </button>
+              ))}
+            </nav>
+            <button style={{ ...S.btn("secondary"), marginLeft:12, whiteSpace:"nowrap" }} onClick={saveWorkingFile}>💾 Save Working File</button>
+          </header>
+          <main style={S.main}>
+            {tab==="inputs"  && <InputsView nodes={nodes} setNodes={setNodes} members={members} setMembers={setMembers} units={units} setUnits={setUnits} momentTolerance={momentTolerance} setMomentTolerance={setMomentTolerance} loadCases={loadCases} setLoadCases={setLoadCases} loadCombinations={loadCombinations} setLoadCombinations={setLoadCombinations} activeLoadCaseId={activeLoadCaseId} setActiveLoadCaseId={setActiveLoadCaseId} onCalculate={handleCalculate}/>}
+            {tab==="results" && <ResultsView result={result} nodes={nodes} members={members} units={units} selectedResultId={selectedResultId} setSelectedResultId={setSelectedResultId}/>}
+            {tab==="theory"  && <TheoryView/>}
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById("root"));
+  </script>
+</body>
+</html>

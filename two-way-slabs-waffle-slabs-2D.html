@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Two Way Slabs v0.9.6 — EFM Analysis & Design</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d1117; color: #e6edf3; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; }
+    input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+    select { -webkit-appearance: none; appearance: none; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0d1117; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+
+    /* ── PRINT / PDF REPORT STYLES ─────────────────────────────────────────── */
+    .print-report-header { display: none; }
+    .screen-only { display: inherit; }
+    .print-avoid { break-inside: avoid; page-break-inside: avoid; }
+
+    @media print {
+      @page { size: letter portrait; margin: 0.55in; }
+
+      html, body {
+        background: #ffffff !important;
+        color: #111827 !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 10pt !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      * {
+        color: #111827 !important;
+        border-color: #c9ced6 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+
+      header, nav, .screen-only { display: none !important; }
+
+      #root, main {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+      }
+
+      .print-report-header {
+        display: block !important;
+        margin: 0 0 14pt 0 !important;
+        padding-bottom: 10pt !important;
+        border-bottom: 2px solid #111827 !important;
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      .print-report-header h1 {
+        font-size: 18pt !important;
+        line-height: 1.2 !important;
+        margin: 0 0 4pt 0 !important;
+        font-weight: 800 !important;
+      }
+
+      .print-report-header .meta {
+        font-size: 8.5pt !important;
+        line-height: 1.45 !important;
+        color: #374151 !important;
+      }
+
+      .print-avoid {
+        background: #ffffff !important;
+        border: 1px solid #c9ced6 !important;
+        border-radius: 0 !important;
+        margin: 0 0 12pt 0 !important;
+        padding: 10pt !important;
+        overflow: visible !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      .print-table-section {
+        padding: 0 !important;
+      }
+
+      .print-table-section > div:first-child,
+      .print-diagram-section > div:first-child {
+        padding: 8pt 9pt !important;
+        background: #eef2f7 !important;
+        border-bottom: 1px solid #c9ced6 !important;
+      }
+
+      .print-table-section > div:nth-child(2) {
+        overflow: visible !important;
+      }
+
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 8.3pt !important;
+        page-break-inside: auto !important;
+      }
+
+      thead { display: table-header-group !important; }
+      tfoot { display: table-footer-group !important; }
+
+      tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      th, td {
+        padding: 4pt 4.5pt !important;
+        border: 1px solid #c9ced6 !important;
+        background: #ffffff !important;
+        color: #111827 !important;
+      }
+
+      th {
+        background: #e8edf5 !important;
+        font-size: 7.6pt !important;
+        font-weight: 700 !important;
+      }
+
+      svg {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      .print-diagram-section {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      .print-diagram-section svg {
+        max-height: 2.35in !important;
+      }
+
+      .report-results-block {
+        display: block !important;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useCallback, useEffect, useRef } = React;
+
+    // ── COLORS ─────────────────────────────────────────────────────────────────
+    const CLR = {
+      bg: "#0d1117", surface: "#161b22", card: "#1c2333", border: "#30363d",
+      accent: "#58a6ff", green: "#3fb950", red: "#f85149", yellow: "#d29922",
+      text: "#e6edf3", muted: "#8b949e", teal: "#39d353", violet: "#bc8cff",
+      orange: "#f0883e",
+    };
+
+    // ── STYLES ─────────────────────────────────────────────────────────────────
+    const S = {
+      app: { minHeight:"100vh", background:CLR.bg, color:CLR.text, display:"flex", flexDirection:"column" },
+      header: { background:CLR.surface, borderBottom:`1px solid ${CLR.border}`, padding:"0 2rem", display:"flex", alignItems:"center", gap:"2rem", minHeight:60 },
+      nav: { display:"flex", gap:0, marginLeft:"auto" },
+      navBtn: active => ({ background:"none", border:"none", borderBottom: active ? `2px solid ${CLR.accent}` : "2px solid transparent", color: active ? CLR.accent : CLR.muted, padding:"18px 20px", cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight: active ? 700 : 400, transition:"color 0.15s,border-color 0.15s" }),
+      main: { flex:1, padding:"2rem", maxWidth:1400, margin:"0 auto", width:"100%" },
+      card: { background:CLR.card, border:`1px solid ${CLR.border}`, borderRadius:8, padding:"1.5rem", marginBottom:"1.5rem" },
+      h2: { fontSize:14, fontWeight:700, color:CLR.accent, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"1rem" },
+      table: { width:"100%", borderCollapse:"collapse", fontSize:12 },
+      th: { background:"#21262d", color:CLR.muted, padding:"7px 10px", textAlign:"center", fontWeight:600, fontSize:11, textTransform:"uppercase", borderBottom:`1px solid ${CLR.border}` },
+      td: { padding:"6px 10px", textAlign:"center", borderBottom:"1px solid #21262d", color:CLR.text },
+      input: { background:"#0d1117", border:`1px solid ${CLR.border}`, borderRadius:4, color:CLR.text, fontFamily:"inherit", fontSize:12, padding:"4px 7px", width:"100%", textAlign:"center", outline:"none" },
+      btn: (v="primary") => ({ background: v==="primary"?CLR.accent : v==="danger"?"#3d1f1f":"#21262d", color: v==="danger"?CLR.red : v==="primary"?"#000":CLR.text, border:`1px solid ${v==="danger"?CLR.red : v==="primary"?CLR.accent:CLR.border}`, borderRadius:6, padding:"8px 18px", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700 }),
+      badge: color => ({ display:"inline-block", background:color+"22", color, border:`1px solid ${color}55`, borderRadius:4, padding:"2px 8px", fontSize:11, fontWeight:700 }),
+    };
+
+    // ── DEFAULT DATA / SAVED WORKING STATE ────────────────────────────────────
+    // A saved working file stores current inputs in <script id="two-way-slabs-state"
+    // type="application/json">. Reading that state avoids rewriting the Babel/JSX
+    // source code, which keeps downloaded working files executable.
+    const readSavedWorkingState = () => {
+      try {
+        const el = document.getElementById("two-way-slabs-state");
+        return el && el.textContent ? JSON.parse(el.textContent) : null;
+      } catch (err) {
+        console.error("Unable to read saved working state:", err);
+        return null;
+      }
+    };
+    const SAVED_WORKING_STATE = readSavedWorkingState();
+
+    // ── DEFAULT DATA ───────────────────────────────────────────────────────────
+    const DEFAULT_PROPS = SAVED_WORKING_STATE?.props || {
+      fc: 30, fy: 400, bs: 4800, hs: 160, beamB: 400, beamH: 600, l2l1: 0.96, dPos: 567.5, dNeg: 567.5, ds: 120, // Example defaults: overall beam depth = 600 mm; dpos = dneg = 567.5 mm
+      SDL: 1.44, LL: 3.60,
+      Atop: 0, Abot: 0
+    };
+
+    const DEFAULT_FRAME_ELEMENTS = SAVED_WORKING_STATE?.frameElements || [
+      { id:1, name:"CC-400x400", B:400, H:400, psi:0.3 }
+    ];
+
+    const DEFAULT_NODES = SAVED_WORKING_STATE?.nodes || [
+      { id:1, label:"A", x:0,     Lt:3000, topSection:"CC-400x400", Lb:3000, botSection:"CC-400x400" },
+      { id:2, label:"B", x:5000,  Lt:3000, topSection:"CC-400x400", Lb:3000, botSection:"CC-400x400" },
+      { id:3, label:"C", x:11000, Lt:3000, topSection:"CC-400x400", Lb:3000, botSection:"CC-400x400" },
+      { id:4, label:"D", x:16000, Lt:3000, topSection:"CC-400x400", Lb:3000, botSection:"CC-400x400" }
+    ];
+
+    const DEFAULT_SPANS = SAVED_WORKING_STATE?.spans || [
+      { id:1, near:"A", far:"B", L:5000, wDL:22.656, wSDL:6.912, wLL:17.28 },
+      { id:2, near:"B", far:"C", L:6000, wDL:22.656, wSDL:6.912, wLL:17.28 },
+      { id:3, near:"C", far:"D", L:5000, wDL:22.656, wSDL:6.912, wLL:17.28 }
+    ];
+
+    const DEFAULT_GEOMETRY_INPUT_MODE = SAVED_WORKING_STATE?.geometryInputMode || "global";
+    const DEFAULT_RESULT_UNITS = SAVED_WORKING_STATE?.resultUnits || "engineering";
+
+    // ── MATH HELPERS ──────────────────────────────────────────────────────────
+    function gaussianElim(A, b) {
+      const n = b.length;
+      const M = A.map((r, i) => [...r, b[i]]);
+      for (let col = 0; col < n; col++) {
+        let maxRow = col;
+        for (let row = col+1; row < n; row++)
+          if (Math.abs(M[row][col]) > Math.abs(M[maxRow][col])) maxRow = row;
+        [M[col], M[maxRow]] = [M[maxRow], M[col]];
+        if (Math.abs(M[col][col]) < 1e-14) return null;
+        for (let row = col+1; row < n; row++) {
+          const f = M[row][col] / M[col][col];
+          for (let k = col; k <= n; k++) M[row][k] -= f * M[col][k];
+        }
+      }
+      const x = new Array(n).fill(0);
+      for (let i = n-1; i >= 0; i--) {
+        x[i] = M[i][n];
+        for (let j = i+1; j < n; j++) x[i] -= M[i][j] * x[j];
+        x[i] /= M[i][i];
+      }
+      return x;
+    }
+
+    const fmt0 = v => typeof v === "number" ? v.toFixed(0) : v;
+    const fmt1 = v => typeof v === "number" ? v.toFixed(1) : v;
+    const fmt2 = v => typeof v === "number" ? v.toFixed(2) : v;
+
+    // ── RESULTS DISPLAY UNIT HELPERS ─────────────────────────────────────────
+    const isEngUnits = units => units === "engineering";
+    const shearScale = units => isEngUnits(units) ? 1 / 1000 : 1;       // N -> kN
+    const momentScale = units => isEngUnits(units) ? 1 / 1000000 : 1;  // N·mm -> kN·m
+    const shearUnit = units => isEngUnits(units) ? "kN" : "N";
+    const momentUnit = units => isEngUnits(units) ? "kN·m" : "N·mm";
+    const fmtShear = (v, units) => isEngUnits(units) ? fmt2(v * shearScale(units)) : fmt1(v);
+    const fmtMoment = (v, units) => isEngUnits(units) ? fmt2(v * momentScale(units)) : fmt0(v);
+
+    // ── LOAD HELPERS ─────────────────────────────────────────────────────────
+    const CONCRETE_UNIT_WEIGHT = 24; // kN/m³, matching the spreadsheet
+    const areaLoadToLineLoad = (qKPa, stripWidthMm) => (+qKPa || 0) * ((+stripWidthMm || 0) / 1000); // kPa * m = kN/m = N/mm
+    const slabSelfWeightPressure = props => {
+      const hs = Math.max(0, +props.hs || 0) / 1000;
+      const bs = Math.max(0, +props.bs || 0) / 1000;
+      const beamB = Math.max(0, +props.beamB || 0) / 1000;
+      const beamH = Math.max(0, +props.beamH || 0) / 1000;
+      const slabPressure = CONCRETE_UNIT_WEIGHT * hs;
+      const averagedBeamPressure = bs > 0
+        ? CONCRETE_UNIT_WEIGHT * beamB * Math.max(0, beamH - hs) / bs
+        : 0;
+      return slabPressure + averagedBeamPressure;
+    }; // slab self-weight plus averaged downstand-beam self-weight, matching the spreadsheet
+    const slabSelfWeightLineLoad = props => slabSelfWeightPressure(props) * ((+props.bs || 0) / 1000); // kPa * strip width(m) = kN/m = N/mm
+    const calcSpanLoadsFromProps = props => ({
+      wDL: slabSelfWeightLineLoad(props),
+      wSDL: areaLoadToLineLoad(props.SDL, props.bs),
+      wLL: areaLoadToLineLoad(props.LL, props.bs)
+    });
+
+    // ── FRAME ELEMENT HELPERS ────────────────────────────────────────────────
+    function getFrameElement(frameElements, name) {
+      return frameElements.find(fe => fe.name === name) || frameElements[0] || { name:"", B:300, H:300, psi:1 };
+    }
+
+    function rectFrameI(fe) {
+      const B = +fe.B || 0;
+      const H = +fe.H || 0;
+      const psi = +fe.psi || 0;
+      return psi * B * Math.pow(H, 3) / 12;
+    }
+    function grossRectI(B, H) {
+      const width = +B || 0;
+      const depth = +H || 0;
+      return width > 0 && depth > 0 ? width * Math.pow(depth, 3) / 12 : 0;
+    }
+    function slabBeamGrossI(props) {
+      const bs = Math.max(0, +props.bs || 0);
+      const hs = Math.max(0, +props.hs || 0);
+      const bb = Math.max(0, +props.beamB || 0);
+      const hb = Math.max(0, +props.beamH || 0);
+      const slabI = grossRectI(bs, hs);
+
+      // No downstand beam: model the slab strip alone.
+      if (bb <= 0 || hb <= hs) return slabI;
+
+      // Gross T-section. hb is the total slab-beam depth, so the web below
+      // the slab has depth hw = hb - hs. y is measured downward from the top.
+      const hw = hb - hs;
+      const As = bs * hs;
+      const Aw = bb * hw;
+      const ys = hs / 2;
+      const yw = hs + hw / 2;
+      const ybar = (As * ys + Aw * yw) / (As + Aw);
+      const IsLocal = grossRectI(bs, hs);
+      const IwLocal = grossRectI(bb, hw);
+      return IsLocal + As * Math.pow(ybar - ys, 2)
+        + IwLocal + Aw * Math.pow(yw - ybar, 2);
+    }
+    function calcColumnStiffnessModifier(props) {
+      const Is = grossRectI(props.bs, props.hs);
+      const Ib = grossRectI(props.beamB, props.beamH);
+      const panelRatio = Math.max(0, +props.l2l1 || 0);
+      if (Ib <= 0 || Is <= 0) return 0.3;
+      const alpha1 = Ib / Is;
+      const alphaRatio = Math.min(alpha1 * panelRatio, 1.0);
+      let psi;
+      if (panelRatio <= 1.0) {
+        psi = 0.3 + 0.7 * alphaRatio;
+      } else {
+        psi = 0.6 * (panelRatio - 0.5) + (1.3 - 0.6 * panelRatio) * alphaRatio;
+      }
+      return Math.min(1.0, Math.max(0.3, psi));
+    }
+
+    function enrichNodesWithFrameElements(nodes, frameElements) {
+      return nodes.map(nd => {
+        const top = getFrameElement(frameElements, nd.topSection);
+        const bot = getFrameElement(frameElements, nd.botSection);
+        const ref = bot || top;
+        return {
+          ...nd,
+          // For the equivalent frame in the active design-strip direction, H is the column
+          // dimension parallel to the span (c1) and B is the transverse column dimension (c2).
+          // This keeps the clear-span calculation consistent with Example 12.1 Step 7
+          // (e.g. 6.0 m span with 600 mm interior columns gives ln = 5.4 m).
+          b1: +ref.H || 0,
+          b2: +ref.B || 0,
+          It: rectFrameI(top),
+          Ib: rectFrameI(bot),
+          topElement: top,
+          botElement: bot
+        };
+      });
+    }
+
+    function getSpanLengthFromCoordinates(sp, nodes) {
+      const near = nodes.find(n => n.label === sp.near);
+      const far = nodes.find(n => n.label === sp.far);
+      if (!near || !far) return +sp.L || 0;
+      const L = Math.abs((+far.x || 0) - (+near.x || 0));
+      return L || (+sp.L || 0);
+    }
+
+    function deriveNodesFromSpanLengths(nodes, spans) {
+      const derived = nodes.map(n => ({ ...n }));
+      const byLabel = {};
+      derived.forEach(n => { byLabel[n.label] = n; });
+      if (!spans.length) return derived;
+
+      const firstNear = spans[0].near;
+      if (byLabel[firstNear]) byLabel[firstNear].x = 0;
+
+      spans.forEach((sp, i) => {
+        const near = byLabel[sp.near];
+        const far = byLabel[sp.far];
+        if (!near || !far) return;
+        if (i === 0 && !isFinite(+near.x)) near.x = 0;
+        const nearX = isFinite(+near.x) ? (+near.x || 0) : 0;
+        const L = +sp.L || getSpanLengthFromCoordinates(sp, nodes) || 0;
+        far.x = nearX + L;
+      });
+
+      return derived;
+    }
+
+    // ── SOLVER ────────────────────────────────────────────────────────────────
+    function solveEFM(nodes, spans, props, frameElements) {
+      try {
+        const sortedNodes = enrichNodesWithFrameElements(nodes, frameElements).sort((a,b) => a.x - b.x);
+        const n = sortedNodes.length;
+        const nodeIdx = {}; sortedNodes.forEach((nd, i) => { nodeIdx[nd.label] = i; });
+
+        const Ec = 4500 * Math.sqrt(props.fc);
+        const Is = slabBeamGrossI(props);
+
+        const K = Array.from({ length: n }, () => new Array(n).fill(0));
+
+        sortedNodes.forEach((nd, i) => {
+          const kt = nd.Lt > 0 ? (4 * Ec * nd.It / nd.Lt) : 0;
+          const kb = nd.Lb > 0 ? (4 * Ec * nd.Ib / nd.Lb) : 0;
+          K[i][i] += (kt + kb);
+        });
+
+        const activeSpans = [];
+        spans.forEach(sp => {
+          const i = nodeIdx[sp.near], j = nodeIdx[sp.far];
+          if (i === undefined || j === undefined) return;
+          const ndI = sortedNodes[i], ndJ = sortedNodes[j];
+          const L = Math.abs(ndJ.x - ndI.x);
+          if (L <= 0) return;
+          const kSlab = 4 * Ec * Is / L;
+          const kCross = 2 * Ec * Is / L;
+          K[i][i] += kSlab; K[j][j] += kSlab;
+          K[i][j] += kCross; K[j][i] += kCross;
+          activeSpans.push({ sp, i, j, L, ndI, ndJ });
+        });
+
+        // CSA A23.3:24 Clause 13.8.4 pattern live loading.
+        // The all-spans-full case is always included as the minimum envelope.
+        // When specified LL > 0.75 specified dead load, add:
+        //  - 0.75 of full factored LL on a target span and alternate spans for M+;
+        //  - 0.75 of full factored LL on spans adjacent to each support for M-.
+        const specifiedDead = slabSelfWeightPressure(props) + (+props.SDL || 0);
+        const patternRequired = (+props.LL || 0) > 0.75 * specifiedDead;
+        const loadCases = [{
+          name:"Full live load - all spans",
+          factors:activeSpans.map(() => 1.0)
+        }];
+        if (patternRequired) {
+          activeSpans.forEach((_, target) => {
+            loadCases.push({
+              name:`Positive envelope - span ${activeSpans[target].sp.near}${activeSpans[target].sp.far}`,
+              factors:activeSpans.map((__, index) => index % 2 === target % 2 ? 0.75 : 0)
+            });
+          });
+          sortedNodes.forEach((nd, supportIndex) => {
+            const adjacent = activeSpans
+              .map((sp, index) => (sp.i === supportIndex || sp.j === supportIndex) ? index : -1)
+              .filter(index => index >= 0);
+            if (!adjacent.length) return;
+            loadCases.push({
+              name:`Negative envelope - support ${nd.label}`,
+              factors:activeSpans.map((_, index) => adjacent.includes(index) ? 0.75 : 0)
+            });
+          });
+        }
+
+        const analyzeLoadCase = loadCase => {
+          const Fcase = new Array(n).fill(0);
+          const caseSpans = activeSpans.map((s, index) => {
+            const dead = 1.25 * (s.sp.wDL + s.sp.wSDL);
+            const live = 1.5 * s.sp.wLL * loadCase.factors[index];
+            const wf = dead + live;
+            const fem = wf * s.L * s.L / 12;
+            Fcase[s.i] += -fem;
+            Fcase[s.j] += fem;
+            return { ...s, wf };
+          });
+          const Dcase = gaussianElim(K, Fcase);
+          if (!Dcase) return null;
+          const results = caseSpans.map(cs => {
+            const { sp, i, j, L, wf, ndI, ndJ } = cs;
+            const thI = Dcase[i], thJ = Dcase[j];
+            const Mab = wf*L*L/12 + 4*Ec*Is/L*thI + 2*Ec*Is/L*thJ;
+            const Mba = -wf*L*L/12 + 2*Ec*Is/L*thI + 4*Ec*Is/L*thJ;
+            const Va = wf*L/2 + (Mab+Mba)/L;
+            const Vb = wf*L - Va;
+            const M_x = x => -Mab + Va*x - wf*x*x/2;
+            const V_x = x => Va - wf*x;
+            const faceL = ndI.b1/2, faceR = L-ndJ.b1/2;
+            const dv = Math.max(0.9*props.ds,0.72*props.hs);
+            const locV_L=faceL+dv, locV_R=faceR-dv;
+            let xMax = wf > 0 ? Va/wf : L/2;
+            xMax=Math.max(0,Math.min(L,xMax));
+            return {
+              label:`${sp.near}${sp.far}`, L, wf, Mab, Mba, Va, Vb, ndI, ndJ,
+              faceL, faceR, dv, locV_L, locV_R,
+              V_L:V_x(locV_L), V_R:V_x(locV_R),
+              M_faceL:M_x(faceL), M_faceR:M_x(faceR),
+              xMax, M_maxBot:M_x(xMax), xStart:ndI.x, M_x, V_x,
+              caseName:loadCase.name
+            };
+          });
+          return { name:loadCase.name, F:Fcase, D:Dcase, results };
+        };
+
+        const caseAnalyses = loadCases.map(analyzeLoadCase).filter(Boolean);
+        if (!caseAnalyses.length) return { error:"Solver failed. Check geometry." };
+        const fullAnalysis = caseAnalyses[0];
+        const F = fullAnalysis.F;
+        const D = fullAnalysis.D;
+        activeSpans.forEach((s,index) => { s.wf = fullAnalysis.results[index].wf; });
+
+        // Keep full-load M_x/V_x functions for the diagrams and shear output.
+        // Replace Table 1 design actions with the governing pattern envelope.
+        const spanResults = fullAnalysis.results.map((base, spanIndex) => {
+          let left=base, right=base, positive=base;
+          caseAnalyses.forEach(ca => {
+            const r=ca.results[spanIndex];
+            if (r.M_faceL < left.M_faceL) left=r;
+            if (r.M_faceR < right.M_faceR) right=r;
+            if (r.M_maxBot > positive.M_maxBot) positive=r;
+          });
+          return {
+            ...base,
+            M_faceL:left.M_faceL,
+            M_faceR:right.M_faceR,
+            M_maxBot:positive.M_maxBot,
+            xMax:positive.xMax,
+            governingLeftCase:left.caseName,
+            governingRightCase:right.caseName,
+            governingPositiveCase:positive.caseName
+          };
+        });
+
+        const phic = 0.65, phis = 0.85;
+
+        // CSA A23.3:24 Table 1 reinforcement design for slabs with beams.
+        // Solver moments are design-strip moments. Clause 13.12 distributes them
+        // to the beam and the remaining slab width.
+        const getStripDesign = (sr, Mf, position) => {
+          const l2 = Math.max(0, +props.bs || 0);
+          const hs = Math.max(0, +props.hs || 0);
+          const bw = Math.max(0, +props.beamB || 0);
+          const h = Math.max(0, +props.beamH || 0);
+          const ln = Math.max(0, sr.L - sr.ndI.b1 / 2 - sr.ndJ.b1 / 2);
+          const alpha1 = ln > 0 && hs > 0 && h > hs
+            ? 2.5 * bw / ln * Math.pow(h / hs, 3) * (1 - hs / h)
+            : 0;
+          let beamFraction = alpha1 > 0
+            ? alpha1 / (0.3 + alpha1) * (1 - l2 / (3 * sr.L))
+            : 0;
+          beamFraction = Math.max(0, Math.min(1, beamFraction));
+          const index = spanResults.indexOf(sr);
+          const exteriorNegative = (position === "left" && index === 0) ||
+            (position === "right" && index === spanResults.length - 1);
+          if (exteriorNegative) beamFraction = 1.0;
+          const beamStripWidth = Math.min(
+            bw + 2 * Math.max(0, h - hs),
+            bw + 8 * hs
+          );
+          const slabStripWidth = Math.max(0, l2 - beamStripWidth);
+          return {
+            alpha1, beamFraction, slabFraction:1-beamFraction,
+            beamStripWidth, slabStripWidth,
+            beamMoment:Mf*beamFraction,
+            slabMoment:Mf*(1-beamFraction)
+          };
+        };
+
+        const calcStrengthAs = (Mf, b, d) => {
+          const M = Math.abs(Mf), fc = Math.max(0, +props.fc || 0);
+          if (M <= 0) return 0;
+          if (fc <= 0 || b <= 0 || d <= 0) return NaN;
+          const rad = d*d - 3.85*M/(fc*b);
+          return rad < 0 ? NaN : 0.0015*fc*b*(d-Math.sqrt(rad));
+        };
+
+        const practicalSpacing = (allowable) => {
+          if (!isFinite(allowable)) return 500;
+          return Math.max(25, 25*Math.floor(allowable/25));
+        };
+
+        const calcCodeReinforcement = (Mf, stripType, isTop, strip) => {
+          const hs=Math.max(0,+props.hs||0), bw=Math.max(0,+props.beamB||0);
+          const isBeam=stripType==="Beam";
+          const stripWidth=isBeam?strip.beamStripWidth:strip.slabStripWidth;
+          const b=isBeam?(isTop?bw:stripWidth):stripWidth;
+          const d=isBeam?(isTop?(+props.dNeg||0):(+props.dPos||0)):(+props.ds||0);
+          const AsStrength=calcStrengthAs(Mf,b,d);
+          // Clause 13.10.1 invokes Clause 7.8.1 minimum slab reinforcement.
+          const AsMin=isBeam?0:0.002*stripWidth*hs;
+          const AsDesign=isNaN(AsStrength)?NaN:Math.max(AsStrength,AsMin);
+          // Clause 13.10.4 spacing limits:
+          // negative reinforcement in the band defined by bb: min(1.5hs, 250 mm);
+          // remaining negative and positive reinforcement: min(3hs, 500 mm).
+          const smax=isBeam&&isTop?Math.min(1.5*hs,250):Math.min(3*hs,500);
+          const bars=[{key:"m15",name:"15M",area:200},{key:"m20",name:"20M",area:300},{key:"m25",name:"25M",area:500}];
+          const recommendations={};
+          bars.forEach(bar=>{
+            if(isBeam && !isTop){
+              // Positive beam-strip reinforcement is reported as a total bar count.
+              const n=isNaN(AsDesign)?NaN:Math.max(2,Math.ceil(AsDesign/bar.area));
+              recommendations[bar.key]=isNaN(n)?"FAIL":`${n}-${bar.name}`;
+            }else{
+              // Slab-strip reinforcement and negative beam-strip reinforcement
+              // are reported only as bar spacing. For negative beam-strip bending,
+              // the slab is in tension, so spacing is based on the full beam-strip width
+              // rather than the beam web/compression width used in the strength calculation.
+              const spacingWidth=stripWidth;
+              const allowableSpacing=AsDesign>0?spacingWidth*bar.area/AsDesign:smax;
+              const spacing=practicalSpacing(Math.min(allowableSpacing,smax));
+              recommendations[bar.key]=isNaN(AsDesign)?"FAIL":`${bar.name} @ ${spacing} mm`;
+            }
+          });
+          return {stripWidth,b,d,AsStrength,AsMin,AsDesign,smax,recommendations};
+        };
+
+        const betaV = 230 / (1000 + (Math.max(0.9 * props.ds, 0.72 * props.hs)));
+        const Vc = phic * betaV * Math.sqrt(props.fc) * props.bs * (Math.max(0.9 * props.ds, 0.72 * props.hs));
+
+        // Two Way Shear Calculation replicating VBA macro exactly
+        const twoWayShear = sortedNodes.map((nd, i) => {
+          let trib_L = 0;
+          let sum_wf = 0;
+          let count_spans = 0;
+          
+          let L_left = 0, w_full_L = 0, w_dead_L = 0;
+          let L_right = 0, w_full_R = 0, w_dead_R = 0;
+          
+          const leftSpan = activeSpans.find(s => s.ndJ.id === nd.id);
+          if (leftSpan) {
+            L_left = leftSpan.L - (leftSpan.ndI.b1 / 2) - (nd.b1 / 2);
+            w_full_L = 1.25 * leftSpan.sp.wDL + 1.25 * leftSpan.sp.wSDL + 0.75 * leftSpan.sp.wLL;
+            w_dead_L = 1.25 * leftSpan.sp.wDL + 1.25 * leftSpan.sp.wSDL;
+            
+            trib_L += leftSpan.L / 2;
+            sum_wf += leftSpan.wf;
+            count_spans++;
+          }
+          
+          const rightSpan = activeSpans.find(s => s.ndI.id === nd.id);
+          if (rightSpan) {
+            L_right = rightSpan.L - (nd.b1 / 2) - (rightSpan.ndJ.b1 / 2);
+            w_full_R = 1.25 * rightSpan.sp.wDL + 1.25 * rightSpan.sp.wSDL + 0.75 * rightSpan.sp.wLL;
+            w_dead_R = 1.25 * rightSpan.sp.wDL + 1.25 * rightSpan.sp.wSDL;
+            
+            trib_L += rightSpan.L / 2;
+            sum_wf += rightSpan.wf;
+            count_spans++;
+          }
+          
+          // Unbalanced column moment M_PS follows the v0.8.7 calculation pattern.
+          // Missing adjacent spans are intentionally left as zero, so end columns are handled
+          // by the same expression instead of being replaced with fixed-end moments.
+          // Pattern live load uses 0.5 of the factored live component: 0.5 * 1.5w_LL = 0.75w_LL.
+          const diff1 = (w_full_R * Math.pow(L_right, 2)) - (w_dead_L * Math.pow(L_left, 2));
+          const diff2 = (w_full_L * Math.pow(L_left, 2)) - (w_dead_R * Math.pow(L_right, 2));
+          const maxUnbalancedM = 0.07 * Math.max(diff1, diff2, 0);
+          
+          const kt = nd.Lt > 0 ? (4 * Ec * nd.It / nd.Lt) : 0;
+          const kb = nd.Lb > 0 ? (4 * Ec * nd.Ib / nd.Lb) : 0;
+          const k_total = kt + kb;
+          
+          let m_top = 0, m_bot = 0;
+          if (k_total > 0) {
+              m_top = (kt / k_total) * maxUnbalancedM;
+              m_bot = (kb / k_total) * maxUnbalancedM;
+          } else {
+              m_top = maxUnbalancedM / 2;
+              m_bot = maxUnbalancedM / 2;
+          }
+          
+          const d_ps = props.ds;
+          const b_1 = nd.b1 + d_ps;
+          const b_2 = nd.b2 + d_ps;
+          
+          let gamma_v = 0;
+          if (b_2 > 0) {
+              gamma_v = 1 - 1 / (1 + (2/3) * Math.sqrt(b_1 / b_2));
+          }
+          
+          const m_PS = m_top + m_bot;
+          
+          // --- NEW TWO WAY SHEAR V_f CALCULATION ---
+          const trib_area = props.bs * trib_L; 
+          const avg_wf = count_spans > 0 ? (sum_wf / count_spans) : 0;
+          const q_f = avg_wf / props.bs; // Factored area load (N/mm^2)
+          const crit_area = b_1 * b_2; // Rectangle offset d/2 from faces
+          
+          const v_f = Math.max(0, (trib_area * q_f) - (crit_area * q_f));
+          
+          return {
+              label: nd.label,
+              twoWayShear: v_f,
+              m_PS: m_PS,
+              m_top: m_top,
+              m_bot: m_bot
+          };
+        });
+
+        return { D, spanResults, K, F, getStripDesign, calcCodeReinforcement, Vc, sortedNodes, twoWayShear, patternRequired, loadCases:caseAnalyses.map(c => c.name) };
+      } catch (err) {
+        return { error: err.message };
+      }
+    }
+
+    
+    // ── BEAM DIAGRAM SVG ──────────────────────────────────────────────────────
+    function BeamDiagram({ sortedNodes, spans }) {
+      if (!sortedNodes || sortedNodes.length < 2) return null;
+
+      const xs = sortedNodes.map(n => +n.x || 0);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const W = 680, H = 150, PAD = 56;
+      const rangeX = maxX - minX || 1;
+      const scX = (W - 2*PAD) / rangeX;
+      const beamY = 70;
+
+      const fmtCoordM = x => ((+x || 0) / 1000).toFixed(2);
+      // The slab preview is displayed in engineering units: coordinates in m and UDL in kN/m.
+      // Since 1 N/mm = 1 kN/m, the factored line load numeric value is unchanged.
+
+      const toSvgX = x => PAD + (x - minX) * scX;
+      const nodeMap = {};
+      sortedNodes.forEach(n => { nodeMap[n.label] = +n.x || 0; });
+
+      const SupportSymbol = ({ sx, colWidth }) => {
+        const cw = Math.max(4, (colWidth || 300) * scX);
+        return (
+          <g>
+            <rect x={sx - cw/2} y={beamY+4} width={cw} height={20} fill={CLR.green} />
+            <line x1={sx-cw/2} y1={beamY+24} x2={sx+cw/2} y2={beamY+24} stroke={CLR.green} strokeWidth={1} />
+          </g>
+        );
+      };
+
+      return (
+        <svg width={W} height={H} style={{ display:"block", margin:"0 auto", background:"transparent" }}>
+          {spans.map((sp, i) => {
+            if (nodeMap[sp.near] === undefined || nodeMap[sp.far] === undefined) return null;
+            const x1 = toSvgX(nodeMap[sp.near]);
+            const x2 = toSvgX(nodeMap[sp.far]);
+            const hasUDL = (sp.wDL || 0) + (sp.wSDL || 0) + (sp.wLL || 0) > 0;
+            const midX = (x1 + x2) / 2;
+            const spanWidth = Math.abs(x2 - x1);
+            
+            return (
+              <g key={i}>
+                <line x1={x1} y1={beamY} x2={x2} y2={beamY} stroke={CLR.accent} strokeWidth={5} strokeLinecap="butt" />
+                <text x={midX} y={beamY + 20} textAnchor="middle" fontSize={10} fill={CLR.muted} fontFamily="monospace">
+                  {sp.near}{sp.far}
+                </text>
+                {hasUDL && Array.from({ length: Math.max(3, Math.round(spanWidth / 22)) }).map((_, j, arr) => {
+                  const frac = (j + 0.5) / arr.length;
+                  const ax = x1 + frac * (x2 - x1);
+                  return (
+                    <g key={j}>
+                      <line x1={ax} y1={beamY - 8} x2={ax} y2={beamY - 18} stroke={CLR.yellow} strokeWidth={1.2} />
+                      <polygon points={`${ax},${beamY-8} ${ax-3},${beamY-14} ${ax+3},${beamY-14}`} fill={CLR.yellow} />
+                    </g>
+                  );
+                })}
+                {hasUDL && (
+                  <g>
+                    <line x1={x1} y1={beamY-18} x2={x2} y2={beamY-18} stroke={CLR.yellow} strokeWidth={1.2} />
+                    <text x={midX} y={beamY-24} textAnchor="middle" fontSize={9} fill={CLR.yellow} fontWeight="bold">
+                      {(1.25 * (sp.wDL||0) + 1.25 * (sp.wSDL||0) + 1.5 * (sp.wLL||0)).toFixed(2)} kN/m
+                    </text>
+                  </g>
+                )}
+              </g>
+            );
+          })}
+          {sortedNodes.map((n, i) => {
+            const sx = toSvgX(+n.x || 0);
+            return (
+              <g key={i}>
+                <SupportSymbol sx={sx} colWidth={n.b1} />
+                <circle cx={sx} cy={beamY} r={5} fill={CLR.green} stroke={CLR.bg} strokeWidth={1.5} />
+                <text x={sx} y={beamY - 10} textAnchor="middle" fontSize={11} fill={CLR.text} fontFamily="monospace" fontWeight="700">{n.label}</text>
+                <text x={sx} y={beamY + 38} textAnchor="middle" fontSize={9} fill={CLR.muted}>{fmtCoordM(n.x)} m</text>
+              </g>
+            );
+          })}
+          <g transform="translate(8,8)">
+            <line x1={0} y1={4} x2={16} y2={4} stroke={CLR.yellow} strokeWidth={1.5} />
+            <polygon points="8,8 5,2 11,2" fill={CLR.yellow} />
+            <text x={20} y={8} fontSize={9} fill={CLR.yellow}>UDL (kN/m)</text>
+          </g>
+          <text x={W-PAD} y={H-8} textAnchor="end" fontSize={9} fill={CLR.muted}></text>
+        </svg>
+      );
+    }
+
+    // ── DIAGRAM CHART ─────────────────────────────────────────────────────────
+    function DiagramChart({ data, yKey, color, label, unit }) {
+      if (!data || data.length === 0) return null;
+      const W = 900, H = 240, PADX = 56, PADY = 24;
+      const xs = data.map(d => d.x);
+      const ys = data.map(d => d[yKey]);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const rangeX = maxX - minX || 1;
+      const rangeY = Math.max(Math.abs(minY), Math.abs(maxY)) * 2 || 1;
+
+      const scX = (W - 2*PADX) / rangeX;
+      const scY = (H - 2*PADY) / (Math.max(Math.abs(minY), Math.abs(maxY)) * 2.2 || 1);
+
+      const toSvg = (x, y) => ({
+        sx: PADX + (x - minX) * scX,
+        sy: yKey === "M" ? (H / 2 + y * scY) : (H / 2 - y * scY)
+      });
+
+      const pts = data.map(d => {
+        const { sx, sy } = toSvg(d.x, d[yKey]);
+        return `${sx},${sy}`;
+      }).join(" ");
+
+      const zeroY = H / 2;
+
+      const areaPath = data.map((d, i) => {
+        const { sx, sy } = toSvg(d.x, d[yKey]);
+        return (i === 0 ? `M ${sx},${zeroY} L ${sx},${sy}` : `L ${sx},${sy}`);
+      }).join(" ") + ` L ${toSvg(data[data.length-1].x, 0).sx},${zeroY} Z`;
+
+      const maxAbs = Math.max(Math.abs(minY), Math.abs(maxY));
+      const tickVals = [maxAbs/2, maxAbs, -maxAbs/2, -maxAbs].filter(v => Math.abs(v) > 1e-9);
+      
+      const fmt3 = v => typeof v === "number" ? v.toFixed(0) : v;
+
+      return (
+        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display:"block", margin:"0 auto", background:"transparent", overflow:"visible" }}>
+          <line x1={PADX} y1={zeroY} x2={W-PADX} y2={zeroY} stroke={CLR.border} strokeWidth={1} />
+          {tickVals.map((v, i) => {
+            const y = yKey === "M" ? (H/2 + v * scY) : (H/2 - v * scY);
+            if (y < 4 || y > H-4) return null;
+            return (
+              <g key={i}>
+                <line x1={PADX-3} y1={y} x2={W-PADX} y2={y} stroke={CLR.border} strokeWidth={0.5} strokeDasharray="3,3" />
+                <text x={PADX-5} y={y+4} textAnchor="end" fontSize={9} fill={CLR.muted}>{fmt3(v)}</text>
+              </g>
+            );
+          })}
+          <path d={areaPath} fill={color+"33"} />
+          <polyline points={pts} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+          {(() => {
+            const step = Math.max(1, Math.round(data.length / 8));
+            return data.filter((_, i) => i % step === 0 || i === data.length - 1).map((d, i) => {
+              const { sx } = toSvg(d.x, 0);
+              return <text key={i} x={sx} y={H-4} textAnchor="middle" fontSize={9} fill={CLR.muted}>{fmt3(d.x)}</text>;
+            });
+          })()}
+          <text x={PADX} y={12} fontSize={10} fill={color} fontWeight="700">{label} [{unit}]</text>
+          <text x={W-PADX} y={H-4} textAnchor="end" fontSize={9} fill={CLR.muted}>Global x</text>
+          <line x1={PADX} y1={PADY} x2={PADX} y2={H-PADY} stroke={CLR.border} strokeWidth={1} />
+        </svg>
+      );
+    }
+
+    function Diagram({ spanResults, sortedNodes, spans, resultUnits = "base" }) {
+      if (!spanResults || spanResults.length === 0) return null;
+
+      const sfdData = [];
+      const bmdData = [];
+      spanResults.forEach(sr => {
+        const pts = 50;
+        const dx = sr.L / pts;
+        for (let i = 0; i <= pts; i++) {
+          const x = i * dx;
+          const gx = sr.xStart + x;
+          const v = sr.V_x(x) * shearScale(resultUnits);
+          const m = sr.M_x(x) * momentScale(resultUnits);
+          sfdData.push({ x: gx, V: v });
+          bmdData.push({ x: gx, M: m });
+        }
+      });
+
+      return (
+        <div style={{ display:"grid", gap:"1.5rem", marginBottom:"1.5rem" }}>
+          <div className="print-avoid print-diagram-section" style={{ ...S.card, marginBottom:0 }}>
+            <div style={S.h2}>Figure 1: Slab Preview</div>
+            <BeamDiagram sortedNodes={sortedNodes} spans={spans} />
+          </div>
+          
+          <div className="print-avoid print-diagram-section" style={{ ...S.card, marginBottom:0, padding:"1rem" }}>
+            <div style={{ fontSize:11, color:CLR.muted, marginBottom:8, textTransform:"uppercase", fontWeight:700 }}>{`Shear Force Diagram (${shearUnit(resultUnits)})`}</div>
+            <DiagramChart data={sfdData} yKey="V" color={CLR.teal} label="V" unit={shearUnit(resultUnits)} />
+          </div>
+          
+          <div className="print-avoid print-diagram-section" style={{ ...S.card, marginBottom:0, padding:"1rem" }}>
+            <div style={{ fontSize:11, color:CLR.muted, marginBottom:8, textTransform:"uppercase", fontWeight:700 }}>{`Bending Moment Diagram (${momentUnit(resultUnits)})`}</div>
+            <DiagramChart data={bmdData} yKey="M" color={CLR.orange} label="M" unit={momentUnit(resultUnits)} />
+          </div>
+        </div>
+      );
+    }
+
+    // ── THEORY VIEW ───────────────────────────────────────────────────────────
+    function TheoryView() {
+      const CodeBox = ({ children }) => (
+        <div style={{ background:"#0d1117", border:`1px solid ${CLR.border}`, padding:"1rem", borderRadius:6, fontFamily:"monospace", fontSize:12, lineHeight:1.6, color:CLR.teal, marginBottom:"1rem", overflowX:"auto" }}>
+          {children}
+        </div>
+      );
+      
+      const H3 = ({ children }) => <div style={{ fontSize:15, fontWeight:800, color:CLR.accent, marginTop:"1.5rem", marginBottom:"0.5rem" }}>{children}</div>;
+      const H4 = ({ children }) => <div style={{ fontSize:13, fontWeight:700, color:CLR.text, marginTop:"1rem", marginBottom:"0.5rem" }}>{children}</div>;
+
+      return (
+        <div>
+          <div style={{ ...S.card }}>
+            <div style={{ fontSize:18, fontWeight:800, color:CLR.accent, marginBottom:"1rem" }}>Chapter 1: Analysis and Design of Two-Way Slab Systems</div>
+            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"1rem" }}>
+              This application utilizes a rigorous analytical engine to evaluate continuous two-way slab systems. The methodology synthesizes the <strong>Direct Stiffness Method</strong> for structural analysis (as detailed in <em>Structural Analysis</em> by A. Kassimali) with the design provisions of <strong>CSA A23.3</strong> for reinforced concrete, adopting practical approaches for flexure and shear (as found in <em>Reinforced Concrete Design</em> by S. Brzev and J. Pao).
+            </p>
+            
+            <H3>1. Structural Kinematics and the Direct Stiffness Method</H3>
+            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"0.5rem" }}>
+              The internal member forces are determined using the matrix-based Direct Stiffness Method. By neglecting axial deformations (which are negligible in continuous floor systems), the structural kinematics are defined entirely by flexural behavior. At each support node, the vertical translation is constrained ($v = 0$), leaving joint rotation (θ) as the primary independent degree of freedom (DOF).
+            </p>
+
+            <H4>1.1 Local Element Stiffness and Global Assembly</H4>
+            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"0.5rem" }}>
+              For each slab span, the standard flexural stiffness coefficients are derived from the slope-deflection equations. The global stiffness matrix, [S], is assembled by superimposing the rotational stiffness contributions of the adjoining slab elements and the supporting columns at each continuous node.
+            </p>
+            <CodeBox>
+              Rectangular Frame Element: I_eff = ψ * B * H³ / 12<br/>
+              Slab-Beam Gross Inertia: I_sb = I_s + A_s(ȳ-y_s)² + I_w + A_w(y_w-ȳ)²<br/>
+              where h_w = h_b - h_s; if b_b = 0 or h_b ≤ h_s, I_sb = b_s h_s³ / 12<br/>
+              Column Rotational Stiffness: K_col = (4 * E_c * I_eff,top) / L_top + (4 * E_c * I_eff,bot) / L_bot<br/>
+              Slab Diagonal Stiffness: K_ii = (4 * E_c * I_s) / L<br/>
+              Slab Off-Diagonal Stiffness: K_ij = (2 * E_c * I_s) / L<br/>
+              <br/>
+              Assembly: S[i,i] = Σ K_col + Σ K_ii<br/>
+              Assembly: S[i,j] = K_ij
+            </CodeBox>
+
+            <H4>1.2 Equivalent Nodal Forces and Solution</H4>
+            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"0.5rem" }}>
+              External uniformly distributed loads (w_f) are converted into equivalent fixed-end moments (FEM) acting at the joints. The global equilibrium equation is then established and solved for the unknown nodal rotations, {"{D}"}.
+            </p>
+            <CodeBox>
+              w_DL = 24 kN/m³ * h * b<br/>
+              w_SDL = SDL * b,  w_LL = LL * b<br/>
+              w_f = 1.25(w_DL + w_SDL) + 1.5(w_LL)<br/>
+              FEM = (w_f * L²) / 12<br/>
+              Load Vector: {"{P_f}"}<br/>
+              Equilibrium: [S] {"{D}"} = -{"{P_f}"}
+            </CodeBox>
+            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"0.5rem" }}>
+              Once rotations are computed, they are substituted back into the element slope-deflection equations to recover the final end moments and shears. When pattern loading is required, the program envelopes the all-spans-full case with 0.75 factored-live-load alternate-span cases for positive moment and adjacent-span cases for negative moment.
+            </p>
+
+            <H3>2. Flexural Reinforcement Design</H3>
+            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"0.5rem" }}>
+              With the bending moment envelope established, the required longitudinal reinforcement is proportioned using the equivalent rectangular stress block theory. The depth of the compression block, a = β₁c, is utilized to derive a quadratic expression for the required area of steel (A_s).
+            </p>
+            <CodeBox>
+              Spreadsheet direct procedure:<br/>
+              A_s,req = 0.0015 f'_c b [d - √(d² - 3.85 M_f/(f'_c b))]<br/>
+              <br/>
+              Clause 13.12 beam fraction is applied to the stiffness-solver design-strip moment.<br/>
+              Exterior negative beam fraction = 1.0; slab moment is the remaining moment.<br/>
+              Slab A_s,design = max(A_s,strength, 0.002 b h_s).<br/>
+              Slab spacing is limited to min(3h_s, 500 mm) and rounded downward to 25 mm increments.<br/>
+              Beam designs use nominal Canadian bar areas and are reported as discrete longitudinal bars.
+            </CodeBox>
+
+            <H3>3. Two-Way (Punching) Shear & Unbalanced Moment Transfer</H3>
+            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"0.5rem" }}>
+              A critical aspect of flat plate design is the slab-column connection, which must safely transfer vertical shear forces and unbalanced bending moments to prevent punching failures.
+            </p>
+
+            <H4>3.1 Two-Way Shear Demand (V_f)</H4>
+            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"0.5rem" }}>
+              The program calculates the gross factored shear demand on the connection by computing the tributary area of the slab supported by the column. To isolate the critical punching perimeter, the load acting directly within the area bounded by the critical section (offset d/2 from the column faces) is conservatively subtracted.
+            </p>
+            <CodeBox>
+              q_f = w_f / b  (Factored area load)<br/>
+              V_f = (Tributary Area * q_f) - (Critical Area * q_f)<br/>
+              where Critical Area = (c₁ + d) * (c₂ + d)
+            </CodeBox>
+
+            <H4>3.2 Unbalanced Moment Transfer (M_u)</H4>
+            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"0.5rem" }}>
+              When spans are unequal or subjected to pattern loading, an unbalanced moment develops at the joint. The program evaluates differential span loading to establish a conservative unbalanced moment demand. This moment is distributed to the top and bottom columns based on their relative flexural stiffness.
+            </p>
+            <CodeBox>
+              M_u = 0.07 * max( w_long * L_long² - w_dead,short * L_short² , ... )<br/>
+              M_top = M_u * [ K_top / (K_top + K_bot) ]<br/>
+              M_bot = M_u * [ K_bot / (K_top + K_bot) ]
+            </CodeBox>
+            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"0.5rem" }}>
+              A portion of this moment, γ_v * M_u, is transferred by eccentricity of shear about the centroid of the critical section. The remaining fraction is transferred by flexure. The program calculates γ_v based on the rectangular column dimensions.
+            </p>
+            <CodeBox>
+              c₁ = column dimension parallel to span<br/>
+              c₂ = column dimension perpendicular to span<br/>
+              M_PS = M_uf from the unbalanced moment calculation<br/>
+              For equal top/bottom column stiffness: M_top = M_bot = M_PS / 2
+            </CodeBox>
+          </div>
+        </div>
+      );
+    }
+
+// ── APP ────────────────────────────────────────────────────────────────────
+    function App() {
+      const [tab, setTab] = useState("inputs");
+      const tabs = [{id:"inputs", label:"Inputs"}, {id:"results", label:"Results"}, {id:"theory", label:"Theory"}];
+      const [frameElements, setFrameElements] = useState(() => DEFAULT_FRAME_ELEMENTS.map(fe => ({ ...fe })));
+      const [nodes, setNodes] = useState(() => DEFAULT_NODES.map(n => ({ ...n })));
+      const [spans, setSpans] = useState(() => DEFAULT_SPANS.map(sp => ({ ...sp })));
+      const [props, setProps] = useState(() => ({ ...DEFAULT_PROPS }));
+      const [geometryInputMode, setGeometryInputMode] = useState(DEFAULT_GEOMETRY_INPUT_MODE);
+      const [resultUnits, setResultUnits] = useState(DEFAULT_RESULT_UNITS);
+      const [result, setResult] = useState(null);
+
+      const nextFrameElementId = useRef(Math.max(0, ...DEFAULT_FRAME_ELEMENTS.map(fe => +fe.id || 0)) + 1);
+      const nextNodeId = useRef(Math.max(0, ...DEFAULT_NODES.map(n => +n.id || 0)) + 1);
+      const nextSpanId = useRef(Math.max(0, ...DEFAULT_SPANS.map(sp => +sp.id || 0)) + 1);
+
+      const updateFrameElement = (id, f, v) => setFrameElements(p => p.map(fe => fe.id===id ? {...fe,[f]:v} : fe));
+      const addFrameElement = () => { nextFrameElementId.current++; setFrameElements(p => [...p, {id:nextFrameElementId.current, name:`CC-300x300-${nextFrameElementId.current}`, B:300, H:300, psi:1.00}]); };
+      const delFrameElement = id => setFrameElements(p => p.length <= 1 ? p : p.filter(fe => fe.id!==id));
+      const calculateColumnStiffnessModifiers = () => {
+        const psi = calcColumnStiffnessModifier(props);
+        setFrameElements(p => p.map(fe => ({ ...fe, psi })));
+      };
+
+      const frameIxKey = fe => {
+        const ix = rectFrameI(fe);
+        if (!isFinite(ix)) return "0";
+        return String(Math.round(ix));
+      };
+
+      const makeUniqueFrameElementName = (baseName, usedNames) => {
+        let name = baseName;
+        let suffix = 2;
+        while (usedNames.has(name)) {
+          name = `${baseName}-${suffix}`;
+          suffix++;
+        }
+        usedNames.add(name);
+        return name;
+      };
+
+      const cleanDuplicateFrameElementsByIxAndName = (elements) => {
+        const keptByIx = new Map();
+        const keptByName = new Map();
+        const nameMap = {};
+        const unique = [];
+
+        elements.forEach(fe => {
+          const ixKey = frameIxKey(fe);
+          const nameKey = String(fe.name || "").trim();
+          const duplicateIx = keptByIx.has(ixKey);
+          const duplicateName = keptByName.has(nameKey);
+
+          if (!duplicateIx && !duplicateName) {
+            keptByIx.set(ixKey, fe.name);
+            keptByName.set(nameKey, fe.name);
+            unique.push(fe);
+            return;
+          }
+
+          // If either Ix or the frame-property name is already present, delete this
+          // property and remap node references to the first compatible kept property.
+          // Priority is same Ix, then same name.
+          const replacementName = duplicateIx ? keptByIx.get(ixKey) : keptByName.get(nameKey);
+          nameMap[fe.name] = replacementName;
+        });
+
+        return { unique, nameMap };
+      };
+
+      const remapNodeFrameSections = (sectionNameMap) => {
+        if (!sectionNameMap || Object.keys(sectionNameMap).length === 0) return;
+        setNodes(p => p.map(n => ({
+          ...n,
+          topSection: sectionNameMap[n.topSection] || n.topSection,
+          botSection: sectionNameMap[n.botSection] || n.botSection
+        })));
+      };
+
+      const duplicateSwappedFrameElements = () => {
+        setFrameElements(p => {
+          const usedNames = new Set(p.map(fe => fe.name));
+          const swappedCopies = p.map(fe => {
+            nextFrameElementId.current++;
+            const B = +fe.B || 0;
+            const H = +fe.H || 0;
+            const psi = +fe.psi || 0;
+            return {
+              id: nextFrameElementId.current,
+              name: makeUniqueFrameElementName(`CC-${H}x${B}`, usedNames),
+              B: H,
+              H: B,
+              psi
+            };
+          });
+          const { unique, nameMap } = cleanDuplicateFrameElementsByIxAndName([...p, ...swappedCopies]);
+          remapNodeFrameSections(nameMap);
+          return unique;
+        });
+      };
+
+      const removeDuplicateFrameElementsByIxAndName = () => {
+        setFrameElements(p => {
+          const { unique, nameMap } = cleanDuplicateFrameElementsByIxAndName(p);
+          remapNodeFrameSections(nameMap);
+          return unique;
+        });
+      };
+
+      const updateNode = (id, f, v) => setNodes(p => p.map(n => n.id===id ? {...n,[f]:v} : n));
+      const addNode = () => { nextNodeId.current++; const defaultSection = frameElements[0]?.name || ""; setNodes(p => [...p, {id:nextNodeId.current, label:"", x:"", Lt:3000, topSection:defaultSection, Lb:3000, botSection:defaultSection}]); };
+      const delNode = id => setNodes(p => p.filter(n => n.id!==id));
+      const applyFirstNodeColumnLengths = () => {
+        setNodes(p => {
+          if (!p.length) return p;
+          const firstLt = +p[0].Lt || 0;
+          const firstLb = +p[0].Lb || 0;
+          return p.map(n => ({ ...n, Lt:firstLt, Lb:firstLb }));
+        });
+      };
+
+      const applyFirstNodeColumnProperties = () => {
+        setNodes(p => {
+          if (!p.length) return p;
+          const firstTopSection = p[0].topSection || frameElements[0]?.name || "";
+          const firstBotSection = p[0].botSection || frameElements[0]?.name || "";
+          return p.map(n => ({ ...n, topSection:firstTopSection, botSection:firstBotSection }));
+        });
+      };
+
+      const updateSpan = (id, f, v) => setSpans(p => p.map(s => s.id===id ? {...s,[f]:v} : s));
+      const addSpan = () => { nextSpanId.current++; setSpans(p => [...p, {id:nextSpanId.current, near:"", far:"", L:5000, wDL:20.304, wSDL:6.912, wLL:17.28}]); };
+      const delSpan = id => setSpans(p => p.filter(s => s.id!==id));
+
+      const syncSpanLengthsFromGlobalCoordinates = () => {
+        setSpans(p => p.map(sp => ({ ...sp, L:getSpanLengthFromCoordinates(sp, nodes) })));
+      };
+
+      const getGeometryNodes = () => geometryInputMode === "spanLengths" ? deriveNodesFromSpanLengths(nodes, spans) : nodes;
+
+      const updateProp = (f, v) => setProps(p => ({...p, [f]:+v}));
+
+      const calculateAllSlabSpanLoads = () => {
+        const loads = calcSpanLoadsFromProps(props);
+        setSpans(p => p.map(sp => ({ ...sp, ...loads })));
+      };
+
+      const analyze = () => {
+        const modelNodes = getGeometryNodes();
+        const res = solveEFM(modelNodes, spans, props, frameElements);
+        setResult(res);
+        setTab("results");
+      };
+
+      const printReport = () => {
+        if (!result || result.error) return;
+        window.print();
+      };
+
+      const saveWorkingFile = () => {
+        try {
+          // Clone the original standalone document, as in v0.8.9, and clear the
+          // rendered React root so the saved file starts from a clean app state.
+          const doc = document.cloneNode(true);
+          const root = doc.getElementById("root");
+          if (root) root.innerHTML = "";
+
+          // Replace any previously saved state with the current model state.
+          const previousState = doc.getElementById("two-way-slabs-state");
+          if (previousState) previousState.remove();
+
+          const state = {
+            props,
+            frameElements,
+            nodes,
+            spans,
+            geometryInputMode,
+            resultUnits
+          };
+          const stateScript = doc.createElement("script");
+          stateScript.id = "two-way-slabs-state";
+          stateScript.type = "application/json";
+          // Escape '<' so user-entered names cannot terminate the script element.
+          stateScript.textContent = JSON.stringify(state).replace(/</g, "\u003c");
+
+          const babelScript = doc.querySelector('script[type="text/babel"]');
+          if (!babelScript || !babelScript.parentNode) {
+            throw new Error("Application source script was not found.");
+          }
+          babelScript.parentNode.insertBefore(stateScript, babelScript);
+
+          const html = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+          const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+          a.href = url;
+          a.download = `Two_Way_Slabs_v0_9_6_working_${stamp}.html`;
+          a.style.display = "none";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          // Delay cleanup so browsers have time to begin reading the Blob URL.
+          window.setTimeout(() => URL.revokeObjectURL(url), 2000);
+        } catch (err) {
+          console.error("Save Working File failed:", err);
+          window.alert(`Unable to save the working file: ${err.message || err}`);
+        }
+      };
+
+      const reportDate = new Date().toLocaleString();
+      const geometryNodes = getGeometryNodes();
+      const inputPreviewNodes = enrichNodesWithFrameElements(geometryNodes, frameElements).sort((a, b) => (+a.x || 0) - (+b.x || 0));
+
+      return (
+        <div style={S.app}>
+          <header style={S.header}>
+            <div>
+              <div style={{ fontSize:18, fontWeight:800, color:CLR.accent, letterSpacing:"0.05em" }}>Two Way Slabs v0.9.6</div>
+              <div style={{ fontSize:10, color:CLR.muted, letterSpacing:"0.1em" }}>EQUIVALENT FRAME METHOD (CSA A23.3)</div>
+            </div>
+            <nav style={S.nav}>
+              {tabs.map(t => (
+                <button key={t.id} style={S.navBtn(tab===t.id)} onClick={() => setTab(t.id)}>
+                  {t.label}
+                  {t.id==="results" && result && !result.error && <span style={{ marginLeft:6, ...S.badge(CLR.green), fontSize:9, padding:"1px 5px" }}>✓</span>}
+                </button>
+              ))}
+            </nav>
+          </header>
+
+          <main style={S.main}>
+            {tab === "theory" && <TheoryView />}
+            {tab === "inputs" && (
+              <div>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:"1.5rem" }}>
+                  <div style={{ fontSize:20, fontWeight:800 }}>Model Inputs</div>
+                  <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"8px 18px", fontSize:13 }} onClick={saveWorkingFile}>💾 Save Working File</button>
+                  <button style={{ ...S.btn("primary"), padding:"8px 24px", fontSize:13 }} onClick={analyze}>▶ Analyze</button>
+                </div>
+
+                <div style={{ ...S.card, marginBottom:"1.5rem" }}>
+                  <div style={S.h2}>Slab Preview</div>
+                  <BeamDiagram sortedNodes={inputPreviewNodes} spans={spans} />
+                  <div style={{ fontSize:11, color:CLR.muted, textAlign:"center", marginTop:8 }}>
+                    
+                  </div>
+                </div>
+
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.5rem", marginBottom:"1.5rem" }}>
+                  <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                    <div style={{ padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}><div style={S.h2}>Slab & Material Properties</div></div>
+                    <table style={S.table}>
+                      <tbody>
+                        <tr><td style={{...S.td, textAlign:"left"}}>f<sub>c</sub> (MPa)</td><td style={S.td}><input type="number" style={S.input} value={props.fc} onChange={e=>updateProp("fc",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>f<sub>y</sub> (MPa)</td><td style={S.td}><input type="number" style={S.input} value={props.fy} onChange={e=>updateProp("fy",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Slab Width b<sub>s</sub> (mm)</td><td style={S.td}><input type="number" style={S.input} value={props.bs} onChange={e=>updateProp("bs",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Slab Height h<sub>s</sub> (mm)</td><td style={S.td}><input type="number" style={S.input} value={props.hs} onChange={e=>updateProp("hs",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Beam Width b (mm)</td><td style={S.td}><input type="number" min="0" style={S.input} value={props.beamB} onChange={e=>updateProp("beamB",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Beam Height h (mm)</td><td style={S.td}><input type="number" min="0" style={S.input} value={props.beamH} onChange={e=>updateProp("beamH",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Panel Ratio l<sub>2</sub>/l<sub>1</sub></td><td style={S.td}><input type="number" min="0" step="any" style={S.input} value={props.l2l1} onChange={e=>updateProp("l2l1",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Positive Reinforcement Effective Depth d<sub>pos</sub> (mm)</td><td style={S.td}><input type="number" style={S.input} value={props.dPos} onChange={e=>updateProp("dPos",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Negative Reinforcement Effective Depth d<sub>neg</sub> (mm)</td><td style={S.td}><input type="number" style={S.input} value={props.dNeg} onChange={e=>updateProp("dNeg",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Effective Slab Depth d<sub>s</sub> (mm)</td><td style={S.td}><input type="number" style={S.input} value={props.ds} onChange={e=>updateProp("ds",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Superimposed Dead Load SDL (kPa)</td><td style={S.td}><input type="number" step="any" style={S.input} value={props.SDL} onChange={e=>updateProp("SDL",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Live Load LL (kPa)</td><td style={S.td}><input type="number" step="any" style={S.input} value={props.LL} onChange={e=>updateProp("LL",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left", color:CLR.muted}}>Calculated W_DL / W_SDL / W_LL (N/mm)</td><td style={{...S.td, color:CLR.muted}}>{fmt2(slabSelfWeightLineLoad(props))} / {fmt2(areaLoadToLineLoad(props.SDL, props.bs))} / {fmt2(areaLoadToLineLoad(props.LL, props.bs))}</td></tr>
+                        <tr><td style={{...S.td, textAlign:"left", color:CLR.muted}}>Slab-Beam Gross I (mm⁴)</td><td style={{...S.td, color:CLR.muted}}>{fmt0(slabBeamGrossI(props))}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                    <div style={{ padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}><div style={S.h2}>Typical Reinforcement</div></div>
+                    <table style={S.table}>
+                      <tbody>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Atop (mm²)</td><td style={S.td}><input type="number" style={S.input} value={props.Atop} onChange={e=>updateProp("Atop",e.target.value)} /></td></tr>
+                        <tr><td style={{...S.td, textAlign:"left"}}>Abot (mm²)</td><td style={S.td}><input type="number" style={S.input} value={props.Abot} onChange={e=>updateProp("Abot",e.target.value)} /></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden", marginBottom:"1.5rem" }}>
+                  <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                    <div>
+                      <div style={S.h2}>Rectangular Frame Elements</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>Define reusable column section properties. I = ψ * B * H³ / 12 is used for top and bottom column stiffness. Calculate ψ uses slab-panel and beam inertia with l₂/l₁.</div>
+                    </div>
+                    <div style={{ marginLeft:"auto", display:"flex", gap:8, flexWrap:"wrap", justifyContent:"flex-end" }}>
+                      <button style={{ ...S.btn("primary"), padding:"4px 12px", fontSize:11 }} onClick={calculateColumnStiffnessModifiers} title="Calculate ψ from slab-panel inertia, beam inertia, and panel ratio l2/l1">ƒ Calculate ψ</button>
+                      <button style={{ ...S.btn("primary"), padding:"4px 12px", fontSize:11 }} onClick={duplicateSwappedFrameElements}>↔ Generate Swapped B/H</button>
+                      <button style={{ ...S.btn("ghost"), padding:"4px 12px", fontSize:11 }} onClick={removeDuplicateFrameElementsByIxAndName}>Clean Unique Ix + Names</button>
+                      <button style={{ ...S.btn("ghost"), padding:"4px 12px", fontSize:11 }} onClick={addFrameElement}>+ Add</button>
+                    </div>
+                  </div>
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={S.table}>
+                      <thead><tr>
+                        <th style={S.th}>Section Property</th><th style={S.th}>B Width (mm)</th><th style={S.th}>H Depth (mm)</th><th style={S.th}>ψ</th><th style={S.th}>I_eff (mm⁴)</th><th style={S.th}>—</th>
+                      </tr></thead>
+                      <tbody>
+                        {frameElements.map((fe,i) => (
+                          <tr key={fe.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                            <td style={S.td}><input style={S.input} value={fe.name} onChange={e=>updateFrameElement(fe.id,"name",e.target.value)} /></td>
+                            <td style={S.td}><input style={S.input} type="number" value={fe.B} onChange={e=>updateFrameElement(fe.id,"B",+e.target.value)} /></td>
+                            <td style={S.td}><input style={S.input} type="number" value={fe.H} onChange={e=>updateFrameElement(fe.id,"H",+e.target.value)} /></td>
+                            <td style={S.td}><input style={S.input} type="number" step="any" value={fe.psi} onChange={e=>updateFrameElement(fe.id,"psi",+e.target.value)} /></td>
+                            <td style={S.td}>{fmt0(rectFrameI(fe))}</td>
+                            <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delFrameElement(fe.id)}>✕</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden", marginBottom:"1.5rem" }}>
+                  <div style={{ padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                    <div style={S.h2}>Geometry Input Settings</div>
+                  </div>
+                  <table style={S.table}>
+                    <tbody>
+                      <tr>
+                        <td style={{...S.td, textAlign:"left"}}>Input Geometry By</td>
+                        <td style={S.td}>
+                          <select style={S.input} value={geometryInputMode} onChange={e=>setGeometryInputMode(e.target.value)}>
+                            <option value="global">Global Coordinates</option>
+                            <option value="spanLengths">Span Lengths</option>
+                          </select>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{...S.td, textAlign:"left", color:CLR.muted}}>Geometry Note</td>
+                        <td style={{...S.td, color:CLR.muted, textAlign:"left"}}>
+                          {geometryInputMode === "global"
+                            ? "Node global x-coordinates control the model. Span lengths are back-calculated from node coordinates."
+                            : "Span lengths control the model. Node global x-coordinates are generated cumulatively from the span table for analysis and preview."}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden", marginBottom:"1.5rem" }}>
+                  <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                    <div>
+                      <div style={S.h2}>Nodes (Columns)</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>Use the apply buttons to copy the first row column lengths or selected top/bottom column sections to every column.</div>
+                    </div>
+                    <div style={{ marginLeft:"auto", display:"flex", gap:8, flexWrap:"wrap", justifyContent:"flex-end" }}>
+                      <button style={{ ...S.btn("primary"), padding:"4px 12px", fontSize:11 }} onClick={applyFirstNodeColumnLengths}>↧ Apply Top Row Lengths</button>
+                      <button style={{ ...S.btn("primary"), padding:"4px 12px", fontSize:11 }} onClick={applyFirstNodeColumnProperties}>↧ Apply Top Row Sections</button>
+                      <button style={{ ...S.btn("ghost"), padding:"4px 12px", fontSize:11 }} onClick={addNode}>+ Add</button>
+                    </div>
+                  </div>
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={S.table}>
+                      <thead><tr>
+                        <th style={S.th}>Label</th>{geometryInputMode === "global" && <th style={S.th}>Global x (mm)</th>}
+                        <th style={S.th}>Top Column Section</th><th style={S.th}>L_top (mm)</th>
+                        <th style={S.th}>Bottom Column Section</th><th style={S.th}>L_bot (mm)</th><th style={S.th}>—</th>
+                      </tr></thead>
+                      <tbody>
+                        {nodes.map((n,i) => (
+                          <tr key={n.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                            <td style={S.td}><input style={S.input} value={n.label} onChange={e=>updateNode(n.id,"label",e.target.value)} /></td>
+                            {geometryInputMode === "global" && <td style={S.td}><input style={S.input} type="number" value={n.x} onChange={e=>updateNode(n.id,"x",+e.target.value)} /></td>}
+                            <td style={S.td}>
+                              <select style={S.input} value={n.topSection || frameElements[0]?.name || ""} onChange={e=>updateNode(n.id,"topSection",e.target.value)}>
+                                {frameElements.map(fe => <option key={fe.id} value={fe.name}>{fe.name}</option>)}
+                              </select>
+                            </td>
+                            <td style={S.td}><input style={S.input} type="number" value={n.Lt} onChange={e=>updateNode(n.id,"Lt",+e.target.value)} /></td>
+                            <td style={S.td}>
+                              <select style={S.input} value={n.botSection || frameElements[0]?.name || ""} onChange={e=>updateNode(n.id,"botSection",e.target.value)}>
+                                {frameElements.map(fe => <option key={fe.id} value={fe.name}>{fe.name}</option>)}
+                              </select>
+                            </td>
+                            <td style={S.td}><input style={S.input} type="number" value={n.Lb} onChange={e=>updateNode(n.id,"Lb",+e.target.value)} /></td>
+                            <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delNode(n.id)}>✕</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                  <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                    <div>
+                      <div style={S.h2}>Slab Spans</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>Use the load button to fill W_DL, W_SDL, and W_LL from h_s, b_s, SDL, and LL. In span-length mode, the L column controls node coordinates.</div>
+                    </div>
+                    <div style={{ marginLeft:"auto", display:"flex", gap:8, flexWrap:"wrap", justifyContent:"flex-end" }}>
+                      {geometryInputMode === "global" && <button style={{ ...S.btn("ghost"), padding:"4px 12px", fontSize:11 }} onClick={syncSpanLengthsFromGlobalCoordinates}>↔ Sync Span Lengths</button>}
+                      <button style={{ ...S.btn("primary"), padding:"4px 12px", fontSize:11 }} onClick={calculateAllSlabSpanLoads}>↻ Calculate Span Loads</button>
+                      <button style={{ ...S.btn("ghost"), padding:"4px 12px", fontSize:11 }} onClick={addSpan}>+ Add</button>
+                    </div>
+                  </div>
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={S.table}>
+                      <thead><tr>
+                        <th style={S.th}>Near Node</th><th style={S.th}>Far Node</th>{geometryInputMode === "spanLengths" && <th style={S.th}>Span Length L (mm)</th>}
+                        <th style={S.th}>w_DL (N/mm)</th><th style={S.th}>w_SDL (N/mm)</th><th style={S.th}>w_LL (N/mm)</th><th style={S.th}>—</th>
+                      </tr></thead>
+                      <tbody>
+                        {spans.map((s,i) => (
+                          <tr key={s.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                            <td style={S.td}><input style={S.input} value={s.near} onChange={e=>updateSpan(s.id,"near",e.target.value)} /></td>
+                            <td style={S.td}><input style={S.input} value={s.far} onChange={e=>updateSpan(s.id,"far",e.target.value)} /></td>
+                            {geometryInputMode === "spanLengths" && <td style={S.td}><input style={S.input} type="number" step="any" value={s.L ?? getSpanLengthFromCoordinates(s, nodes)} onChange={e=>updateSpan(s.id,"L",+e.target.value)} /></td>}
+                            <td style={S.td}><input style={S.input} type="number" step="any" value={s.wDL} onChange={e=>updateSpan(s.id,"wDL",+e.target.value)} /></td>
+                            <td style={S.td}><input style={S.input} type="number" step="any" value={s.wSDL} onChange={e=>updateSpan(s.id,"wSDL",+e.target.value)} /></td>
+                            <td style={S.td}><input style={S.input} type="number" step="any" value={s.wLL} onChange={e=>updateSpan(s.id,"wLL",+e.target.value)} /></td>
+                            <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delSpan(s.id)}>✕</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tab === "results" && result && (
+              result.error ? (
+                <div style={{ ...S.card, border:`1px solid ${CLR.red}` }}><div style={{color:CLR.red, fontWeight:700}}>Error: {result.error}</div></div>
+              ) : (
+                <div className="report-results-block">
+                  <div className="screen-only" style={{ display:"flex", alignItems:"center", gap:"1rem", marginBottom:"1.25rem" }}>
+                    <div>
+                      <div style={{ fontSize:20, fontWeight:800 }}>Analysis & Design Results</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>Use the report button to print or save this results package as a PDF.</div>
+                    </div>
+                    <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:10 }}>
+                      <label style={{ fontSize:11, color:CLR.muted, textTransform:"uppercase", fontWeight:700 }}>Result Units</label>
+                      <select
+                        style={{ ...S.input, width:210, textAlign:"left" }}
+                        value={resultUnits}
+                        onChange={e=>setResultUnits(e.target.value)}
+                      >
+                        <option value="base">Base: N and N·mm</option>
+                        <option value="engineering">Engineering: kN and kN*m</option>
+                      </select>
+                      <button style={{ ...S.btn("primary"), padding:"8px 20px", fontSize:13 }} onClick={printReport}>🖨 Print / Save PDF Report</button>
+                    </div>
+                  </div>
+
+                  <div className="print-report-header">
+                    <h1>Two Way Slabs v0.9.6 — Analysis & Design Report</h1>
+                    <div className="meta">
+                      Equivalent Frame Method | CSA A23.3 design summary<br/>
+                      Generated: {reportDate}<br/>
+                      Slab: f′c = {props.fc} MPa, fy = {props.fy} MPa, bₛ = {props.bs} mm, hₛ = {props.hs} mm, dₛ = {props.ds} mm | Beam: b = {props.beamB} mm, h = {props.beamH} mm, dpos = {props.dPos} mm, dneg = {props.dNeg} mm, l₂/l₁ = {props.l2l1} | SDL = {props.SDL} kPa, LL = {props.LL} kPa | Typical reinforcement: Atop = {props.Atop} mm², Abot = {props.Abot} mm² | Results units: {shearUnit(resultUnits)} and {momentUnit(resultUnits)}
+                    </div>
+                  </div>
+
+                  <div className="print-avoid" style={{...S.card,border:`1px solid ${result.patternRequired?CLR.yellow:CLR.green}`}}>
+                    <div style={S.h2}>Pattern Live Loading</div>
+                    <div style={{fontSize:12,lineHeight:1.6}}>
+                      {result.patternRequired
+                        ? `Pattern loading required and applied. ${result.loadCases.length} load cases were analyzed, including the full-live-load minimum case.`
+                        : "Specified live load does not exceed 0.75 of specified dead load. Full live load on all spans governs the required analysis."}
+                    </div>
+                  </div>
+                  <Diagram spanResults={result.spanResults} sortedNodes={result.sortedNodes} spans={spans} resultUnits={resultUnits} />
+
+                  <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden", marginBottom:"1.5rem" }}>
+                    <div style={{padding:"1rem 1.25rem",borderBottom:`1px solid ${CLR.border}`}}>
+                      <div style={S.h2}>Table 1: Code Reinforcement Design</div>
+                      <div style={{fontSize:11,color:CLR.muted,lineHeight:1.5}}>CSA A23.3:24 Clause 13.12 moment distribution. Reinforcement recommendations report spacing only for slab strips; beam strips report spacing for negative bending and total bar count for positive bending. Slab minimum steel and Clause 13.10.4 spacing limits are included. Beam longitudinal minimum steel and detailing still require the applicable beam clauses.</div>
+                    </div>
+                    <div style={{overflowX:"auto"}}><table style={S.table}>
+                      <thead><tr>
+                        <th style={S.th}>Span</th><th style={S.th}>Location</th><th style={S.th}>Strip</th><th style={S.th}>Global x</th>
+                        <th style={S.th}>Design M_f</th><th style={S.th}>Fraction</th><th style={S.th}>Strip M_f</th>
+                        <th style={S.th}>Strip Width</th><th style={S.th}>Comp. b</th><th style={S.th}>d</th>
+                        <th style={S.th}>A_s,str</th><th style={S.th}>A_s,min</th><th style={S.th}>A_s,design</th>
+                        <th style={S.th}>15M Design</th><th style={S.th}>20M Design</th><th style={S.th}>25M Design</th>
+                      </tr></thead>
+                      <tbody>{result.spanResults.map((sr,i)=>{
+                        const locs=[
+                          {name:"Left (Top)",position:"left",x:sr.xStart+sr.faceL,Mf:sr.M_faceL,isTop:true},
+                          {name:"Max (Bottom)",position:"mid",x:sr.xStart+sr.xMax,Mf:sr.M_maxBot,isTop:false},
+                          {name:"Right (Top)",position:"right",x:sr.xStart+sr.faceR,Mf:sr.M_faceR,isTop:true}
+                        ];
+                        return locs.map((loc,j)=>{const strip=result.getStripDesign(sr,loc.Mf,loc.position);const rows=[
+                          {type:"Beam",Mf:strip.beamMoment,fraction:strip.beamFraction},
+                          {type:"Slab",Mf:strip.slabMoment,fraction:strip.slabFraction}
+                        ];return rows.map((r,k)=>{const q=result.calcCodeReinforcement(r.Mf,r.type,loc.isTop,strip);return <tr key={`${i}-${j}-${k}`} style={{background:(j+k)%2===0?"#ffffff05":"transparent"}}>
+                          {j===0&&k===0&&<td style={{...S.td,fontWeight:700,color:CLR.accent}} rowSpan={6}>{sr.label}</td>}
+                          {k===0&&<td style={{...S.td,fontWeight:700}} rowSpan={2}>{loc.name}<div style={{fontSize:9,color:CLR.muted,marginTop:3}}>{loc.position==="left"?sr.governingLeftCase:loc.position==="right"?sr.governingRightCase:sr.governingPositiveCase}</div></td>}
+                          <td style={{...S.td,color:r.type==="Beam"?CLR.orange:CLR.teal,fontWeight:700}}>{r.type}</td>
+                          {k===0&&<td style={S.td} rowSpan={2}>{fmt1(loc.x)} mm</td>}
+                          {k===0&&<td style={S.td} rowSpan={2}>{fmtMoment(loc.Mf,resultUnits)} {momentUnit(resultUnits)}</td>}
+                          <td style={S.td}>{fmt2(r.fraction)}</td><td style={S.td}>{fmtMoment(r.Mf,resultUnits)}</td>
+                          <td style={S.td}>{fmt1(q.stripWidth)}</td><td style={S.td}>{fmt1(q.b)}</td><td style={S.td}>{fmt1(q.d)}</td>
+                          <td style={S.td}>{isNaN(q.AsStrength)?"FAIL":fmt1(q.AsStrength)}</td><td style={S.td}>{fmt1(q.AsMin)}</td><td style={S.td}>{isNaN(q.AsDesign)?"FAIL":fmt1(q.AsDesign)}</td>
+                          <td style={S.td}>{q.recommendations.m15}</td><td style={S.td}>{q.recommendations.m20}</td><td style={S.td}>{q.recommendations.m25}</td>
+                        </tr>})})})}</tbody>
+                    </table></div>
+                  </div>
+                  <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden", marginBottom:"1.5rem" }}>
+                    <div style={{ padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}><div style={S.h2}>Table 2: One Way Shear Design</div></div>
+                    <div style={{ overflowX:"auto" }}>
+                      <table style={S.table}>
+                        <thead><tr>
+                          <th style={S.th}>Span</th><th style={S.th}>Loc</th><th style={S.th}>Global x (mm)</th><th style={S.th}>V_f ({shearUnit(resultUnits)})</th>
+                          <th style={S.th}>d_v (mm)</th><th style={S.th}>V_c ({shearUnit(resultUnits)})</th><th style={S.th}>Check</th>
+                        </tr></thead>
+                        <tbody>
+                          {result.spanResults.map((sr, i) => {
+                            const globalLocV_L = sr.xStart + sr.locV_L;
+                            const globalLocV_R = sr.xStart + sr.locV_R;
+
+                            return (
+                              <React.Fragment key={i}>
+                                <tr style={{ background:"transparent" }}>
+                                  <td style={{ ...S.td, fontWeight:700, color:CLR.green }} rowSpan={2}>{sr.label}</td>
+                                  <td style={S.td}>Left</td><td style={S.td}>{fmt1(globalLocV_L)}</td><td style={S.td}>{fmtShear(Math.abs(sr.V_L), resultUnits)}</td>
+                                  <td style={S.td}>{fmt1(sr.dv)}</td><td style={S.td}>{fmtShear(result.Vc, resultUnits)}</td>
+                                  <td style={{ ...S.td, color: Math.abs(sr.V_L)<=result.Vc ? CLR.green : CLR.red, fontWeight:700 }}>
+                                    {Math.abs(sr.V_L)<=result.Vc ? "OK" : "FAIL"}
+                                  </td>
+                                </tr>
+                                <tr style={{ background:"#ffffff05" }}>
+                                  <td style={S.td}>Right</td><td style={S.td}>{fmt1(globalLocV_R)}</td><td style={S.td}>{fmtShear(Math.abs(sr.V_R), resultUnits)}</td>
+                                  <td style={S.td}>{fmt1(sr.dv)}</td><td style={S.td}>{fmtShear(result.Vc, resultUnits)}</td>
+                                  <td style={{ ...S.td, color: Math.abs(sr.V_R)<=result.Vc ? CLR.green : CLR.red, fontWeight:700 }}>
+                                    {Math.abs(sr.V_R)<=result.Vc ? "OK" : "FAIL"}
+                                  </td>
+                                </tr>
+                              </React.Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                    <div style={{ padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}><div style={S.h2}>Table 3: Two Way Shear Design</div></div>
+                    <div style={{ overflowX:"auto" }}>
+                      <table style={S.table}>
+                        <thead><tr>
+                          <th style={S.th}>Node</th><th style={S.th}>Two Way Shear, V_f ({shearUnit(resultUnits)})</th><th style={S.th}>M_PS ({momentUnit(resultUnits)})</th><th style={S.th}>M_Top ({momentUnit(resultUnits)})</th><th style={S.th}>M_Bottom ({momentUnit(resultUnits)})</th>
+                        </tr></thead>
+                        <tbody>
+                          {result.twoWayShear.map((tws, i) => (
+                            <tr key={i} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                              <td style={{ ...S.td, fontWeight:700, color:CLR.violet }}>{tws.label}</td>
+                              <td style={S.td}>{fmtShear(tws.twoWayShear, resultUnits)}</td>
+                              <td style={S.td}>{fmtMoment(tws.m_PS, resultUnits)}</td>
+                              <td style={S.td}>{fmtMoment(tws.m_top, resultUnits)}</td>
+                              <td style={S.td}>{fmtMoment(tws.m_bot, resultUnits)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                </div>
+              )
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById("root"));
+  </script>
+</body>
+</html>

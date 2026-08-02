@@ -76,6 +76,16 @@
       opacity: 0.55;
     }
 
+    /* ─── Skyline / Crane / Bridge Backdrop ──────────────────── */
+    .skyline-bg {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      height: 46vh; max-height: 460px;
+      pointer-events: none; z-index: 0;
+      opacity: 0.5;
+      mask-image: linear-gradient(180deg, transparent 0%, black 32%, black 100%);
+    }
+    .skyline-bg svg { width: 100%; height: 100%; }
+
     /* ─── NAV ────────────────────────────────────────────────── */
     nav {
       position: sticky; top: 0; z-index: 100;
@@ -134,7 +144,7 @@
     #home {
       min-height: calc(100vh - 60px);
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 0.92fr 1.18fr;
       gap: 60px;
       align-items: center;
       padding-top: 80px;
@@ -374,11 +384,11 @@
       border-bottom: 1px solid rgba(148,163,184,0.16);
     }
     .preview-app {
-      grid-template-columns: 96px 1fr;
+      grid-template-columns: 150px 1fr;
       min-height: 420px;
     }
     .preview-sidebar {
-      padding: 18px 10px;
+      padding: 18px 14px;
       background: linear-gradient(180deg, rgba(8,13,22,0.88), rgba(5,10,18,0.93));
     }
     .preview-nav-item {
@@ -700,6 +710,69 @@
 </head>
 <body>
 
+<!-- ─── Decorative background: crane / skyline / bridge ────────── -->
+<div class="skyline-bg" aria-hidden="true">
+  <svg viewBox="0 0 1600 500" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+    <!-- distant building silhouettes -->
+    <g fill="rgba(148,163,184,0.05)" stroke="rgba(96,165,250,0.14)" stroke-width="1">
+      <rect x="40"  y="300" width="70"  height="200"/>
+      <rect x="120" y="250" width="55"  height="250"/>
+      <rect x="185" y="330" width="90"  height="170"/>
+      <rect x="1280" y="270" width="60" height="230"/>
+      <rect x="1350" y="320" width="80" height="180"/>
+      <rect x="1440" y="230" width="55" height="270"/>
+      <rect x="1505" y="300" width="65" height="200"/>
+    </g>
+    <!-- window grid lines on a couple of towers -->
+    <g stroke="rgba(96,165,250,0.10)" stroke-width="1">
+      <path d="M120 270h55M120 300h55M120 330h55M120 360h55M120 390h55M120 420h55M120 450h55"/>
+      <path d="M1440 250h55M1440 280h55M1440 310h55M1440 340h55M1440 370h55M1440 400h55M1440 430h55M1440 460h55"/>
+    </g>
+
+    <!-- suspension bridge, right side -->
+    <g stroke="rgba(20,184,166,0.22)" stroke-width="2" fill="none" stroke-linecap="round">
+      <line x1="990"  y1="180" x2="990"  y2="430"/>
+      <line x1="1180" y1="150" x2="1180" y2="430"/>
+      <path d="M900 400 Q 990 200 1080 400"/>
+      <path d="M1080 400 Q 1180 160 1280 400"/>
+      <line x1="880" y1="405" x2="1300" y2="405"/>
+      <g stroke="rgba(20,184,166,0.14)" stroke-width="1">
+        <line x1="920" y1="402" x2="945" y2="260"/>
+        <line x1="960" y1="402" x2="972" y2="230"/>
+        <line x1="1000" y1="402" x2="1000" y2="200"/>
+        <line x1="1040" y1="402" x2="1015" y2="230"/>
+        <line x1="1070" y1="402" x2="1060" y2="260"/>
+        <line x1="1100" y1="402" x2="1105" y2="230"/>
+        <line x1="1130" y1="402" x2="1140" y2="195"/>
+        <line x1="1160" y1="402" x2="1172" y2="175"/>
+        <line x1="1210" y1="402" x2="1198" y2="180"/>
+        <line x1="1240" y1="402" x2="1225" y2="230"/>
+        <line x1="1270" y1="402" x2="1255" y2="280"/>
+      </g>
+    </g>
+
+    <!-- tower crane, left side -->
+    <g stroke="rgba(59,130,246,0.28)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="330" y1="500" x2="330" y2="120"/>
+      <path d="M330 120 h230"/>
+      <path d="M330 120 h-70"/>
+      <path d="M330 150 L 552 128"/>
+      <path d="M330 150 L 268 128"/>
+      <line x1="552" y1="128" x2="552" y2="150"/>
+      <line x1="552" y1="150" x2="552" y2="230"/>
+      <rect x="316" y="480" width="28" height="20" fill="rgba(59,130,246,0.10)"/>
+      <g stroke="rgba(59,130,246,0.16)" stroke-width="1.5">
+        <line x1="330" y1="480" x2="322" y2="420"/>
+        <line x1="330" y1="420" x2="338" y2="480"/>
+        <line x1="330" y1="360" x2="322" y2="300"/>
+        <line x1="330" y1="300" x2="338" y2="360"/>
+        <line x1="330" y1="240" x2="322" y2="180"/>
+        <line x1="330" y1="180" x2="338" y2="240"/>
+      </g>
+    </g>
+  </svg>
+</div>
+
 <!-- ─── NAV ─────────────────────────────────────────────────── -->
 <nav>
   <div class="nav-brand">
@@ -848,35 +921,6 @@
           </div>
         </div>
 
-        <div class="preview-chart-grid">
-          <div class="preview-panel preview-chart">
-            <div class="chart-title">Deflection Diagram (w)</div>
-            <svg class="chart-svg" viewBox="0 0 160 100" fill="none">
-              <path class="gridline" d="M26 18H150M26 48H150M26 78H150"/><path class="axis" d="M26 10V84H150"/>
-              <path class="plot-fill-gold" d="M28 44 C42 41, 50 30, 60 24 C70 18, 90 18, 100 24 C110 30, 118 41, 132 44 L132 48 C118 50,110 59,100 64 C90 70,70 70,60 64 C50 59,42 50,28 48 Z"/>
-              <path class="plot-gold" d="M28 46 C42 42, 50 30, 60 24 C70 18, 90 18, 100 24 C110 30, 118 42, 132 46" stroke-width="2.2" fill="none"/>
-              <text class="axis-label" x="6" y="16">w</text><text class="axis-label" x="73" y="97">x</text>
-            </svg>
-          </div>
-          <div class="preview-panel preview-chart">
-            <div class="chart-title">Moment Diagram (M)</div>
-            <svg class="chart-svg" viewBox="0 0 160 100" fill="none">
-              <path class="gridline" d="M26 18H150M26 48H150M26 78H150"/><path class="axis" d="M26 84V12M26 84H150"/>
-              <path class="plot-fill-teal" d="M28 84 C52 80, 62 56, 80 34 C98 56, 108 80, 132 84 Z"/>
-              <path class="plot-teal" d="M28 84 C52 80, 62 56, 80 34 C98 56, 108 80, 132 84" stroke-width="2.2" fill="none"/>
-              <text class="axis-label" x="6" y="16">M</text><text class="axis-label" x="73" y="97">x</text>
-            </svg>
-          </div>
-          <div class="preview-panel preview-chart">
-            <div class="chart-title">Foundation Reaction (q)</div>
-            <svg class="chart-svg" viewBox="0 0 160 100" fill="none">
-              <path class="gridline" d="M26 18H150M26 48H150M26 78H150"/><path class="axis" d="M26 12V84H150"/>
-              <path class="plot-fill-blue" d="M28 52 C46 54, 56 66, 66 76 C74 84, 86 84, 94 76 C104 66, 114 54, 132 52 L132 48 C114 46,104 34,94 24 C86 16,74 16,66 24 C56 34,46 46,28 48 Z"/>
-              <path class="plot-blue" d="M28 50 C46 52, 56 66, 66 76 C74 84, 86 84, 94 76 C104 66, 114 52, 132 50" stroke-width="2.2" fill="none"/>
-              <text class="axis-label" x="6" y="16">q</text><text class="axis-label" x="73" y="97">x</text>
-            </svg>
-          </div>
-        </div>
         <div class="preview-statusbar">
           <span class="ok">Analysis complete</span>
           <span>Nodes: <strong>61</strong>&nbsp;&nbsp; Elements: <strong>60</strong>&nbsp;&nbsp; Load Case: <strong style="color:var(--accent-blue);">LC1</strong></span>

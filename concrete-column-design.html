@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Column Interaction v1.3 — P–Mx–My Design</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},chtml:{scale:0.95}};</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}body{background:#0d1117;color:#e6edf3;font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:#0d1117}::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px}
+:root{--bg:#0d1117;--surface:#161b22;--card:#1c2333;--border:#30363d;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--yellow:#d29922;--text:#e6edf3;--muted:#8b949e;--teal:#39d353;--violet:#bc8cff;--orange:#f0883e}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;gap:2rem;min-height:60px;position:sticky;top:0;z-index:10}.brand{font-size:18px;font-weight:800;color:var(--accent);letter-spacing:.05em}.sub{font-size:10px;color:var(--muted);letter-spacing:.1em}.nav{display:flex;margin-left:auto}.nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:18px 20px;cursor:pointer;font:13px inherit}.nav button.active{color:var(--accent);font-weight:700;border-bottom-color:var(--accent)}main{padding:2rem;max-width:1500px;margin:auto}.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap}.toolbar h1{font-size:20px}.spacer{margin-left:auto}.btn{background:#21262d;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 18px;cursor:pointer;font:700 12px inherit}.btn.primary{background:var(--accent);color:#000;border-color:var(--accent)}.btn.danger{color:var(--red);border-color:var(--red);background:#3d1f1f}.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-bottom:1.5rem}.card.flush{padding:0;overflow:hidden}.cardhead{padding:1rem 1.25rem;border-bottom:1px solid var(--border)}h2{font-size:14px;font-weight:700;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1rem}.cardhead h2{margin:0}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}.fields{display:grid;grid-template-columns:1.6fr 1fr .7fr}.fields>div{padding:7px 10px;border-bottom:1px solid #21262d;font-size:12px;display:flex;align-items:center}.fields .lbl{text-align:left}.fields input,.fields select,input,select{background:#0d1117;border:1px solid var(--border);border-radius:4px;color:var(--text);font:12px inherit;padding:5px 7px;width:100%;text-align:center;outline:none}.unit{color:var(--muted);justify-content:center}.actions-wrap{overflow-x:auto}.actions-table input{min-width:92px}.actions-table input.case-name{min-width:130px;text-align:left}.actions-table td:last-child{width:58px}.actions-toolbar{display:flex;align-items:center;gap:8px;padding:1rem 1.25rem;border-top:1px solid var(--border)}.note{font-size:11px;color:var(--muted);line-height:1.6}.warn{border-left:3px solid var(--yellow);padding:10px 12px;background:#d2992211;color:#e6edf3;font-size:11px;line-height:1.55}.status{display:inline-block;border-radius:4px;padding:3px 9px;font-size:11px;font-weight:700}.ok{color:var(--green);border:1px solid #3fb95055;background:#3fb95022}.fail{color:var(--red);border:1px solid #f8514955;background:#f8514922}.metric{padding:15px;background:#0d1117;border:1px solid var(--border);border-radius:6px}.metric b{font-size:22px;display:block;margin-top:5px}.metric span{font-size:10px;color:var(--muted);text-transform:uppercase}.plot{height:430px}.plot.small{height:370px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#21262d;color:var(--muted);padding:8px 10px;font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border)}td{padding:8px 10px;text-align:center;border-bottom:1px solid #21262d}.tab{display:none}.tab.active{display:block}.eq{background:#0d1117;border:1px solid var(--border);padding:1rem;border-radius:6px;margin:1rem 0;color:var(--teal);overflow:auto}.theory p,.theory li{font-size:13px;color:var(--muted);line-height:1.75;margin-bottom:.7rem}.theory h3{font-size:15px;color:var(--accent);margin:1.5rem 0 .5rem}.sectionSvg{width:100%;height:340px;display:block}.legend{font-size:10px;color:var(--muted);text-align:center}.print-report-header{display:none}.print-avoid{break-inside:avoid;page-break-inside:avoid}.print-plot-image{display:none;width:100%;height:auto;background:#1c2333}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}header{padding:0 1rem}.nav button{padding:18px 10px}main{padding:1rem}}
+@media print{@page{size:letter portrait;margin:.55in}html,body{background:#0d1117!important;color:#e6edf3!important;font-family:Arial,sans-serif!important;font-size:10pt!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-scheme:dark}*{box-shadow:none!important}header,.screen-only{display:none!important}.tab{display:none!important}#results.tab{display:block!important}main{padding:0!important;max-width:none!important;background:#0d1117!important}.print-report-header{display:block!important;margin:0 0 14pt;padding:12pt 14pt 10pt;background:#161b22!important;border:1px solid #30363d!important;border-bottom:2px solid #58a6ff!important;color:#e6edf3!important}.print-report-header h1{font-size:18pt;color:#58a6ff!important}.print-report-header div{color:#8b949e!important}.card{background:#1c2333!important;color:#e6edf3!important;border:1px solid #30363d!important;border-radius:6px!important;margin:0 0 12pt!important;padding:10pt!important;break-inside:avoid!important}.card.flush{padding:0!important;overflow:hidden!important}.cardhead{background:#161b22!important;border-bottom:1px solid #30363d!important}.metric{background:#161b22!important;border:1px solid #30363d!important;color:#e6edf3!important}.metric span,.note{color:#8b949e!important}.metric b{color:#e6edf3!important}h1,h2,h3{color:#58a6ff!important}.plot{display:none!important}.plot.small{display:none!important}.print-plot-image{display:block!important;max-width:100%!important;height:auto!important;object-fit:contain;background:#1c2333!important;break-inside:avoid;page-break-inside:avoid}.card:has(.print-plot-image){overflow:hidden!important}table{font-size:8.3pt!important;background:#1c2333!important;color:#e6edf3!important}thead{display:table-header-group}tr{break-inside:avoid}th,td{padding:4pt!important;border:1px solid #30363d!important;color:#e6edf3!important;background:#1c2333!important}th{background:#21262d!important;color:#8b949e!important}.status.ok{color:#3fb950!important;border-color:#3fb950!important;background:#3fb95022!important}.status.fail{color:#f85149!important;border-color:#f85149!important;background:#f8514922!important}.grid3{grid-template-columns:repeat(3,1fr)}.grid2{display:block!important}.grid2>.card{width:100%!important}svg{max-width:100%;height:auto;break-inside:avoid}.screen-only{display:none!important}} 
+</style></head><body>
+<header><div><div class="brand">Column Interaction v1.3</div><div class="sub">COMPRESSION + BIAXIAL BENDING + SHEAR + TORSION</div></div><nav class="nav"><button data-tab="inputs" class="active">Inputs</button><button data-tab="results">Results</button><button data-tab="balanced">Balanced</button><button data-tab="theory">Theory</button></nav></header>
+<main>
+<section id="inputs" class="tab active"><div class="toolbar"><h1>Model Inputs</h1><span class="spacer"></span><button class="btn" id="saveBtn">💾 Save Working File</button><button class="btn primary" id="analyzeBtn">▶ Analyze</button></div>
+<div class="warn print-avoid" style="margin-bottom:1.5rem"><b>Engineering-use notice:</b> This is a transparent preliminary section-analysis tool. Verify material models, resistance factors, slenderness/second-order effects, detailing, seismic requirements, shear–torsion interaction, and all governing code clauses independently before design use. P+ denotes compression; P− denotes tension.</div>
+<div class="grid2"><div>
+<div class="card flush"><div class="cardhead"><h2>Material & Section</h2></div><div class="fields">
+<div class="lbl">Concrete strength, f′c</div><div><input data-k="fc" type="number" step="any"></div><div class="unit">MPa</div>
+<div class="lbl">Steel yield strength, fy</div><div><input data-k="fy" type="number"></div><div class="unit">MPa</div>
+<div class="lbl">Steel modulus, Es</div><div><input data-k="Es" type="number"></div><div class="unit">MPa</div>
+<div class="lbl">Width along x, b</div><div><input data-k="b" type="number"></div><div class="unit">mm</div>
+<div class="lbl">Depth along y, h</div><div><input data-k="h" type="number"></div><div class="unit">mm</div>
+<div class="lbl">Clear cover to ties</div><div><input data-k="cover" type="number"></div><div class="unit">mm</div>
+<div class="lbl">Resistance factor, ϕc</div><div><input data-k="phic" type="number" step=".01"></div><div class="unit">—</div>
+<div class="lbl">Resistance factor, ϕs</div><div><input data-k="phis" type="number" step=".01"></div><div class="unit">—</div>
+<div class="lbl">Concrete ultimate strain, εcu</div><div><input data-k="ecu" type="number" step=".0001"></div><div class="unit">—</div>
+</div></div>
+<div class="card flush"><div class="cardhead"><h2>Longitudinal Reinforcement</h2></div><div class="fields">
+<div class="lbl">Vertical face bars, nY / face</div><div><input data-k="nY" type="number" min="2"></div><div class="unit">bars</div>
+<div class="lbl">Horizontal face bars, nX / face</div><div><input data-k="nX" type="number" min="2"></div><div class="unit">bars</div>
+<div class="lbl">Longitudinal bar</div><div><select data-k="bar"><option>15M</option><option>20M</option><option>25M</option><option>30M</option><option>35M</option><option>45M</option><option>55M</option></select></div><div class="unit">size</div>
+<div class="lbl">Auto-design maximum ρg</div><div><input data-k="rhoMax" type="number" step=".001"></div><div class="unit">ratio</div>
+</div><div style="padding:1rem"><button class="btn primary" id="autoBtn">✦ Auto-design bars</button><div class="note" style="margin-top:8px">Searches symmetric perimeter layouts and selects the lowest steel area passing the current P–Mx–My demand.</div></div></div>
+</div><div><div class="card"><h2>Section Preview</h2><svg id="sectionSvg" class="sectionSvg"></svg><div class="legend">x → right; y → up. Mx acts about x; My acts about y.</div></div>
+<div class="card flush"><div class="cardhead"><h2>Factored Actions</h2><div class="note" style="margin-top:6px">Add as many load cases as required. P+ is compression and P− is tension.</div></div><div class="actions-wrap"><table class="actions-table"><thead><tr><th>Load Case</th><th>P (kN)</th><th>Mx (kN·m)</th><th>My (kN·m)</th><th>Vy (kN)</th><th>Vz (kN)</th><th>T (kN·m)</th><th>—</th></tr></thead><tbody id="actionsBody"></tbody></table></div><div class="actions-toolbar"><button class="btn primary" id="addCaseBtn">+ Add Load Case</button><button class="btn" id="duplicateCaseBtn">⧉ Duplicate Last</button><span class="note" style="margin-left:auto"><span id="caseCount">1</span> load case(s)</span></div></div>
+<div class="card flush"><div class="cardhead"><h2>Transverse Reinforcement</h2></div><div class="fields">
+<div class="lbl">Tie / hoop bar</div><div><select data-k="tie"><option>10M</option><option>15M</option><option>20M</option></select></div><div class="unit">size</div>
+<div class="lbl">Tie spacing, s</div><div><input data-k="s" type="number"></div><div class="unit">mm</div>
+<div class="lbl">Effective shear depth factor</div><div><input data-k="dvFactor" type="number" step=".01"></div><div class="unit">× dim.</div>
+</div></div></div></div></section>
+<section id="results" class="tab"><div class="toolbar screen-only"><div><h1>Analysis & Design Results</h1><div class="note">Interaction surface generated by strain compatibility.</div></div><span class="spacer"></span><button class="btn primary" id="printBtn">🖨 Print / Save PDF Report</button></div><div class="print-report-header"><h1>Column Interaction v1.3 — Design Report</h1><div id="reportMeta"></div></div>
+<div id="noResults" class="card">Run the analysis from the Inputs tab.</div><div id="resultContent" style="display:none">
+<div class="grid3 print-avoid"><div class="metric"><span>Flexural design ratio</span><b id="ratioFlex">—</b><i id="statusFlex"></i></div><div class="metric"><span>Shear + torsion ratio</span><b id="ratioST">—</b><i id="statusST"></i></div><div class="metric"><span>Overall check</span><b id="overall">—</b><i id="statusAll"></i></div></div>
+<div class="card flush print-avoid" style="margin-top:1.5rem"><div class="cardhead"><h2>Load Case Checks</h2></div><div style="overflow-x:auto"><table><thead><tr><th>Load Case</th><th>P</th><th>Mx</th><th>My</th><th>Vy</th><th>Vz</th><th>T</th><th>P–M–M Ratio</th><th>V+T Ratio</th><th>Status</th></tr></thead><tbody id="loadCaseRows"></tbody></table></div></div>
+<div class="card print-avoid"><h2>Figure 1: P–Mx–My Interaction Surface</h2><div id="plot3d" class="plot"></div></div>
+<div class="grid2"><div class="card print-avoid"><h2>Figure 2: Mx–My Contours at P Levels</h2><div id="plotContour" class="plot small"></div></div><div class="card print-avoid"><h2>Figure 3: P–M Curves by Bending Angle</h2><div id="plotAngles" class="plot small"></div></div></div>
+<div class="card flush print-avoid"><div class="cardhead"><h2>Table 1: Capacity Summary</h2></div><table><thead><tr><th>Check</th><th>Demand</th><th>Capacity</th><th>Ratio</th><th>Status</th></tr></thead><tbody id="capacityRows"></tbody></table></div>
+<div class="card flush print-avoid"><div class="cardhead"><h2>Table 2: Reinforcement Summary</h2></div><table><thead><tr><th>Layout</th><th>Total bars</th><th>As</th><th>ρg</th><th>Ties</th></tr></thead><tbody id="rebarRow"></tbody></table></div>
+</div></section>
+<section id="balanced" class="tab"><div class="toolbar"><h1>Balanced Failure Condition — Hand Calculation</h1><div class="note">ε<sub>cu</sub> at extreme compression fibre, ε<sub>y</sub> = f<sub>y</sub>/E<sub>s</sub> at extreme tension bar layer, uniaxial bending about each principal axis.</div></div>
+<div id="balancedContent"></div>
+</section>
+<section id="theory" class="tab theory"><div class="card"><h2>Theory & Documentation</h2><h3>1. Engineering Theory</h3><p>The section solver enforces plane sections remaining plane, neglects concrete tension, uses a rectangular concrete compression stress block, and models each reinforcing bar as elastic-perfectly-plastic steel. A neutral-axis angle and depth sweep generates the three-dimensional design-strength surface.</p>
+<div class="eq"><b>Equation 1 — section strain</b>\[\varepsilon(x,y)=\varepsilon_{cu}\left(1-\frac{d_n(x,y)}{c}\right)\]</div><p>where \(\varepsilon\) is longitudinal strain, \(\varepsilon_{cu}\) is the concrete compression strain limit, \(d_n\) is distance from the extreme compression line toward the section, and \(c\) is neutral-axis depth.</p>
+<div class="eq"><b>Equation 2 — steel stress</b>\[f_s=\operatorname{clip}(E_s\varepsilon_s,-f_y,+f_y)\]</div><p>where \(f_s\) is bar stress, \(E_s\) is steel modulus, \(\varepsilon_s\) is bar strain, and \(f_y\) is yield strength.</p>
+<div class="eq"><b>Equation 3 — resultants</b>\[P_r=\sum F_i,\quad M_{xr}=\sum F_i y_i,\quad M_{yr}=-\sum F_i x_i\]</div><p>where \(F_i\) is the design force in a concrete cell or reinforcing bar and \(x_i,y_i\) are its centroid coordinates. Compression is positive. The app applies \(\phi_c\) to concrete and \(\phi_s\) to steel.</p>
+<div class="eq"><b>Equation 4 — requested P-at-moments ratio</b>\[U_{PMM}=\frac{P_f}{P_r(M_{xf},M_{yf})}\]</div><p>The corresponding axial resistance is interpolated from the calculated interaction surface at the input moment vector. For tension or difficult non-monotonic branches, the app also evaluates the nearest radial surface intersection and reports the governing ratio.</p>
+<div class="eq"><b>Equation 5 — screening shear/torsion interaction</b>\[U_{VT}=\frac{|V_y|}{V_{ry}}+\frac{|V_z|}{V_{rz}}+\frac{|T|}{T_r}\]</div><p>Shear resistance combines a simplified concrete term and tie contribution; torsion resistance uses a thin-walled closed-hoop analogy. This is deliberately identified as a screening check—not a substitute for the governing code’s full biaxial shear, torsion, crushing, minimum reinforcement, and detailing provisions.</p>
+<h3>2. Coding Theory</h3><p>The application creates a perimeter bar model, numerically integrates concrete over a 28×28 cell grid, sweeps neutral-axis angles at 1° increments and calculates/stores Pr, Mxr, Myr, and Mr for every integer millimetre of neutral-axis depth c. Plotly renders the 3D surface and both requested contour families. Auto-design enumerates bar size and horizontal/vertical face counts, then retains the least-area passing candidate.</p>
+<h3>3. References (APA 7)</h3><p>Canadian Standards Association. (2024). <i>CSA A23.3:24: Design of concrete structures</i>. CSA Group.</p><p>StructurePoint. (2020). <i>Designing columns for biaxial bending using manual design procedure (ACI 318-11/14/19)</i>.</p><p>Wight, J. K., & MacGregor, J. G. (2012). <i>Reinforced concrete: Mechanics and design</i> (6th ed.). Pearson.</p><div class="warn">The equations and implementation are visible for review. This version does not include slenderness, second-order moment magnification, confinement-dependent stress–strain response, seismic detailing, fire, durability, or load-combination generation.</div></div></section>
+</main>
+<script>
+const C={bg:'#0d1117',surface:'#161b22',card:'#1c2333',border:'#30363d',accent:'#58a6ff',green:'#3fb950',red:'#f85149',yellow:'#d29922',text:'#e6edf3',muted:'#8b949e',teal:'#39d353',violet:'#bc8cff',orange:'#f0883e'};
+const BAR={'10M':{d:11.3,A:100},'15M':{d:16,A:200},'20M':{d:19.5,A:300},'25M':{d:25.2,A:500},'30M':{d:29.9,A:700},'35M':{d:35.7,A:1000},'45M':{d:43.7,A:1500},'55M':{d:56.4,A:2500}};
+const DEF={fc:25,fy:400,Es:200000,b:500,h:500,cover:40,phic:.65,phis:.85,ecu:.0035,nY:3,nX:3,bar:'30M',rhoMax:.06,tie:'10M',s:200,dvFactor:.8,loadCases:[{id:1,name:'LC1',P:1800,Mx:220,My:160,Vy:140,Vz:110,T:35}]};let state={...DEF,loadCases:DEF.loadCases.map(x=>({...x}))},last=null,nextCaseId=2;
+function bind(){document.querySelectorAll('[data-k]').forEach(el=>{let k=el.dataset.k;el.value=state[k];el.oninput=()=>{state[k]=el.tagName==='SELECT'?el.value:+el.value;drawSection();renderBalanced()}});renderActionsTable();renderBalanced()}
+function renderActionsTable(){const body=document.getElementById('actionsBody');if(!body)return;body.innerHTML=state.loadCases.map((lc,i)=>`<tr><td><input class="case-name" value="${escapeHtml(lc.name)}" data-case="${lc.id}" data-field="name"></td>${['P','Mx','My','Vy','Vz','T'].map(k=>`<td><input type="number" step="any" value="${lc[k]}" data-case="${lc.id}" data-field="${k}"></td>`).join('')}<td><button class="btn danger" style="padding:3px 8px" data-delete-case="${lc.id}" ${state.loadCases.length===1?'disabled':''}>✕</button></td></tr>`).join('');document.getElementById('caseCount').textContent=state.loadCases.length;body.querySelectorAll('input[data-case]').forEach(el=>el.oninput=()=>{const lc=state.loadCases.find(x=>x.id===+el.dataset.case);lc[el.dataset.field]=el.dataset.field==='name'?el.value:+el.value});body.querySelectorAll('[data-delete-case]').forEach(b=>b.onclick=()=>{if(state.loadCases.length>1){state.loadCases=state.loadCases.filter(x=>x.id!==+b.dataset.deleteCase);renderActionsTable()}})}
+function escapeHtml(v){return String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function addLoadCase(copyLast=false){const src=copyLast?state.loadCases[state.loadCases.length-1]:{P:0,Mx:0,My:0,Vy:0,Vz:0,T:0};state.loadCases.push({...src,id:nextCaseId++,name:copyLast?`${src.name} Copy`:`LC${state.loadCases.length+1}`});renderActionsTable()}
+function bars(st=state){let bd=BAR[st.bar].d,ex=st.b/2-st.cover-BAR[st.tie].d-bd/2,ey=st.h/2-st.cover-BAR[st.tie].d-bd/2,arr=[];for(let i=0;i<st.nX;i++){let x=-ex+2*ex*i/Math.max(1,st.nX-1);arr.push({x,y:ey});arr.push({x,y:-ey})}for(let i=1;i<st.nY-1;i++){let y=-ey+2*ey*i/Math.max(1,st.nY-1);arr.push({x:ex,y});arr.push({x:-ex,y})}return arr.map(q=>({...q,A:BAR[st.bar].A}))}
+function drawSection(){let s=document.getElementById('sectionSvg'),W=520,H=340,p=42,sc=Math.min((W-2*p)/state.b,(H-2*p)/state.h),rw=state.b*sc,rh=state.h*sc,x0=W/2-rw/2,y0=H/2-rh/2,bs=bars();s.setAttribute('viewBox',`0 0 ${W} ${H}`);s.innerHTML=`<defs><marker id="a" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7Z" fill="${C.accent}"/></marker></defs><rect x="${x0}" y="${y0}" width="${rw}" height="${rh}" rx="2" fill="#8b949e22" stroke="${C.muted}" stroke-width="2"/><rect x="${x0+state.cover*sc}" y="${y0+state.cover*sc}" width="${rw-2*state.cover*sc}" height="${rh-2*state.cover*sc}" fill="none" stroke="${C.yellow}" stroke-width="2"/>${bs.map(q=>`<circle cx="${W/2+q.x*sc}" cy="${H/2-q.y*sc}" r="${Math.max(4,BAR[state.bar].d*sc/2)}" fill="${C.green}" stroke="${C.bg}"/>`).join('')}<line x1="${W/2}" y1="${H/2}" x2="${W/2+100}" y2="${H/2}" stroke="${C.accent}" marker-end="url(#a)"/><text x="${W/2+108}" y="${H/2+4}" fill="${C.accent}" font-size="12">x / My</text><line x1="${W/2}" y1="${H/2}" x2="${W/2}" y2="${H/2-100}" stroke="${C.accent}" marker-end="url(#a)"/><text x="${W/2+7}" y="${H/2-106}" fill="${C.accent}" font-size="12">y / Mx</text><text x="${W/2}" y="18" fill="${C.muted}" text-anchor="middle" font-size="11">${state.b} × ${state.h} mm | ${bs.length}-${state.bar}</text>`}
+// Clip a convex polygon to the concrete compression half-plane q >= qCut.
+// This exact polygon integration replaces the former 28 x 28 concrete-cell grid,
+// making a 1 mm neutral-axis sweep practical without sacrificing section precision.
+function clipCompressionPolygon(poly,cb,sb,qCut){
+  const inside=p=>p[0]*cb+p[1]*sb>=qCut-1e-9, out=[];
+  const intersect=(a,b)=>{const qa=a[0]*cb+a[1]*sb-qCut,qb=b[0]*cb+b[1]*sb-qCut,t=qa/(qa-qb);return[a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])]};
+  for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],ia=inside(a),ib=inside(b);if(ia&&ib)out.push(b);else if(ia&&!ib)out.push(intersect(a,b));else if(!ia&&ib){out.push(intersect(a,b));out.push(b)}}
+  return out;
+}
+function polygonAreaCentroid(poly){
+  if(poly.length<3)return{A:0,x:0,y:0};let a2=0,cx=0,cy=0;
+  for(let i=0;i<poly.length;i++){const p=poly[i],q=poly[(i+1)%poly.length],cr=p[0]*q[1]-q[0]*p[1];a2+=cr;cx+=(p[0]+q[0])*cr;cy+=(p[1]+q[1])*cr}
+  if(Math.abs(a2)<1e-12)return{A:0,x:0,y:0};return{A:Math.abs(a2)/2,x:cx/(3*a2),y:cy/(3*a2)};
+}
+function sectionPoint(theta,c,st=state){
+  const cb=Math.cos(theta),sb=Math.sin(theta),rect=[[-st.b/2,-st.h/2],[st.b/2,-st.h/2],[st.b/2,st.h/2],[-st.b/2,st.h/2]],proj=rect.map(p=>p[0]*cb+p[1]*sb),qmax=Math.max(...proj),qCut=qmax-c;
+  let P=0,Mx=0,My=0;const alpha=Math.max(.67,Math.min(.85,.85-.0015*st.fc)),cp=polygonAreaCentroid(clipCompressionPolygon(rect,cb,sb,qCut));
+  if(cp.A>0){const F=st.phic*alpha*st.fc*cp.A;P+=F;Mx+=F*cp.y;My-=F*cp.x}
+  for(const r of bars(st)){const d=qmax-(r.x*cb+r.y*sb),eps=st.ecu*(1-d/c),fs=Math.max(-st.fy,Math.min(st.fy,st.Es*eps)),F=st.phis*fs*r.A;P+=F;Mx+=F*r.y;My-=F*r.x}
+  return{c,thetaDeg:theta*180/Math.PI,P:P/1000,Mx:Mx/1e6,My:My/1e6,Mr:Math.hypot(Mx,My)/1e6};
+}
+function surface(st=state){
+  const rings=[],angleStepDeg=1,angles=360,cMin=1,cMax=Math.ceil(3*Math.hypot(st.b,st.h));
+  // Calculate Pr, Mxr, Myr, and resultant Mr at every integer millimetre of c.
+  for(let c=cMin;c<=cMax;c+=1){const ring=[];for(let deg=0;deg<=angles;deg+=angleStepDeg)ring.push(sectionPoint(deg*Math.PI/180,c,st));rings.push(ring)}
+  return rings;
+}
+// Balanced condition hand-calculation, uniaxial bending about the x-axis (deg=0, bending depth = h)
+// or the y-axis (deg=90, bending depth = b). Extreme compression fibre reaches ecu at the same
+// instant the extreme tension-layer bar reaches its yield strain ey = fy/Es, defining the unique
+// balanced neutral-axis depth cb = ecu/(ecu+ey) * (bending depth). Reported layer-by-layer for a
+// transparent, code-reviewable hand check (mirrors Eq. 1-3 in the Theory tab).
+function balancedCase(deg,st=state){
+  const theta=deg*Math.PI/180,cb0=Math.cos(theta),sb0=Math.sin(theta);
+  const rect=[[-st.b/2,-st.h/2],[st.b/2,-st.h/2],[st.b/2,st.h/2],[-st.b/2,st.h/2]];
+  const proj=rect.map(p=>p[0]*cb0+p[1]*sb0),qmax=Math.max(...proj),qmin=Math.min(...proj);
+  const bendDepth=qmax-qmin; // h for deg=0 (bending about x), b for deg=90 (bending about y)
+  const ey=st.fy/st.Es;
+  const cbal=st.ecu/(st.ecu+ey)*bendDepth; // neutral-axis depth measured from the extreme-compression line
+  const alpha=Math.max(.67,Math.min(.85,.85-.0015*st.fc));
+  const qCut=qmax-cbal;
+  const poly=clipCompressionPolygon(rect,cb0,sb0,qCut),cp=polygonAreaCentroid(poly);
+  const Cc=cp.A>0?st.phic*alpha*st.fc*cp.A:0; // N
+  const barRows=bars(st).map(r=>{
+    const q=r.x*cb0+r.y*sb0, d=qmax-q; // distance of this bar's layer from the extreme compression fibre, along the bending axis
+    const eps=st.ecu*(1-d/cbal);
+    const fs=Math.max(-st.fy,Math.min(st.fy,st.Es*eps));
+    const F=st.phis*fs*r.A; // N, +compression
+    return{x:r.x,y:r.y,d,eps,fs,F,A:r.A};
+  });
+  const Fs=barRows.reduce((a,r)=>a+r.F,0);
+  const P=(Cc+Fs)/1000; // kN
+  // Take moments of every force about the section centroid, resolved onto (Mx,My).
+  let Mx=0,My=0;
+  if(cp.A>0){Mx+=Cc*cp.y;My-=Cc*cp.x}
+  for(const r of barRows){Mx+=r.F*r.y;My-=r.F*r.x}
+  return{deg,bendDepth,ey,cbal,alpha,qmax,qmin,qCut,cp,Cc,barRows,Fs,P,Mx:Mx/1e6,My:My/1e6,Mr:Math.hypot(Mx,My)/1e6};
+}
+function fmt(v,n=1){return isFinite(v)?v.toFixed(n):'—'}
+function renderBalancedCase(res,st=state){
+  // Solver convention: the neutral-axis angle theta is measured so that theta=0 gives a
+  // neutral axis parallel to the h-direction, producing pure My bending (about the y-axis,
+  // using b as the bending depth); theta=90 gives pure Mx bending (about the x-axis, using
+  // h as the bending depth). This matches Figure 3's angle sweep in the Results tab.
+  const axisLabel=res.deg===0?'y-axis (b = bending depth, pure My)':'x-axis (h = bending depth, pure Mx)';
+  const bendSym=res.deg===0?'b':'h';
+  const Mreport=res.deg===0?res.My:res.Mx;
+  const barTableRows=res.barRows.map((r,i)=>`<tr><td>${i+1}</td><td>${fmt(r.x,1)}</td><td>${fmt(r.y,1)}</td><td>${fmt(r.d,1)}</td><td>${fmt(r.eps*1000,3)}</td><td>${fmt(r.fs,1)}</td><td>${fmt(r.F/1000,1)}</td></tr>`).join('');
+  return `
+<div class="card print-avoid">
+<h2>Bending about the ${axisLabel} — β = ${res.deg}°</h2>
+<div class="grid2">
+<div>
+<p style="font-size:13px;color:var(--muted);line-height:1.75">
+<b>Step 1 — Balanced strain condition.</b> The balanced point occurs when the extreme concrete compression fibre reaches ε<sub>cu</sub> at the same instant the extreme layer of tension steel reaches its yield strain ε<sub>y</sub> = f<sub>y</sub>/E<sub>s</sub>.
+</p>
+<div class="eq">
+ε<sub>y</sub> = f<sub>y</sub> / E<sub>s</sub> = ${fmt(st.fy,0)} / ${fmt(st.Es,0)} = ${fmt(res.ey*1000,3)} × 10⁻³<br>
+ε<sub>cu</sub> = ${fmt(st.ecu*1000,3)} × 10⁻³ (given)
+</div>
+<p style="font-size:13px;color:var(--muted);line-height:1.75">
+<b>Step 2 — Balanced neutral-axis depth.</b> By similar triangles across the full bending depth ${bendSym} = ${fmt(res.bendDepth,1)} mm (measured extreme fibre to extreme fibre along the bending direction):
+</p>
+<div class="eq">
+c<sub>b</sub> = ε<sub>cu</sub> / (ε<sub>cu</sub> + ε<sub>y</sub>) × ${bendSym} = ${fmt(st.ecu*1000,4)} / (${fmt(st.ecu*1000,4)} + ${fmt(res.ey*1000,4)}) × ${fmt(res.bendDepth,1)}<br>
+c<sub>b</sub> = ${fmt(res.cbal,1)} mm
+</div>
+<p style="font-size:13px;color:var(--muted);line-height:1.75">
+<b>Step 3 — Equivalent stress block.</b> Stress-block factor α = max(0.67, min(0.85, 0.85 − 0.0015 f′c)) = ${fmt(res.alpha,3)}. The compression zone is the section clipped by the line at distance c<sub>b</sub> from the extreme compression fibre, i.e. cut coordinate q ≥ ${fmt(res.qCut,1)} mm (q measured along the bending axis, q<sub>max</sub> = ${fmt(res.qmax,1)} mm).
+</p>
+<div class="eq">
+A<sub>c</sub> (clipped compression area) = ${fmt(res.cp.A,0)} mm²<br>
+C<sub>c</sub> = ϕ<sub>c</sub> α f′c A<sub>c</sub> = ${fmt(st.phic,2)} × ${fmt(res.alpha,3)} × ${fmt(st.fc,1)} × ${fmt(res.cp.A,0)}<br>
+C<sub>c</sub> = ${fmt(res.Cc/1000,1)} kN
+</div>
+<p style="font-size:13px;color:var(--muted);line-height:1.75">
+<b>Step 4 — Bar strains and forces.</b> For each bar layer at perpendicular distance d from the extreme compression fibre (d measured along the bending axis): ε<sub>s</sub> = ε<sub>cu</sub>(1 − d/c<sub>b</sub>), f<sub>s</sub> = clip(E<sub>s</sub>ε<sub>s</sub>, −f<sub>y</sub>, +f<sub>y</sub>), F<sub>s</sub> = ϕ<sub>s</sub> f<sub>s</sub> A<sub>bar</sub> (+ compression).
+</p>
+</div>
+<div>
+<div style="overflow-x:auto"><table><thead><tr><th>Bar</th><th>x (mm)</th><th>y (mm)</th><th>d (mm)</th><th>ε<sub>s</sub> (×10⁻³)</th><th>f<sub>s</sub> (MPa)</th><th>F<sub>s</sub> (kN)</th></tr></thead><tbody>${barTableRows}</tbody></table></div>
+<p style="font-size:13px;color:var(--muted);line-height:1.75;margin-top:1rem">
+<b>Step 5 — Resultants.</b> Summing concrete and steel contributions and taking moments about the section centroid:
+</p>
+<div class="eq">
+ΣF<sub>s</sub> = ${fmt(res.Fs/1000,1)} kN<br>
+P<sub>b</sub> = C<sub>c</sub> + ΣF<sub>s</sub> = ${fmt(res.Cc/1000,1)} + ${fmt(res.Fs/1000,1)} = ${fmt(res.P,1)} kN<br>
+M<sub>xb</sub> = ${fmt(res.Mx,1)} kN·m &nbsp;&nbsp; M<sub>yb</sub> = ${fmt(res.My,1)} kN·m<br>
+M<sub>b</sub> (about ${res.deg===0?'y':'x'}-axis) = ${fmt(Mreport,1)} kN·m
+</div>
+<div class="grid3" style="margin-top:1rem">
+<div class="metric"><span>Balanced axial load</span><b>${fmt(res.P,0)} kN</b></div>
+<div class="metric"><span>Balanced c<sub>b</sub></span><b>${fmt(res.cbal,1)} mm</b></div>
+<div class="metric"><span>Balanced M (${res.deg===0?'M<sub>yb</sub>':'M<sub>xb</sub>'})</span><b>${fmt(Mreport,1)} kN·m</b></div>
+</div>
+</div>
+</div>
+</div>`;
+}
+function renderBalanced(st=state){
+  const c=document.getElementById('balancedContent');
+  if(!c)return;
+  const r0=balancedCase(0,st),r90=balancedCase(90,st);
+  c.innerHTML=`
+<div class="warn print-avoid" style="margin-bottom:1.5rem"><b>Note:</b> This is a uniaxial hand check at exactly β = 0° and β = 90° using the same fibre model, stress block, and resistance factors as the full surface solver (Equations 1–3, Theory tab). It is a spot-check of the 3-D surface, not a substitute for it — biaxial cases away from these two axes still require the full sweep shown in Figures 1–3.</div>
+${renderBalancedCase(r0,st)}
+${renderBalancedCase(r90,st)}
+`;
+}
+function capacityAt(rings,st=state){let dM=Math.hypot(st.Mx,st.My),ang=Math.atan2(st.My,st.Mx),samples=[];for(let ring of rings){let best=ring[0],err=99;for(let p of ring){let a=Math.atan2(p.My,p.Mx),e=Math.abs(Math.atan2(Math.sin(a-ang),Math.cos(a-ang)));if(e<err){err=e;best=p}}samples.push({m:Math.hypot(best.Mx,best.My),P:best.P,p:best})}samples.sort((a,b)=>a.m-b.m);let cand=[];for(let i=0;i<samples.length-1;i++){let a=samples[i],b=samples[i+1];if((dM-a.m)*(dM-b.m)<=0&&Math.abs(b.m-a.m)>1e-6){let t=(dM-a.m)/(b.m-a.m);cand.push(a.P+t*(b.P-a.P))}}let Pcap=cand.length?Math.max(...cand):samples.reduce((q,x)=>Math.abs(x.m-dM)<Math.abs(q.m-dM)?x:q,samples[0]).P;let ratio;if(st.P>=0)ratio=Pcap>0?st.P/Pcap:Infinity;else{let Pt=Infinity;for(const ring of rings)for(const p of ring)if(p.P<Pt)Pt=p.P;ratio=Pt<0?Math.abs(st.P/Pt):Infinity}return {Pcap,ratio,dM}}
+function shearTorsion(st=state){let tie=BAR[st.tie],dvY=st.dvFactor*st.h,dvZ=st.dvFactor*st.b,Av=2*tie.A,vc=.18*st.phic*Math.sqrt(st.fc),Vry=(vc*st.b*dvY+st.phis*Av*st.fy*dvY/st.s)/1000,Vrz=(vc*st.h*dvZ+st.phis*Av*st.fy*dvZ/st.s)/1000,Ao=Math.max(1,(st.b-2*(st.cover+BAR[st.tie].d/2))*(st.h-2*(st.cover+BAR[st.tie].d/2))),Tr=st.phis*2*Ao*tie.A*st.fy/st.s/1e6,ratio=Math.abs(st.Vy)/Vry+Math.abs(st.Vz)/Vrz+Math.abs(st.T)/Tr;return{Vry,Vrz,Tr,ratio}}
+function analyze(st=state,render=true){
+  const rings=surface(st),caseResults=st.loadCases.map(lc=>{const demand={...st,...lc},flex=capacityAt(rings,demand),vt=shearTorsion(demand);return{lc,flex,vt,pass:flex.ratio<=1&&vt.ratio<=1}}),governingFlex=caseResults.reduce((a,b)=>b.flex.ratio>a.flex.ratio?b:a),governingVT=caseResults.reduce((a,b)=>b.vt.ratio>a.vt.ratio?b:a),res={rings,cases:caseResults,governingFlex,governingVT,pass:caseResults.every(x=>x.pass)};
+  if(render){last=res;renderResults(res);showTab('results')}return res;
+}
+function renderResults(r){
+  document.getElementById('noResults').style.display='none';document.getElementById('resultContent').style.display='block';const set=(id,v)=>document.getElementById(id).textContent=v,gf=r.governingFlex,gv=r.governingVT;
+  set('ratioFlex',isFinite(gf.flex.ratio)?gf.flex.ratio.toFixed(3):'∞');set('ratioST',gv.vt.ratio.toFixed(3));set('overall',r.pass?'ACCEPTABLE':'NOT ACCEPTABLE');badge('statusFlex',gf.flex.ratio<=1);badge('statusST',gv.vt.ratio<=1);badge('statusAll',r.pass);
+  document.getElementById('reportMeta').textContent=`Generated: ${new Date().toLocaleString()} | ${state.b}×${state.h} mm | ${bars().length}-${state.bar} | ${state.loadCases.length} load case(s)`;
+  document.getElementById('loadCaseRows').innerHTML=r.cases.map(x=>`<tr><td>${escapeHtml(x.lc.name)}</td><td>${x.lc.P>=0?'P+':'P−'} ${Math.abs(x.lc.P).toFixed(1)}</td><td>${x.lc.Mx.toFixed(1)}</td><td>${x.lc.My.toFixed(1)}</td><td>${x.lc.Vy.toFixed(1)}</td><td>${x.lc.Vz.toFixed(1)}</td><td>${x.lc.T.toFixed(1)}</td><td>${isFinite(x.flex.ratio)?x.flex.ratio.toFixed(3):'∞'}</td><td>${x.vt.ratio.toFixed(3)}</td><td><span class="status ${x.pass?'ok':'fail'}">${x.pass?'OK':'FAIL'}</span></td></tr>`).join('');
+  const rows=[];for(const x of r.cases){rows.push([`${x.lc.name}: P–Mx–My`,`${x.lc.P>=0?'P+':'P−'} ${Math.abs(x.lc.P).toFixed(1)} kN; ${x.lc.Mx.toFixed(1)}, ${x.lc.My.toFixed(1)} kN·m`,`${x.flex.Pcap.toFixed(1)} kN at input moments`,x.flex.ratio]);rows.push([`${x.lc.name}: Combined V+T`,'Linear interaction','≤ 1.000',x.vt.ratio])}
+  document.getElementById('capacityRows').innerHTML=rows.map(x=>`<tr><td>${escapeHtml(x[0])}</td><td>${x[1]}</td><td>${x[2]}</td><td>${isFinite(x[3])?x[3].toFixed(3):'∞'}</td><td><span class="status ${x[3]<=1?'ok':'fail'}">${x[3]<=1?'OK':'FAIL'}</span></td></tr>`).join('');
+  const As=bars().reduce((a,b)=>a+b.A,0);document.getElementById('rebarRow').innerHTML=`<tr><td>${state.nX} horizontal × ${state.nY} vertical perimeter grid</td><td>${bars().length}-${state.bar}</td><td>${As.toFixed(0)} mm²</td><td>${(As/(state.b*state.h)*100).toFixed(2)}%</td><td>${state.tie} @ ${state.s} mm</td></tr>`;plots(r)
+}
+function badge(id,ok){let e=document.getElementById(id);e.className='status '+(ok?'ok':'fail');e.textContent=ok?'OK':'FAIL'}
+const layoutBase={paper_bgcolor:C.card,plot_bgcolor:C.card,font:{color:C.muted,family:'monospace',size:10},margin:{l:55,r:20,t:20,b:50},legend:{orientation:'h'}};
+function plots(r){let R=r.rings,z=R.map(q=>q.map(p=>p.P)),x=R.map(q=>q.map(p=>p.Mx)),y=R.map(q=>q.map(p=>p.My));Plotly.newPlot('plot3d',[{type:'surface',x,y,z,colorscale:[[0,C.violet],[.5,C.accent],[1,C.green]],opacity:.78,showscale:false},{type:'scatter3d',mode:'markers+text',x:r.cases.map(q=>q.lc.Mx),y:r.cases.map(q=>q.lc.My),z:r.cases.map(q=>q.lc.P),text:r.cases.map(q=>q.lc.name),textposition:'top center',marker:{size:5,color:r.cases.map(q=>q.pass?C.green:C.red)},name:'Load cases'}],{...layoutBase,scene:{xaxis:{title:'Mx (kN·m)'},yaxis:{title:'My (kN·m)'},zaxis:{title:'P (kN), + compression'},bgcolor:C.card},margin:{l:0,r:0,t:0,b:0}},{responsive:true,displaylogo:false});
+// Avoid spreading the very dense 1 mm-c surface into Math.min/Math.max.
+// With hundreds of thousands of points, the spread operator exceeds the JS
+// argument limit and stopped execution before Figures 2 and 3 were drawn.
+let pmin=Infinity,pmax=-Infinity;
+for(const ring of R)for(const p of ring){if(p.P<pmin)pmin=p.P;if(p.P>pmax)pmax=p.P}
+const levels=[.05,.15,.25,.35,.45,.55,.65,.75,.85,.95].map(t=>pmin+t*(pmax-pmin)),tr=[];
+for(const lev of levels){
+  const xx=[],yy=[];
+  for(let i=0;i<R[0].length;i++){
+    let best=R[0][i],bestErr=Math.abs(best.P-lev);
+    for(let j=1;j<R.length;j++){const candidate=R[j][i],err=Math.abs(candidate.P-lev);if(err<bestErr){best=candidate;bestErr=err}}
+    xx.push(best.Mx);yy.push(best.My);
+  }
+  // Close each Mx-My contour explicitly.
+  if(xx.length){xx.push(xx[0]);yy.push(yy[0])}
+  tr.push({type:'scattergl',mode:'lines',x:xx,y:yy,name:`P=${lev.toFixed(0)} kN`,line:{width:2}});
+}
+tr.push({type:'scatter',mode:'markers+text',x:r.cases.map(q=>q.lc.Mx),y:r.cases.map(q=>q.lc.My),text:r.cases.map(q=>q.lc.name),textposition:'top center',marker:{color:r.cases.map(q=>q.pass?C.green:C.red),size:9},name:'Load cases'});
+Plotly.newPlot('plotContour',tr,{...layoutBase,xaxis:{title:'Mx (kN·m)',zeroline:true,automargin:true},yaxis:{title:'My (kN·m)',scaleanchor:'x',scaleratio:1,zeroline:true,automargin:true},legend:{orientation:'v',x:1.02,xanchor:'left',y:1,yanchor:'top'},margin:{l:55,r:120,t:20,b:50},uirevision:'contour'}, {responsive:true,displaylogo:false});
+
+const atr=[];
+for(const deg of [0,15,30,45,60,75,90]){
+  const target=deg*Math.PI/180,pm=[];
+  // The surface is stored at exact 1 degree angular increments, so select the
+  // requested angle index directly instead of searching every point in every ring.
+  const angleIndex=Math.max(0,Math.min(R[0].length-1,Math.round(deg)));
+  for(const ring of R){
+    let best=ring[angleIndex];
+    // Use absolute moments so Figure 3 represents the first-quadrant resultant M.
+    pm.push({M:Math.hypot(best.Mx,best.My),P:best.P,c:best.c});
+  }
+  // Keep the natural c=1 mm sequence. Sorting by P caused branch jumping and
+  // visually connected unrelated points when P(c) was locally non-monotonic.
+  atr.push({type:'scattergl',mode:'lines',x:pm.map(a=>a.M),y:pm.map(a=>a.P),name:`${deg}°`,line:{width:2}});
+}
+atr.push({type:'scatter',mode:'markers+text',x:r.cases.map(q=>Math.hypot(q.lc.Mx,q.lc.My)),y:r.cases.map(q=>q.lc.P),text:r.cases.map(q=>q.lc.name),textposition:'top center',marker:{color:r.cases.map(q=>q.pass?C.green:C.red),size:9},name:'Load cases'});
+Plotly.newPlot('plotAngles',atr,{...layoutBase,xaxis:{title:'M = √(Mx²+My²) (kN·m)',rangemode:'tozero',automargin:true},yaxis:{title:'P (kN), + compression',automargin:true},legend:{orientation:'v',x:1.02,xanchor:'left',y:1,yanchor:'top'},margin:{l:55,r:120,t:20,b:50},uirevision:'angles'}, {responsive:true,displaylogo:false})}
+function autoDesign(){let sizes=['15M','20M','25M','30M','35M','45M','55M'],best=null;for(let bar of sizes)for(let nx=2;nx<=7;nx++)for(let ny=2;ny<=7;ny++){let st={...state,bar,nX:nx,nY:ny},As=bars(st).reduce((a,b)=>a+b.A,0),rho=As/(st.b*st.h);if(rho>st.rhoMax)continue;let res=analyze(st,false);if(res.pass&&(!best||As<best.As)){best={st,res,As}}}if(best){state={...best.st};bind();drawSection();analyze();alert(`Auto-design selected ${bars().length}-${state.bar} (As = ${best.As.toFixed(0)} mm²).`)}else alert('No passing layout found within the search limits. Increase section size, material strength, or allowable reinforcement ratio.')}
+function showTab(id){document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.tab===id));if(id==='results'&&last)setTimeout(()=>{Plotly.Plots.resize('plot3d');Plotly.Plots.resize('plotContour');Plotly.Plots.resize('plotAngles')},50)}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));document.getElementById('analyzeBtn').onclick=()=>analyze();document.getElementById('addCaseBtn').onclick=()=>addLoadCase(false);document.getElementById('duplicateCaseBtn').onclick=()=>addLoadCase(true);document.getElementById('autoBtn').onclick=autoDesign;async function preparePdfPlots(){
+  const specs=[['plot3d',1100,650],['plotContour',1100,620],['plotAngles',1100,620]];
+  document.querySelectorAll('.print-plot-image').forEach(img=>img.remove());
+  for(const [id,width,height] of specs){
+    const plot=document.getElementById(id);
+    if(!plot||!plot.data)continue;
+    const url=await Plotly.toImage(plot,{format:'png',width,height,scale:2});
+    const img=new Image();img.className='print-plot-image';img.alt=id+' report figure';img.src=url;
+    plot.insertAdjacentElement('afterend',img);
+    if(!img.complete)await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject});
+  }
+}
+function cleanupPdfPlots(){document.querySelectorAll('.print-plot-image').forEach(img=>img.remove())}
+window.addEventListener('afterprint',cleanupPdfPlots);
+document.getElementById('printBtn').onclick=async()=>{const btn=document.getElementById('printBtn');if(!last){alert('Run the analysis before exporting the PDF report.');return}btn.disabled=true;const old=btn.textContent;btn.textContent='Preparing PDF figures...';try{if(window.MathJax?.typesetPromise)await MathJax.typesetPromise();await preparePdfPlots();await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));window.print()}catch(err){cleanupPdfPlots();alert('Unable to prepare the PDF report: '+err.message)}finally{btn.disabled=false;btn.textContent=old}};document.getElementById('saveBtn').onclick=()=>{let doc=document.documentElement.outerHTML,inject=`<script>window.__SAVED_STATE__=${JSON.stringify(state).replace(/</g,'\\u003c')}<\/script>`,html='<!DOCTYPE html>\n'+doc.replace('</head>',inject+'</head>'),a=document.createElement('a'),url=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.href=url;a.download=`Column_Interaction_working_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.html`;a.click();URL.revokeObjectURL(url)};if(window.__SAVED_STATE__)state={...DEF,...window.__SAVED_STATE__,loadCases:(window.__SAVED_STATE__.loadCases||DEF.loadCases).map(x=>({...x}))};nextCaseId=Math.max(0,...state.loadCases.map(x=>+x.id||0))+1;bind();drawSection();
+</script></body></html>

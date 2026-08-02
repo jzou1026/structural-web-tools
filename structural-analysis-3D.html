@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Space Frames v1.2 — 3D Frame Analysis (Direct Stiffness Method)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="mathjax-script"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d1117; color: #e6edf3; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; }
+    input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+    select { -webkit-appearance: none; appearance: none; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0d1117; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+    /* ── PRINT / PDF REPORT STYLES (copied structure from suite master template) ── */
+    .print-report-header { display: none; }
+    .screen-only { display: inherit; }
+    .print-avoid { break-inside: avoid; page-break-inside: avoid; }
+
+    @media print {
+      @page { size: letter portrait; margin: 0.55in; }
+
+      html, body {
+        background: #ffffff !important;
+        color: #111827 !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 10pt !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      * {
+        color: #111827 !important;
+        border-color: #c9ced6 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+
+      header, nav, .screen-only { display: none !important; }
+
+      #root, main {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+      }
+
+      .print-report-header {
+        display: block !important;
+        margin: 0 0 14pt 0 !important;
+        padding-bottom: 10pt !important;
+        border-bottom: 2px solid #111827 !important;
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      .print-report-header h1 {
+        font-size: 18pt !important;
+        line-height: 1.2 !important;
+        margin: 0 0 4pt 0 !important;
+        font-weight: 800 !important;
+      }
+
+      .print-report-header .meta {
+        font-size: 8.5pt !important;
+        line-height: 1.45 !important;
+        color: #374151 !important;
+      }
+
+      .print-avoid {
+        background: #ffffff !important;
+        border: 1px solid #c9ced6 !important;
+        border-radius: 0 !important;
+        margin: 0 0 12pt 0 !important;
+        padding: 10pt !important;
+        overflow: visible !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      .print-table-section { padding: 0 !important; }
+
+      .print-table-section > div:first-child,
+      .print-diagram-section > div:first-child {
+        padding: 8pt 9pt !important;
+        background: #eef2f7 !important;
+        border-bottom: 1px solid #c9ced6 !important;
+      }
+
+      .print-table-section > div:nth-child(2) { overflow: visible !important; }
+
+      table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 8.3pt !important;
+        page-break-inside: auto !important;
+      }
+
+      thead { display: table-header-group !important; }
+      tfoot { display: table-footer-group !important; }
+
+      tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+
+      th, td {
+        padding: 4pt 4.5pt !important;
+        border: 1px solid #c9ced6 !important;
+        background: #ffffff !important;
+        color: #111827 !important;
+      }
+
+      th {
+        background: #e8edf5 !important;
+        font-size: 7.6pt !important;
+        font-weight: 700 !important;
+      }
+
+      svg {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      .print-diagram-section { break-inside: avoid !important; page-break-inside: avoid !important; }
+      .print-diagram-section svg { max-height: 2.6in !important; }
+      .report-results-block { display: block !important; }
+      .MathJax { break-inside: avoid !important; page-break-inside: avoid !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useCallback, useEffect, useRef, useMemo } = React;
+
+    // ── COLORS (extracted from suite master template, reused exactly) ─────────
+    // bg:#0d1117 surface:#161b22 card:#1c2333 border:#30363d accent:#58a6ff
+    // green:#3fb950 red:#f85149 yellow:#d29922 text:#e6edf3 muted:#8b949e
+    // teal:#39d353 violet:#bc8cff orange:#f0883e
+    const CLR = {
+      bg: "#0d1117", surface: "#161b22", card: "#1c2333", border: "#30363d",
+      accent: "#58a6ff", green: "#3fb950", red: "#f85149", yellow: "#d29922",
+      text: "#e6edf3", muted: "#8b949e", teal: "#39d353", violet: "#bc8cff",
+      orange: "#f0883e",
+    };
+
+    const S = {
+      app: { minHeight:"100vh", background:CLR.bg, color:CLR.text, display:"flex", flexDirection:"column" },
+      header: { background:CLR.surface, borderBottom:`1px solid ${CLR.border}`, padding:"0 2rem", display:"flex", alignItems:"center", gap:"2rem", minHeight:60 },
+      nav: { display:"flex", gap:0, marginLeft:"auto" },
+      navBtn: active => ({ background:"none", border:"none", borderBottom: active ? `2px solid ${CLR.accent}` : "2px solid transparent", color: active ? CLR.accent : CLR.muted, padding:"18px 20px", cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight: active ? 700 : 400, transition:"color 0.15s,border-color 0.15s" }),
+      main: { flex:1, padding:"2rem", maxWidth:1440, margin:"0 auto", width:"100%" },
+      card: { background:CLR.card, border:`1px solid ${CLR.border}`, borderRadius:8, padding:"1.5rem", marginBottom:"1.5rem" },
+      h2: { fontSize:14, fontWeight:700, color:CLR.accent, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"1rem" },
+      table: { width:"100%", borderCollapse:"collapse", fontSize:12 },
+      th: { background:"#21262d", color:CLR.muted, padding:"7px 10px", textAlign:"center", fontWeight:600, fontSize:11, textTransform:"uppercase", borderBottom:`1px solid ${CLR.border}` },
+      td: { padding:"6px 10px", textAlign:"center", borderBottom:"1px solid #21262d", color:CLR.text },
+      input: { background:"#0d1117", border:`1px solid ${CLR.border}`, borderRadius:4, color:CLR.text, fontFamily:"inherit", fontSize:12, padding:"4px 7px", width:"100%", textAlign:"center", outline:"none" },
+      btn: (v="primary") => ({ background: v==="primary"?CLR.accent : v==="danger"?"#3d1f1f": v==="ghost"?"#21262d":"#21262d", color: v==="danger"?CLR.red : v==="primary"?"#000":CLR.text, border:`1px solid ${v==="danger"?CLR.red : v==="primary"?CLR.accent:CLR.border}`, borderRadius:6, padding:"8px 18px", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700 }),
+      badge: color => ({ display:"inline-block", background:color+"22", color, border:`1px solid ${color}55`, borderRadius:4, padding:"2px 8px", fontSize:11, fontWeight:700 }),
+      select: { background:"#0d1117", border:`1px solid ${CLR.border}`, borderRadius:4, color:CLR.text, fontFamily:"inherit", fontSize:12, padding:"6px 9px", outline:"none" },
+    };
+
+    const fmt0 = v => typeof v === "number" && isFinite(v) ? v.toFixed(0) : (isFinite(v)?v:"—");
+    const fmt1 = v => typeof v === "number" && isFinite(v) ? v.toFixed(1) : (isFinite(v)?v:"—");
+    const fmt2 = v => typeof v === "number" && isFinite(v) ? v.toFixed(2) : (isFinite(v)?v:"—");
+    const fmt3 = v => typeof v === "number" && isFinite(v) ? v.toFixed(3) : (isFinite(v)?v:"—");
+    const fmt4 = v => typeof v === "number" && isFinite(v) ? v.toFixed(4) : (isFinite(v)?v:"—");
+    const fmt6 = v => typeof v === "number" && isFinite(v) ? v.toFixed(6) : (isFinite(v)?v:"—");
+
+    // ── UNIT SYSTEM ───────────────────────────────────────────────────────────
+    // Internal storage is always canonical N / mm (force / length). Every input and
+    // result is converted to/from the user's chosen display units at the UI boundary,
+    // using dimensional exponents (force^f * length^l) — this covers any force/length
+    // combination (SI, US customary, or mixed) without touching the solver itself.
+    const FORCE_UNITS = { N: 1, kN: 1000, lbf: 4.4482216153, kip: 4448.2216153, kgf: 9.80665, tonf: 9806.65 };
+    const LENGTH_UNITS = { mm: 1, cm: 10, m: 1000, in: 25.4, ft: 304.8 };
+    const FORCE_UNIT_LIST = ["N","kN","lbf","kip","kgf","tonf"];
+    const LENGTH_UNIT_LIST = ["mm","cm","m","in","ft"];
+    const DIM = {
+      length: { f:0, l:1 }, area: { f:0, l:2 }, inertia: { f:0, l:4 },
+      pressure: { f:1, l:-2 }, force: { f:1, l:0 }, moment: { f:1, l:1 },
+      distLoad: { f:1, l:-1 }, none: { f:0, l:0 },
+    };
+    function unitFactor(force, length, dim){ return Math.pow(FORCE_UNITS[force], dim.f) * Math.pow(LENGTH_UNITS[length], dim.l); }
+    function toDisplay(baseValue, units, dim){ return baseValue / unitFactor(units.force, units.length, dim); }
+    function toBaseVal(dispValue, units, dim){ return dispValue * unitFactor(units.force, units.length, dim); }
+    function unitLabel(units, dim){
+      const parts = [];
+      if(dim.f===1) parts.push(units.force);
+      if(dim.l===1) parts.push(units.length);
+      if(dim.l===-1) parts.push("/"+units.length);
+      if(dim.l===-2) parts.push("/"+units.length+"²");
+      if(dim.l===2) parts.push(units.length+"²");
+      if(dim.l===4) parts.push(units.length+"⁴");
+      if(dim.f===0 && dim.l===0) return "—";
+      return parts.join("·").replace("·/","/");
+    }
+
+    // ── DEFAULT DATA — simple 3D single-story frame (4 corner columns + perimeter
+    // roof beams), 24 ft × 20 ft plan, 12 ft tall. The SOLVER itself is validated
+    // separately (see Theory tab: closed-form torsion/out-of-plane bending checks,
+    // and an exact reduction to the previously-validated 2D portal frame answer key
+    // when collapsed flat) — this default is just a demonstration geometry, not a
+    // published answer key.
+    const DEFAULT_UNITS = { force: "kip", length: "in" };
+    const B = (v, dim) => toBaseVal(v, DEFAULT_UNITS, dim); // author default data directly in US customary units
+    const G_STEEL = 29000 / (2*(1+0.3));
+
+    const DEFAULT_NODES = [
+      { id:1, label:"1", x:B(0,DIM.length),   y:B(0,DIM.length),   z:B(0,DIM.length),   ux:1,uy:1,uz:1,rx:1,ry:1,rz:1 },
+      { id:2, label:"2", x:B(288,DIM.length), y:B(0,DIM.length),   z:B(0,DIM.length),   ux:1,uy:1,uz:1,rx:1,ry:1,rz:1 },
+      { id:3, label:"3", x:B(288,DIM.length), y:B(240,DIM.length), z:B(0,DIM.length),   ux:1,uy:1,uz:1,rx:1,ry:1,rz:1 },
+      { id:4, label:"4", x:B(0,DIM.length),   y:B(240,DIM.length), z:B(0,DIM.length),   ux:1,uy:1,uz:1,rx:1,ry:1,rz:1 },
+      { id:5, label:"5", x:B(0,DIM.length),   y:B(0,DIM.length),   z:B(144,DIM.length), ux:0,uy:0,uz:0,rx:0,ry:0,rz:0 },
+      { id:6, label:"6", x:B(288,DIM.length), y:B(0,DIM.length),   z:B(144,DIM.length), ux:0,uy:0,uz:0,rx:0,ry:0,rz:0 },
+      { id:7, label:"7", x:B(288,DIM.length), y:B(240,DIM.length), z:B(144,DIM.length), ux:0,uy:0,uz:0,rx:0,ry:0,rz:0 },
+      { id:8, label:"8", x:B(0,DIM.length),   y:B(240,DIM.length), z:B(144,DIM.length), ux:0,uy:0,uz:0,rx:0,ry:0,rz:0 },
+    ];
+    const colProps  = { E:B(29000,DIM.pressure), G:B(G_STEEL,DIM.pressure), A:B(10,DIM.area), J:B(1,DIM.inertia),  Iy:B(170,DIM.inertia), Iz:B(170,DIM.inertia) };
+    const beamProps = { E:B(29000,DIM.pressure), G:B(G_STEEL,DIM.pressure), A:B(8,DIM.area),  J:B(2,DIM.inertia),  Iy:B(100,DIM.inertia), Iz:B(300,DIM.inertia) };
+    const DEFAULT_MEMBERS = [
+      { id:1, label:"C1", near:"1", far:"5", ...colProps,  beta:0, fixity:"Fix-Fix", relNear:0, relFar:0 },
+      { id:2, label:"C2", near:"2", far:"6", ...colProps,  beta:0, fixity:"Fix-Fix", relNear:0, relFar:0 },
+      { id:3, label:"C3", near:"3", far:"7", ...colProps,  beta:0, fixity:"Fix-Fix", relNear:0, relFar:0 },
+      { id:4, label:"C4", near:"4", far:"8", ...colProps,  beta:0, fixity:"Fix-Fix", relNear:0, relFar:0 },
+      { id:5, label:"B1", near:"5", far:"6", ...beamProps, beta:0, fixity:"Fix-Fix", relNear:0, relFar:0 },
+      { id:6, label:"B2", near:"6", far:"7", ...beamProps, beta:0, fixity:"Fix-Fix", relNear:0, relFar:0 },
+      { id:7, label:"B3", near:"7", far:"8", ...beamProps, beta:0, fixity:"Fix-Fix", relNear:0, relFar:0 },
+      { id:8, label:"B4", near:"8", far:"5", ...beamProps, beta:0, fixity:"Fix-Fix", relNear:0, relFar:0 },
+    ];
+    const DEFAULT_LOAD_CASES = [
+      { id:1, name:"Dead" },
+      { id:2, name:"Wind" },
+    ];
+    const DEFAULT_NODAL_LOADS = [
+      { id:1, loadCase:"Wind", node:"5", FX:B(5,DIM.force), FY:0, FZ:0, MX:0, MY:0, MZ:0 },
+    ];
+    const DEFAULT_MEMBER_LOADS = [
+      { id:1, loadCase:"Dead", member:"B1", type:"udl", dir:"GZ", w1:-toBaseVal(0.6,{force:"kip",length:"ft"},DIM.distLoad), w2:-toBaseVal(0.6,{force:"kip",length:"ft"},DIM.distLoad), s1:0, s2:1, P:0, a:0 },
+      { id:2, loadCase:"Dead", member:"B2", type:"udl", dir:"GZ", w1:-toBaseVal(0.6,{force:"kip",length:"ft"},DIM.distLoad), w2:-toBaseVal(0.6,{force:"kip",length:"ft"},DIM.distLoad), s1:0, s2:1, P:0, a:0 },
+      { id:3, loadCase:"Dead", member:"B3", type:"udl", dir:"GZ", w1:-toBaseVal(0.6,{force:"kip",length:"ft"},DIM.distLoad), w2:-toBaseVal(0.6,{force:"kip",length:"ft"},DIM.distLoad), s1:0, s2:1, P:0, a:0 },
+      { id:4, loadCase:"Dead", member:"B4", type:"udl", dir:"GZ", w1:-toBaseVal(0.6,{force:"kip",length:"ft"},DIM.distLoad), w2:-toBaseVal(0.6,{force:"kip",length:"ft"},DIM.distLoad), s1:0, s2:1, P:0, a:0 },
+    ];
+    const DEFAULT_COMBOS = [
+      { id:1, name:"1.2D + 1.0W", terms:[{loadCase:"Dead", factor:1.2},{loadCase:"Wind", factor:1.0}] },
+      { id:2, name:"1.0D (Service)", terms:[{loadCase:"Dead", factor:1.0}] },
+    ];
+    const FIXITY_OPTIONS = ["Fix-Fix","Pin-Fix","Fix-Pin","Pin-Pin"];
+    const LOAD_DIR_OPTIONS = [
+      { value:"GX", label:"Global X" }, { value:"GY", label:"Global Y" }, { value:"GZ", label:"Global Z" },
+      { value:"LY", label:"Local y" }, { value:"LZ", label:"Local z" },
+    ];
+    const INITIAL_DISPLAY_UNITS = { force:"kip", length:"in" };
+    const LOAD_CASE_TYPES=["Dead","Live","Roof Live","Snow","Wind","Seismic","Other"];
+    const COMBINATION_TYPES=["Strength","Service","Envelope","Other"];
+    const DEFAULT_ADVANCED=false;
+    const DEFAULT_SPECTRUM=[{id:1,T:0,Sa:0.456},{id:2,T:0.2,Sa:1.05},{id:3,T:0.5,Sa:0.838},{id:4,T:1,Sa:0.487},{id:5,T:2,Sa:0.295},{id:6,T:4,Sa:0.1142},{id:7,T:5,Sa:0.0841},{id:8,T:10,Sa:0.0348}];
+    const DEFAULT_RS_SETTINGS={direction:"X",damping:0.05,modes:50,gravity:9810,scale:1,massSource:"Dead"};
+
+    // ── SMALL MATRIX HELPERS ─────────────────────────────────────────────────
+    function zeros(n,m){ return Array.from({length:n},()=>new Array(m).fill(0)); }
+    function matMul(A,B){
+      const n=A.length, k=A[0].length, m=B[0].length;
+      const C=zeros(n,m);
+      for(let i=0;i<n;i++)for(let j=0;j<m;j++){ let s=0; for(let p=0;p<k;p++) s+=A[i][p]*B[p][j]; C[i][j]=s; }
+      return C;
+    }
+    function transpose(A){ const n=A.length,m=A[0].length; const T=zeros(m,n); for(let i=0;i<n;i++)for(let j=0;j<m;j++)T[j][i]=A[i][j]; return T; }
+    function invertSmall(M){
+      const n = M.length;
+      const A = M.map((r,i)=>[...r, ...Array.from({length:n},(_,j)=>i===j?1:0)]);
+      for(let col=0; col<n; col++){
+        let piv=col;
+        for(let r=col+1;r<n;r++) if(Math.abs(A[r][col])>Math.abs(A[piv][col])) piv=r;
+        [A[col],A[piv]]=[A[piv],A[col]];
+        const d=A[col][col];
+        if (Math.abs(d) < 1e-13) throw new Error("Singular matrix during end-release condensation.");
+        for(let j=0;j<2*n;j++) A[col][j]/=d;
+        for(let r=0;r<n;r++){
+          if(r===col) continue;
+          const f=A[r][col];
+          for(let j=0;j<2*n;j++) A[r][j]-=f*A[col][j];
+        }
+      }
+      return A.map(r=>r.slice(n));
+    }
+    function gaussianSolve(Ain,bin){
+      const n=bin.length;
+      const M=Ain.map((r,i)=>[...r,bin[i]]);
+      for(let col=0;col<n;col++){
+        let piv=col;
+        for(let r=col+1;r<n;r++) if(Math.abs(M[r][col])>Math.abs(M[piv][col])) piv=r;
+        [M[col],M[piv]]=[M[piv],M[col]];
+        if(Math.abs(M[col][col])<1e-10) throw new Error("Structure is unstable (singular stiffness matrix) — check supports/connectivity.");
+        for(let r=col+1;r<n;r++){
+          const f=M[r][col]/M[col][col];
+          for(let k2=col;k2<=n;k2++) M[r][k2]-=f*M[col][k2];
+        }
+      }
+      const x=new Array(n).fill(0);
+      for(let i=n-1;i>=0;i--){
+        x[i]=M[i][n];
+        for(let j=i+1;j<n;j++) x[i]-=M[i][j]*x[j];
+        x[i]/=M[i][i];
+      }
+      return x;
+    }
+
+    // ── DIRECT STIFFNESS METHOD — 3D MEMBER-LEVEL FUNCTIONS ──────────────────
+    // Local DOF order per node: [u,v,w,rx,ry,rz] = axial, local-y, local-z,
+    // twist, rotation-about-y, rotation-about-z. 12 DOF per member.
+    function localStiffness3D(E,G,A,J,Iy,Iz,L){
+      const k = zeros(12,12);
+      const EAL = E*A/L;
+      k[0][0]=EAL; k[0][6]=-EAL; k[6][0]=-EAL; k[6][6]=EAL;
+      const GJL = G*J/L;
+      k[3][3]=GJL; k[3][9]=-GJL; k[9][3]=-GJL; k[9][9]=GJL;
+      // bending in local x-y plane (about local z) — Iz couples v(1,7) & rz(5,11); identical
+      // block structure to the validated 2D beam element.
+      const EIz=E*Iz;
+      const a1=12*EIz/(L*L*L), a2=6*EIz/(L*L), a3=4*EIz/L, a4=2*EIz/L;
+      k[1][1]=a1;  k[1][5]=a2;  k[1][7]=-a1; k[1][11]=a2;
+      k[5][1]=a2;  k[5][5]=a3;  k[5][7]=-a2; k[5][11]=a4;
+      k[7][1]=-a1; k[7][5]=-a2; k[7][7]=a1;  k[7][11]=-a2;
+      k[11][1]=a2; k[11][5]=a4; k[11][7]=-a2;k[11][11]=a3;
+      // bending in local x-z plane (about local y) — Iy couples w(2,8) & ry(4,10); mirrored
+      // sign pattern relative to the z-block per the right-hand-rule axis orientation
+      // (verified: substituting ry→−rz reduces this block to the identical z-block form).
+      const EIy=E*Iy;
+      const b1=12*EIy/(L*L*L), b2=6*EIy/(L*L), b3=4*EIy/L, b4=2*EIy/L;
+      k[2][2]=b1;  k[2][4]=-b2; k[2][8]=-b1; k[2][10]=-b2;
+      k[4][2]=-b2; k[4][4]=b3;  k[4][8]=b2;  k[4][10]=b4;
+      k[8][2]=-b1; k[8][4]=b2;  k[8][8]=b1;  k[8][10]=b2;
+      k[10][2]=-b2;k[10][4]=b4; k[10][8]=b2; k[10][10]=b3;
+      return k;
+    }
+    // Member local axes via the reference-vector method: local-x is the member chord;
+    // local-y/z come from a reference vector (global Z, unless the member is vertical —
+    // i.e. local-x nearly parallel to Z — in which case the reference falls back to
+    // global X, avoiding the classic vertical-member singularity), then the roll angle
+    // β rotates local-y/z about local-x.
+    function memberAxes(near, far, betaDeg){
+      const dx=far.x-near.x, dy=far.y-near.y, dz=far.z-near.z;
+      const L=Math.sqrt(dx*dx+dy*dy+dz*dz);
+      const lx=[dx/L,dy/L,dz/L];
+      let ref=[0,0,1];
+      if(Math.abs(lx[0]*ref[0]+lx[1]*ref[1]+lx[2]*ref[2])>0.999) ref=[1,0,0];
+      const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+      const norm=v=>{ const n=Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2])||1; return [v[0]/n,v[1]/n,v[2]/n]; };
+      let ly = norm(cross(ref, lx));
+      let lz = norm(cross(lx, ly));
+      const beta=(+betaDeg||0)*Math.PI/180, cb=Math.cos(beta), sb=Math.sin(beta);
+      const ly2 = ly.map((v,i)=>v*cb + lz[i]*sb);
+      const lz2 = ly.map((v,i)=>-v*sb + lz[i]*cb); // NOTE: mapped over ly (not lz) — verified via round-trip orthonormality check
+      return { L, lx, ly:ly2, lz:lz2 };
+    }
+    function transform3D(lx,ly,lz){
+      const R=[lx,ly,lz]; const T=zeros(12,12);
+      for(let b=0;b<4;b++) for(let i=0;i<3;i++) for(let j=0;j<3;j++) T[b*3+i][b*3+j]=R[i][j];
+      return T;
+    }
+    // Consistent (energy-equivalent) nodal load vector, y- and z-plane components combined.
+    // Same Hermitian shape-function approach validated for the 2D element; z-plane terms
+    // carry the sign pattern matching the mirrored Iy stiffness block (verified against a
+    // cantilever UDL closed-form, both planes).
+    function fefDistributed3D(L, wyFn, wzFn, nseg=160){
+      const F = new Array(12).fill(0);
+      const dx = L/nseg;
+      for(let i=0;i<=nseg;i++){
+        const x = i*dx; const wgt=(i===0||i===nseg)?0.5:1; const xi=x/L;
+        const H1=1-3*xi*xi+2*xi*xi*xi, H2=L*(xi-2*xi*xi+xi*xi*xi), H3=3*xi*xi-2*xi*xi*xi, H4=L*(-xi*xi+xi*xi*xi);
+        const wy=wyFn(x), wz=wzFn(x);
+        F[1]+=wgt*dx*wy*H1; F[5]+=wgt*dx*wy*H2; F[7]+=wgt*dx*wy*H3; F[11]+=wgt*dx*wy*H4;
+        F[2]+=wgt*dx*wz*H1; F[4]+=-wgt*dx*wz*H2; F[8]+=wgt*dx*wz*H3; F[10]+=-wgt*dx*wz*H4;
+      }
+      return F;
+    }
+    function fefPoint3D(L, x, Py, Pz){
+      const xi=Math.min(1,Math.max(0,x/L));
+      const H1=1-3*xi*xi+2*xi*xi*xi, H2=L*(xi-2*xi*xi+xi*xi*xi), H3=3*xi*xi-2*xi*xi*xi, H4=L*(-xi*xi+xi*xi*xi);
+      const F=new Array(12).fill(0);
+      F[1]=Py*H1; F[5]=Py*H2; F[7]=Py*H3; F[11]=Py*H4;
+      F[2]=Pz*H1; F[4]=-Pz*H2; F[8]=Pz*H3; F[10]=-Pz*H4;
+      return F;
+    }
+    function addVec(a,b){ return a.map((v,i)=>v+b[i]); }
+
+    // Static condensation of released rotational DOFs. removeIdx are absolute indices
+    // in the 12-DOF local vector (rx1=3, ry1=4, rz1=5, rx2=9, ry2=10, rz2=11).
+    function condenseMember(kFull, fFull, removeIdx){
+      if(removeIdx.length===0) return { k: kFull, f: fFull };
+      const keep = [...Array(12).keys()].filter(i=>!removeIdx.includes(i));
+      const Kcc = keep.map(i=>keep.map(j=>kFull[i][j]));
+      const Kcr = keep.map(i=>removeIdx.map(j=>kFull[i][j]));
+      const Krc = removeIdx.map(i=>keep.map(j=>kFull[i][j]));
+      const Krr = removeIdx.map(i=>removeIdx.map(j=>kFull[i][j]));
+      const KrrInv = invertSmall(Krr);
+      const KcrKrrInv = matMul(Kcr, KrrInv);
+      const correction = matMul(KcrKrrInv, Krc);
+      const Kmod = kFull.map(r=>[...r]);
+      for(let a=0;a<keep.length;a++)for(let b=0;b<keep.length;b++) Kmod[keep[a]][keep[b]] = Kcc[a][b]-correction[a][b];
+      for(const r of removeIdx){ for(let c=0;c<12;c++){ Kmod[r][c]=0; Kmod[c][r]=0; } }
+      const Fr = removeIdx.map(i=>[fFull[i]]);
+      const corrF = matMul(KcrKrrInv, Fr);
+      const Fmod = [...fFull];
+      for(let a=0;a<keep.length;a++) Fmod[keep[a]] = fFull[keep[a]] - corrF[a][0];
+      for(const r of removeIdx) Fmod[r]=0;
+      return { k: Kmod, f: Fmod };
+    }
+    function fixityFlags(fixity){
+      return { fixNear: fixity==="Fix-Fix"||fixity==="Fix-Pin", fixFar: fixity==="Fix-Fix"||fixity==="Pin-Fix" };
+    }
+    function releaseIndices(m){
+      const { fixNear, fixFar } = fixityFlags(m.fixity);
+      const idx=[];
+      if(!fixNear) idx.push(4,5);   // ry1,rz1 — near-end bending release (pin)
+      if(!fixFar) idx.push(10,11);  // ry2,rz2 — far-end bending release (pin)
+      if(m.relNear) idx.push(3);    // rx1 — near-end torsion release
+      if(m.relFar) idx.push(9);     // rx2 — far-end torsion release
+      return idx;
+    }
+
+    // A member load's direction can be a global axis (practical for e.g. gravity, which
+    // is always −Z regardless of member orientation) or a local axis; global directions
+    // are projected onto the local y/z axes via dot products.
+    function decomposeDirection(dir, lx, ly, lz){
+      if(dir==="LY") return { compY:1, compZ:0 };
+      if(dir==="LZ") return { compY:0, compZ:1 };
+      const g = dir==="GX" ? [1,0,0] : dir==="GY" ? [0,1,0] : [0,0,1];
+      const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+      return { compY: dot(g,ly), compZ: dot(g,lz) };
+    }
+    function memberLocalLoads(memberLabel, L, memberLoadsForCase, lx, ly, lz){
+      const entries = memberLoadsForCase.filter(ml=>ml.member===memberLabel);
+      const udls = entries.filter(e=>e.type==="udl");
+      const points = entries.filter(e=>e.type==="point");
+      const compAt = x => {
+        let wy=0, wz=0;
+        udls.forEach(u=>{
+          const xa=(+u.s1||0)*L, xb=(+u.s2||1)*L;
+          if(x>=xa-1e-6 && x<=xb+1e-6){
+            const frac = (xb>xa) ? (x-xa)/(xb-xa) : 0;
+            const mag = (+u.w1||0) + ((+u.w2||0)-(+u.w1||0))*frac;
+            const { compY, compZ } = decomposeDirection(u.dir||"GZ", lx,ly,lz);
+            wy += mag*compY; wz += mag*compZ;
+          }
+        });
+        return { wy, wz };
+      };
+      const wyFn = x => compAt(x).wy;
+      const wzFn = x => compAt(x).wz;
+      const pointLoads = points.map(p=>{
+        const { compY, compZ } = decomposeDirection(p.dir||"GZ", lx,ly,lz);
+        return { x: Math.min(L,Math.max(0,+p.a||0)), Py:(+p.P||0)*compY, Pz:(+p.P||0)*compZ };
+      });
+      return { wyFn, wzFn, pointLoads };
+    }
+
+    // ── FULL FRAME SOLVE (assembles K once, solves once per load case) ──────
+    // Sign convention (verified: closed-form torsion θ=TL/GJ, closed-form out-of-plane
+    // bending δ=PL³/3EIy, and — most decisively — an exact reduction to the previously
+    // validated 2D portal-frame answer key when the model is collapsed flat):
+    //   Assembly:      F_global += +(T' · f_local_consistent)
+    //   Reactions:     R = K·D − F   (at restrained DOF)
+    //   Member forces: Q_local = k_condensed·u_local − f_condensed  (12-vector, released DOF ⇒ 0)
+    //   In-plane (x-y, about z, uses Iz):    Vy(x)=−V1−∫wy−ΣPy,  Mz(x)=M1−V1·x−∫wy(x−s)−ΣPy(x−a)
+    //   Out-of-plane (x-z, about y, uses Iy): Vz(x)=+V1+∫wz+ΣPz, My(x)=M1+V1·x+∫wz(x−s)+ΣPz(x−a)
+    //   Axial: N(x)=−N1 (constant).  Torsion: T(x)=−T1 (constant, no distributed torque modeled).
+    function solveFrame(nodes, members, memberLoadsAllCases, nodalLoadsAllCases, loadCaseNames){
+      const nodeList = nodes.map(n=>n.label);
+      const nodeByLabel = {}; nodes.forEach(n=>{ nodeByLabel[n.label]=n; });
+      const ndof = nodeList.length*6;
+      const dofIndex = {}; nodeList.forEach((n,i)=>{ dofIndex[n]=i*6; });
+
+      const memberGeom = members.map(m=>{
+        const ni = nodeByLabel[m.near], nj = nodeByLabel[m.far];
+        if(!ni || !nj) return null;
+        const { L, lx, ly, lz } = memberAxes(ni, nj, m.beta);
+        if(!(L>0)) return null;
+        const kFull = localStiffness3D(+m.E||0, +m.G||0, +m.A||0, +m.J||0, +m.Iy||0, +m.Iz||0, L);
+        const T = transform3D(lx,ly,lz);
+        const Tt = transpose(T);
+        const gi = dofIndex[m.near], gj = dofIndex[m.far];
+        const map = [gi,gi+1,gi+2,gi+3,gi+4,gi+5, gj,gj+1,gj+2,gj+3,gj+4,gj+5];
+        const remIdx = releaseIndices(m);
+        return { m, L, lx, ly, lz, T, Tt, kFull, remIdx, map };
+      });
+
+      if(memberGeom.some(g=>g===null)) return { error: "One or more members reference a missing node, or have zero length." };
+
+      const restrained = new Array(ndof).fill(false);
+      nodes.forEach(n=>{
+        const gi = dofIndex[n.label];
+        ["ux","uy","uz","rx","ry","rz"].forEach((k,i)=>{ if(n[k]) restrained[gi+i]=true; });
+      });
+      const freeIdx=[]; restrained.forEach((r,i)=> r?null:freeIdx.push(i));
+      if(freeIdx.length===0) return { error:"All degrees of freedom are restrained — nothing to solve." };
+
+      const K = zeros(ndof, ndof);
+      memberGeom.forEach(g=>{
+        const condK = condenseMember(g.kFull, new Array(12).fill(0), g.remIdx).k;
+        const kGlobal = matMul(matMul(g.Tt, condK), g.T);
+        for(let a=0;a<12;a++)for(let b=0;b<12;b++) K[g.map[a]][g.map[b]] += kGlobal[a][b];
+        g.condK = condK;
+      });
+
+      const Kff = freeIdx.map(i=>freeIdx.map(j=>K[i][j]));
+
+      const caseResults = {};
+      loadCaseNames.forEach(caseName=>{
+        const nodalLoads = nodalLoadsAllCases.filter(nl=>nl.loadCase===caseName);
+        const memberLoadsForCase = memberLoadsAllCases.filter(ml=>ml.loadCase===caseName);
+
+        const F = new Array(ndof).fill(0);
+        const memberFEF = {};
+        memberGeom.forEach(g=>{
+          const { wyFn, wzFn, pointLoads } = memberLocalLoads(g.m.label, g.L, memberLoadsForCase, g.lx,g.ly,g.lz);
+          let fFull = fefDistributed3D(g.L, wyFn, wzFn);
+          pointLoads.forEach(p=>{ fFull = addVec(fFull, fefPoint3D(g.L, p.x, p.Py, p.Pz)); });
+          const cond = condenseMember(g.kFull, fFull, g.remIdx);
+          const fGlobal = matMul(g.Tt, cond.f.map(v=>[v])).map(r=>r[0]);
+          for(let a=0;a<12;a++) F[g.map[a]] += fGlobal[a];
+          memberFEF[g.m.label] = { wyFn, wzFn, pointLoads, condF: cond.f };
+        });
+        nodalLoads.forEach(nl=>{
+          const gi = dofIndex[nl.node];
+          if(gi===undefined) return;
+          ["FX","FY","FZ","MX","MY","MZ"].forEach((k,i)=>{ F[gi+i]+=(+nl[k]||0); });
+        });
+
+        let D;
+        try {
+          const Ff = freeIdx.map(i=>F[i]);
+          const Df = gaussianSolve(Kff, Ff);
+          D = new Array(ndof).fill(0);
+          freeIdx.forEach((gi,k)=>{ D[gi]=Df[k]; });
+        } catch(e){
+          caseResults[caseName] = { error: e.message };
+          return;
+        }
+
+        const R = matMul(K, D.map(v=>[v])).map(r=>r[0]).map((v,i)=>v-F[i]);
+
+        const memberEndForces = {};
+        memberGeom.forEach(g=>{
+          const uGlobal = g.map.map(i=>D[i]);
+          const uLocal = matMul(g.T, uGlobal.map(v=>[v])).map(r=>r[0]);
+          const condF = memberFEF[g.m.label].condF;
+          const q = matMul(g.condK, uLocal.map(v=>[v])).map(r=>r[0]).map((v,i)=>v-condF[i]);
+          memberEndForces[g.m.label] = { q, uLocal };
+        });
+
+        caseResults[caseName] = { D, R, memberEndForces, memberLocalLoads: memberFEF };
+      });
+
+      return { nodeList, dofIndex, ndof, memberGeom, restrained, freeIdx, K, caseResults };
+    }
+
+    // Linear superposition of load cases into a chosen combination (or a single case, factor 1).
+    function combineResults(solved, terms){
+      const { nodeList, dofIndex, ndof, memberGeom } = solved;
+      const D = new Array(ndof).fill(0);
+      const R = new Array(ndof).fill(0);
+      const memberEndForces = {};
+      memberGeom.forEach(g=>{ memberEndForces[g.m.label] = new Array(12).fill(0); });
+
+      let anyError = null;
+      terms.forEach(t=>{
+        const cr = solved.caseResults[t.loadCase];
+        if(!cr){ return; }
+        if(cr.error){ anyError = cr.error; return; }
+        const f = +t.factor||0;
+        for(let i=0;i<ndof;i++){ D[i]+=f*cr.D[i]; R[i]+=f*cr.R[i]; }
+        memberGeom.forEach(g=>{
+          const q = cr.memberEndForces[g.m.label].q;
+          const acc = memberEndForces[g.m.label];
+          for(let i=0;i<12;i++) acc[i]+=f*q[i];
+        });
+      });
+      if(anyError) return { error: anyError };
+
+      const memberSample = {};
+      memberGeom.forEach(g=>{
+        const L = g.L;
+        const combinedComp = x => {
+          let wy=0, wz=0;
+          terms.forEach(t=>{
+            const cr = solved.caseResults[t.loadCase];
+            if(!cr || cr.error) return;
+            const info = cr.memberLocalLoads[g.m.label];
+            wy += (+t.factor||0)*info.wyFn(x);
+            wz += (+t.factor||0)*info.wzFn(x);
+          });
+          return { wy, wz };
+        };
+        const combinedPoints = [];
+        terms.forEach(t=>{
+          const cr = solved.caseResults[t.loadCase];
+          if(!cr || cr.error) return;
+          const info = cr.memberLocalLoads[g.m.label];
+          info.pointLoads.forEach(p=>{ combinedPoints.push({ x:p.x, Py:(+t.factor||0)*p.Py, Pz:(+t.factor||0)*p.Pz }); });
+        });
+        const q = memberEndForces[g.m.label]; // [u1,v1,w1,rx1,ry1,rz1,u2,v2,w2,rx2,ry2,rz2]
+        const N1=q[0], V1=q[1], Vz1=q[2], T1=q[3], My1=q[4], Mz1=q[5];
+
+        function integrals(x, nseg=50){
+          let Iy0=0,Iy1=0,Iz0=0,Iz1=0;
+          const dx=x/nseg;
+          for(let i=0;i<=nseg;i++){
+            const s=i*dx; const wgt=(i===0||i===nseg)?0.5:1;
+            const {wy,wz}=combinedComp(s);
+            Iy0+=wgt*dx*wy; Iy1+=wgt*dx*wy*(x-s);
+            Iz0+=wgt*dx*wz; Iz1+=wgt*dx*wz*(x-s);
+          }
+          return { Iy0, Iy1, Iz0, Iz1 };
+        }
+        const Nx = x => -N1;
+        const Tx = x => -T1;
+        const Vyx = x => { const {Iy0}=integrals(x); let v=-V1-Iy0; combinedPoints.forEach(p=>{ if(p.x<=x+1e-6) v-=p.Py; }); return v; };
+        const Mzx = x => { const {Iy1}=integrals(x); let m=Mz1-V1*x-Iy1; combinedPoints.forEach(p=>{ if(p.x<=x+1e-6) m-=p.Py*(x-p.x); }); return m; };
+        const Vzx = x => { const {Iz0}=integrals(x); let v=Vz1+Iz0; combinedPoints.forEach(p=>{ if(p.x<=x+1e-6) v+=p.Pz; }); return v; };
+        const Myx = x => { const {Iz1}=integrals(x); let m=My1+Vz1*x+Iz1; combinedPoints.forEach(p=>{ if(p.x<=x+1e-6) m+=p.Pz*(x-p.x); }); return m; };
+
+        // ── Deflection: double-integration of both bending planes, solved numerically by
+        // 4th-order Runge–Kutta from the FE-solved end displacements as initial conditions.
+        // y-plane (v,rz): dv/dx=rz, drz/dx=−Mz/EIz  — identical to the validated 2D relation.
+        // z-plane (w,ry): dw/dx=−ry, dry/dx=−My/EIy — derived & validated separately (the
+        // extra minus reflects the mirrored sign convention of the Iy stiffness block).
+        const uGlobal = g.map.map(i=>D[i]);
+        const uLocal = matMul(g.T, uGlobal.map(v=>[v])).map(r=>r[0]);
+        const [u1,v1,w1,rx1,ry1,rz1,u2,v2,w2,rx2,ry2,rz2] = uLocal;
+        const EIz=(+g.m.E||0)*(+g.m.Iz||0), EIy=(+g.m.E||0)*(+g.m.Iy||0);
+        const nRK=40, h=L/nRK;
+        const defl=[{ x:0, u:u1, v:v1, w:w1, rz:rz1, ry:ry1 }];
+        let vv=v1, rzz=rz1, ww=w1, ryy=ry1;
+        for(let i=0;i<nRK;i++){
+          const x=i*h;
+          const derivY=(xx,vS,rS)=> EIz>1e-9 ? [rS, -Mzx(xx)/EIz] : [ (v2-v1)/L, 0];
+          const derivZ=(xx,wS,rS)=> EIy>1e-9 ? [-rS, -Myx(xx)/EIy] : [ (w2-w1)/L, 0];
+          const k1y=derivY(x,vv,rzz), k1z=derivZ(x,ww,ryy);
+          const k2y=derivY(x+h/2,vv+h/2*k1y[0],rzz+h/2*k1y[1]), k2z=derivZ(x+h/2,ww+h/2*k1z[0],ryy+h/2*k1z[1]);
+          const k3y=derivY(x+h/2,vv+h/2*k2y[0],rzz+h/2*k2y[1]), k3z=derivZ(x+h/2,ww+h/2*k2z[0],ryy+h/2*k2z[1]);
+          const k4y=derivY(x+h,vv+h*k3y[0],rzz+h*k3y[1]), k4z=derivZ(x+h,ww+h*k3z[0],ryy+h*k3z[1]);
+          vv += h/6*(k1y[0]+2*k2y[0]+2*k3y[0]+k4y[0]); rzz += h/6*(k1y[1]+2*k2y[1]+2*k3y[1]+k4y[1]);
+          ww += h/6*(k1z[0]+2*k2z[0]+2*k3z[0]+k4z[0]); ryy += h/6*(k1z[1]+2*k2z[1]+2*k3z[1]+k4z[1]);
+          const xi1=(i+1)/nRK;
+          defl.push({ x:(i+1)*h, u:u1+(u2-u1)*xi1, v:vv, w:ww, rz:rzz, ry:ryy });
+        }
+        const Dx = x => {
+          const xc=Math.min(L,Math.max(0,x));
+          const idx=Math.min(nRK-1, Math.floor(xc/L*nRK));
+          const a=defl[idx], b=defl[idx+1]||a;
+          const frac = b.x>a.x ? (xc-a.x)/(b.x-a.x) : 0;
+          return { u:a.u+(b.u-a.u)*frac, v:a.v+(b.v-a.v)*frac, w:a.w+(b.w-a.w)*frac };
+        };
+        const deflBoundaryCheck = { vFar_RK4:defl[defl.length-1].v, vFar_FE:v2, wFar_RK4:defl[defl.length-1].w, wFar_FE:w2 };
+
+        memberSample[g.m.label] = { L, Nx, Vyx, Mzx, Vzx, Myx, Tx, Dx, lx:g.lx, ly:g.ly, lz:g.lz, deflBoundaryCheck };
+      });
+
+      return { D, R, memberEndForces, memberSample, dofIndex, nodeList };
+    }
+
+    function invGeneral(A){const n=A.length,I=zeros(n,n);for(let j=0;j<n;j++){const b=new Array(n).fill(0);b[j]=1;const x=gaussianSolve(A,b);for(let i=0;i<n;i++)I[i][j]=x[i];}return I;}
+    function jacobiModes(A,maxIter=500,tol=1e-10){const n=A.length,D=A.map(r=>[...r]),V=zeros(n,n);for(let i=0;i<n;i++)V[i][i]=1;for(let it=0;it<maxIter;it++){let p=0,q=1,m=0;for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)if(Math.abs(D[i][j])>m){m=Math.abs(D[i][j]);p=i;q=j;}if(m<tol)break;const ph=.5*Math.atan2(2*D[p][q],D[q][q]-D[p][p]),c=Math.cos(ph),z=Math.sin(ph),pp=D[p][p],qq=D[q][q],pq=D[p][q];for(let k=0;k<n;k++)if(k!==p&&k!==q){const kp=D[k][p],kq=D[k][q];D[k][p]=D[p][k]=c*kp-z*kq;D[k][q]=D[q][k]=z*kp+c*kq;}D[p][p]=c*c*pp-2*z*c*pq+z*z*qq;D[q][q]=z*z*pp+2*z*c*pq+c*c*qq;D[p][q]=D[q][p]=0;for(let k=0;k<n;k++){const kp=V[k][p],kq=V[k][q];V[k][p]=c*kp-z*kq;V[k][q]=z*kp+c*kq;}}return D.map((r,i)=>({value:r[i],vector:V.map(v=>v[i])})).sort((a,b)=>a.value-b.value);}
+    function specAt(points,T){const p=points.filter(x=>+x.T>=0&&+x.Sa>=0).slice().sort((a,b)=>a.T-b.T);if(!p.length)return 0;if(T<=p[0].T)return +p[0].Sa;if(T>=p.at(-1).T)return +p.at(-1).Sa;for(let i=1;i<p.length;i++)if(T<=p[i].T){const a=p[i-1],b=p[i];if(a.T>0&&a.Sa>0&&b.Sa>0){const f=Math.log(T/a.T)/Math.log(b.T/a.T);return Math.exp(Math.log(a.Sa)+f*Math.log(b.Sa/a.Sa));}return a.Sa+(b.Sa-a.Sa)*(T-a.T)/(b.T-a.T);}return 0;}
+    function srss(v){return Math.sqrt(v.reduce((q,x)=>q+(+x||0)*(+x||0),0));}
+    function massWeights3D(nodes,members,nodalLoads,memberLoads,caseName){const o={};nodes.forEach(n=>o[n.label]=0);nodalLoads.filter(l=>l.loadCase===caseName).forEach(l=>{if(o[l.node]!==undefined)o[l.node]+=Math.abs(+l.FZ||0);});const by={};nodes.forEach(n=>by[n.label]=n);memberLoads.filter(l=>l.loadCase===caseName).forEach(l=>{const m=members.find(x=>x.label===l.member),a=m&&by[m.near],b=m&&by[m.far];if(!m||!a||!b)return;const L=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z),W=l.type==="point"?Math.abs(+l.P||0):.5*(Math.abs(+l.w1||0)+Math.abs(+l.w2||0))*Math.max(0,(+l.s2||1)-(+l.s1||0))*L;o[m.near]+=W/2;o[m.far]+=W/2;});return o;}
+    function solveSpectrum3D(solved,nodes,members,nodalLoads,memberLoads,spectrum,settings){try{const free=solved.freeIdx,Kff=free.map(i=>free.map(j=>solved.K[i][j])),weights=massWeights3D(nodes,members,nodalLoads,memberLoads,settings.massSource),g=Math.max(1,+settings.gravity||9810),dir={X:0,Y:1,Z:2}[settings.direction]??0,mass=free.map(gd=>gd%6===dir?(weights[nodes[Math.floor(gd/6)].label]||0)/g:0),dyn=mass.map((m,i)=>m>1e-12?i:-1).filter(i=>i>=0),stat=mass.map((m,i)=>m<=1e-12?i:-1).filter(i=>i>=0);if(!dyn.length)return {error:"Selected mass-source case produced zero mass in the chosen direction."};let Kr=dyn.map(i=>dyn.map(j=>Kff[i][j]));if(stat.length){const Kss=stat.map(i=>stat.map(j=>Kff[i][j])),Ksd=stat.map(i=>dyn.map(j=>Kff[i][j])),Kds=dyn.map(i=>stat.map(j=>Kff[i][j])),Ts=matMul(invGeneral(Kss),Ksd).map(r=>r.map(x=>-x)),co=matMul(Kds,Ts);Kr=Kr.map((r,i)=>r.map((x,j)=>x+co[i][j]));}const im=dyn.map(i=>1/Math.sqrt(mass[i])),A=Kr.map((r,i)=>r.map((x,j)=>x*im[i]*im[j])),modes=[];jacobiModes(A).filter(e=>e.value>1e-12).slice(0,Math.min(+settings.modes||50,dyn.length)).forEach((e,k)=>{const w=Math.sqrt(e.value),T=2*Math.PI/w,phi=e.vector.map((x,i)=>x*im[i]),n=Math.sqrt(phi.reduce((q,x,i)=>q+mass[dyn[i]]*x*x,0));phi.forEach((_,i)=>phi[i]/=n);const den=phi.reduce((q,x,i)=>q+mass[dyn[i]]*x*x,0),gam=phi.reduce((q,x,i)=>q+mass[dyn[i]]*x,0)/den,Sa=specAt(spectrum,T)*(+settings.scale||1)*Math.sqrt(5/Math.max(.1,(+settings.damping||.05)*100)),Ff=new Array(free.length).fill(0);dyn.forEach((fi,i)=>Ff[fi]=mass[fi]*phi[i]*gam*Sa*g);const Df=gaussianSolve(Kff,Ff),D=new Array(solved.ndof).fill(0);free.forEach((gd,i)=>D[gd]=Df[i]);const R=matMul(solved.K,D.map(x=>[x])).map((r,i)=>r[0]-(free.includes(i)?Ff[free.indexOf(i)]:0)),me={};solved.memberGeom.forEach(gm=>{const ul=matMul(gm.T,gm.map.map(i=>D[i]).map(x=>[x])).map(r=>r[0]),q=matMul(gm.condK,ul.map(x=>[x])).map(r=>r[0]);me[gm.m.label]=q;});modes.push({mode:k+1,T,omega:w,Sa,Gamma:gam,effectiveMass:gam*gam*den,D,R,me,Ff});});if(!modes.length)return {error:"No dynamic modes found."};const D=new Array(solved.ndof).fill(0).map((_,i)=>srss(modes.map(m=>m.D[i]))),R=new Array(solved.ndof).fill(0).map((_,i)=>srss(modes.map(m=>m.R[i]))),memberEndForces={},memberSample={};solved.memberGeom.forEach(gm=>{const q=new Array(12).fill(0).map((_,i)=>srss(modes.map(m=>m.me[gm.m.label][i])));memberEndForces[gm.m.label]=q;const L=gm.L,interp=(fn,x)=>srss(modes.map(md=>fn(md.me[gm.m.label],x)));memberSample[gm.m.label]={L,lx:gm.lx,ly:gm.ly,lz:gm.lz,Nx:x=>interp(q=>-q[0],x),Tx:x=>interp(q=>-q[3],x),Vyx:x=>interp(q=>-q[1],x),Vzx:x=>interp(q=>q[2],x),Mzx:x=>interp((q,x)=>q[5]-q[1]*x,x),Myx:x=>interp((q,x)=>q[4]+q[2]*x,x),Dx:x=>({u:0,v:0,w:0})};});return {D,R,memberEndForces,memberSample,dofIndex:solved.dofIndex,nodeList:solved.nodeList,modes,label:"Response Spectrum (SRSS)",isSpectrum:true};}catch(e){return {error:e.message};}}
+    function SpectrumChart3D({points}){const p=points.slice().sort((a,b)=>a.T-b.T),W=720,H=220,P=42,mt=Math.max(1,...p.map(x=>+x.T||0)),ms=Math.max(.1,...p.map(x=>+x.Sa||0)),X=t=>P+t/mt*(W-2*P),Y=a=>H-P-a/ms*(H-2*P);return <svg width="100%" viewBox={`0 0 ${W} ${H}`}><line x1={P} y1={H-P} x2={W-P} y2={H-P} stroke={CLR.border}/><line x1={P} y1={P} x2={P} y2={H-P} stroke={CLR.border}/><polyline points={p.map(x=>`${X(x.T)},${Y(x.Sa)}`).join(" ")} fill="none" stroke={CLR.orange} strokeWidth="2.5"/>{p.map(x=><circle key={x.id} cx={X(x.T)} cy={Y(x.Sa)} r="3" fill={CLR.orange}/>)}</svg>;}
+
+    // ── FRAME GEOMETRY DIAGRAM (SVG) ─────────────────────────────────────────
+    // overlay: null | {type:'N'|'V'|'M', memberSample, scale}
+    // ── 3D → 2D PROJECTION ────────────────────────────────────────────────────
+    // Plan (XY), Front (XZ) and Side (YZ) are simple orthographic drops of one axis.
+    // Isometric is a standard two-rotation axonometric projection (rotate about Z by
+    // azimuth, then about the rotated X axis by elevation, then drop depth) — adjustable
+    // so the user can spin the view, not just the three fixed planes.
+    function projectRaw(x,y,z, view, az, el){
+      if(view==="XY") return { px:x, py:y };
+      if(view==="XZ") return { px:x, py:z };
+      if(view==="YZ") return { px:y, py:z };
+      const a=(az||0)*Math.PI/180, e=(el||0)*Math.PI/180;
+      const x1 = x*Math.cos(a) - y*Math.sin(a);
+      const y1 = x*Math.sin(a) + y*Math.cos(a);
+      const y2 = y1*Math.cos(e) - z*Math.sin(e);
+      const z2 = y1*Math.sin(e) + z*Math.cos(e);
+      return { px:x1, py:z2 };
+    }
+
+    function FrameDiagram({ nodes, members, overlay, showLabels=true, view="ISO", az=35, el=22 }){
+      if(!nodes || nodes.length===0) return null;
+      const W = 860, H = 460, PAD = 60;
+      const proj = (x,y,z) => projectRaw(x,y,z,view,az,el);
+      const pts = nodes.map(n=>proj(+n.x||0,+n.y||0,+n.z||0));
+      const pxs = pts.map(p=>p.px), pys = pts.map(p=>p.py);
+      const minPx=Math.min(...pxs), maxPx=Math.max(...pxs), minPy=Math.min(...pys), maxPy=Math.max(...pys);
+      const rangePx=(maxPx-minPx)||1, rangePy=(maxPy-minPy)||1;
+      const scale = Math.min((W-2*PAD)/rangePx, (H-2*PAD)/rangePy);
+      const offPx = (W - rangePx*scale)/2 - minPx*scale;
+      const offPy = (H - rangePy*scale)/2 - minPy*scale;
+      const toSvg = (x,y,z) => { const p=proj(x,y,z); return { sx: p.px*scale+offPx, sy: H - (p.py*scale+offPy) }; };
+
+      const nodeByLabel = {}; nodes.forEach(n=>{ nodeByLabel[n.label]=n; });
+
+      const SupportSymbol = ({ n }) => {
+        const { sx, sy } = toSvg(n.x, n.y, n.z);
+        const fullyFixed = n.ux&&n.uy&&n.uz&&n.rx&&n.ry&&n.rz;
+        const pinned = n.ux&&n.uy&&n.uz && !n.rx&&!n.ry&&!n.rz;
+        const nRestrained = ["ux","uy","uz","rx","ry","rz"].filter(k=>n[k]).length;
+        if(nRestrained===0) return null;
+        if(fullyFixed){
+          return (
+            <g>
+              <rect x={sx-8} y={sy+4} width={16} height={9} fill="none" stroke={CLR.green} strokeWidth={2} />
+              {Array.from({length:5}).map((_,i)=>(
+                <line key={i} x1={sx-8+i*4} y1={sy+13} x2={sx-11+i*4} y2={sy+19} stroke={CLR.green} strokeWidth={1.1} />
+              ))}
+            </g>
+          );
+        }
+        if(pinned){
+          return <polygon points={`${sx},${sy} ${sx-9},${sy+15} ${sx+9},${sy+15}`} fill="none" stroke={CLR.green} strokeWidth={2} />;
+        }
+        // partial restraint — small colored tick per restrained DOF, translations then rotations
+        const tKeys=["ux","uy","uz"], rKeys=["rx","ry","rz"];
+        return (
+          <g>
+            {tKeys.map((k,i)=> n[k] ? <line key={k} x1={sx-8+i*8} y1={sy+6} x2={sx-8+i*8} y2={sy+14} stroke={CLR.yellow} strokeWidth={2.2} /> : null)}
+            {rKeys.some(k=>n[k]) && <circle cx={sx} cy={sy+10} r={9} fill="none" stroke={CLR.yellow} strokeWidth={1.2} />}
+          </g>
+        );
+      };
+
+      // Build overlay shapes (offset along a chosen local axis, amplified in world space then projected)
+      const overlayShapes = [];
+      const overlayLabels = [];
+      const diagramFns = {
+        N:  { fn:(ms)=>ms.Nx,  axis:"lz", color:CLR.violet },
+        VY: { fn:(ms)=>ms.Vyx, axis:"ly", color:CLR.teal },
+        VZ: { fn:(ms)=>ms.Vzx, axis:"lz", color:CLR.teal },
+        MZ: { fn:(ms)=>ms.Mzx, axis:"ly", color:CLR.orange, tension:true },
+        MY: { fn:(ms)=>ms.Myx, axis:"lz", color:CLR.orange, tension:true },
+        T:  { fn:(ms)=>ms.Tx,  axis:"ly", color:CLR.violet },
+      };
+      if(overlay && overlay.memberSample && overlay.type!=="D" && diagramFns[overlay.type]){
+        const { type, fmt } = overlay;
+        const cfg = diagramFns[type];
+        let maxAbs = 1e-9;
+        Object.values(overlay.memberSample).forEach(ms=>{
+          const fn = cfg.fn(ms); const pts2=20;
+          for(let i=0;i<=pts2;i++){ const v=fn(ms.L*i/pts2); if(Math.abs(v)>maxAbs) maxAbs=Math.abs(v); }
+        });
+        const desiredPx = 50;
+        const ampWorld = (desiredPx/scale) / maxAbs;
+        members.forEach(m=>{
+          const ms = overlay.memberSample[m.label];
+          if(!ms) return;
+          const near = nodeByLabel[m.near], far = nodeByLabel[m.far];
+          if(!near||!far) return;
+          const fn = cfg.fn(ms);
+          const axisVec = ms[cfg.axis];
+          const dirSign = cfg.tension ? -1 : 1;
+          const pts2 = 24;
+          const poly=[], baseline=[];
+          for(let i=0;i<=pts2;i++){
+            const x = ms.L*i/pts2;
+            const gx=near.x+ms.lx[0]*x, gy=near.y+ms.lx[1]*x, gz=near.z+ms.lx[2]*x;
+            const v = fn(x);
+            const off = dirSign*v*ampWorld;
+            baseline.push(toSvg(gx,gy,gz));
+            poly.push(toSvg(gx+axisVec[0]*off, gy+axisVec[1]*off, gz+axisVec[2]*off));
+          }
+          const pathPts = [...poly, ...baseline.slice().reverse()].map(p=>`${p.sx},${p.sy}`).join(" ");
+          overlayShapes.push(<polygon key={m.id+"-fill"} points={pathPts} fill={cfg.color+"33"} stroke={cfg.color} strokeWidth={1.4} />);
+          if(fmt){
+            const vStart=fn(0), vEnd=fn(ms.L);
+            const labelOff = v => dirSign*v*ampWorld*1.25;
+            const s0 = labelOff(vStart), s1 = labelOff(vEnd);
+            const pS = toSvg(near.x+axisVec[0]*s0, near.y+axisVec[1]*s0, near.z+axisVec[2]*s0);
+            const pE = toSvg(far.x+axisVec[0]*s1, far.y+axisVec[1]*s1, far.z+axisVec[2]*s1);
+            overlayLabels.push(<text key={m.id+"-lblS"} x={pS.sx} y={pS.sy} textAnchor="middle" fontSize={9.5} fill={cfg.color} fontFamily="monospace" fontWeight="700">{fmt(vStart)}</text>);
+            overlayLabels.push(<text key={m.id+"-lblE"} x={pE.sx} y={pE.sy} textAnchor="middle" fontSize={9.5} fill={cfg.color} fontFamily="monospace" fontWeight="700">{fmt(vEnd)}</text>);
+          }
+        });
+      }
+
+      // Deflected-shape overlay (auto-exaggerated, drawn in true 3D then projected)
+      if(overlay && overlay.type==="D" && overlay.memberSample){
+        let maxDisp = 1e-9;
+        Object.values(overlay.memberSample).forEach(ms=>{
+          if(!ms.Dx) return;
+          const pts2=20;
+          for(let i=0;i<=pts2;i++){ const {u,v,w}=ms.Dx(ms.L*i/pts2); const mag=Math.sqrt(u*u+v*v+w*w); if(mag>maxDisp) maxDisp=mag; }
+        });
+        const desiredPx = 45;
+        const ampWorld = (desiredPx/scale) / maxDisp;
+        members.forEach(m=>{
+          const ms = overlay.memberSample[m.label];
+          if(!ms || !ms.Dx) return;
+          const near = nodeByLabel[m.near], far = nodeByLabel[m.far];
+          if(!near||!far) return;
+          const pts2 = 30;
+          let maxLocalDisp=1e-9, maxLocalPt=null;
+          const linePts = [];
+          for(let i=0;i<=pts2;i++){
+            const x = ms.L*i/pts2;
+            const gx=near.x+ms.lx[0]*x, gy=near.y+ms.lx[1]*x, gz=near.z+ms.lx[2]*x;
+            const { u,v,w } = ms.Dx(x);
+            const mag = Math.sqrt(u*u+v*v+w*w);
+            if(mag>maxLocalDisp){ maxLocalDisp=mag; maxLocalPt={x,u,v,w}; }
+            const dxg = u*ms.lx[0]+v*ms.ly[0]+w*ms.lz[0];
+            const dyg = u*ms.lx[1]+v*ms.ly[1]+w*ms.lz[1];
+            const dzg = u*ms.lx[2]+v*ms.ly[2]+w*ms.lz[2];
+            linePts.push(toSvg(gx+dxg*ampWorld, gy+dyg*ampWorld, gz+dzg*ampWorld));
+          }
+          const pathStr = linePts.map((p,i)=>(i===0?"M":"L")+p.sx.toFixed(2)+","+p.sy.toFixed(2)).join(" ");
+          overlayShapes.push(<path key={m.id+"-defl"} d={pathStr} fill="none" stroke={CLR.yellow} strokeWidth={2.2} strokeDasharray="6,4" strokeLinecap="round" />);
+          const p0=toSvg(near.x,near.y,near.z), p1=toSvg(far.x,far.y,far.z);
+          overlayShapes.push(<line key={m.id+"-def-orig"} x1={p0.sx} y1={p0.sy} x2={p1.sx} y2={p1.sy} stroke={CLR.border} strokeWidth={1} strokeDasharray="2,3" />);
+          if(overlay.fmt && maxLocalPt){
+            const { x,u,v,w } = maxLocalPt;
+            const gx=near.x+ms.lx[0]*x, gy=near.y+ms.lx[1]*x, gz=near.z+ms.lx[2]*x;
+            const dxg=u*ms.lx[0]+v*ms.ly[0]+w*ms.lz[0], dyg=u*ms.lx[1]+v*ms.ly[1]+w*ms.lz[1], dzg=u*ms.lx[2]+v*ms.ly[2]+w*ms.lz[2];
+            const p = toSvg(gx+dxg*ampWorld, gy+dyg*ampWorld, gz+dzg*ampWorld);
+            overlayLabels.push(<text key={m.id+"-defl-lbl"} x={p.sx} y={p.sy-9} textAnchor="middle" fontSize={9.5} fill={CLR.yellow} fontFamily="monospace" fontWeight="700">{overlay.fmt(maxLocalDisp)}</text>);
+          }
+        });
+      }
+
+      return (
+        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display:"block", margin:"0 auto", background:"transparent", overflow:"visible" }}>
+          {overlayShapes}
+          {overlayLabels}
+          {members.map(m=>{
+            const near = nodeByLabel[m.near], far = nodeByLabel[m.far];
+            if(!near||!far) return null;
+            const p1 = toSvg(near.x,near.y,near.z), p2 = toSvg(far.x,far.y,far.z);
+            const mid = { sx:(p1.sx+p2.sx)/2, sy:(p1.sy+p2.sy)/2 };
+            return (
+              <g key={m.id}>
+                <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.accent} strokeWidth={4} strokeLinecap="round" />
+                {showLabels && <text x={mid.sx} y={mid.sy-8} textAnchor="middle" fontSize={10} fill={CLR.muted} fontFamily="monospace">{m.label}</text>}
+              </g>
+            );
+          })}
+          {nodes.map(n=>{
+            const { sx, sy } = toSvg(n.x, n.y, n.z);
+            return (
+              <g key={n.id}>
+                <SupportSymbol n={n} />
+                <circle cx={sx} cy={sy} r={4.5} fill={CLR.text} stroke={CLR.bg} strokeWidth={1.2} />
+                {showLabels && <text x={sx+9} y={sy-9} fontSize={10} fill={CLR.text} fontFamily="monospace" fontWeight="700">{n.label}</text>}
+              </g>
+            );
+          })}
+        </svg>
+      );
+    }
+
+    // ── THEORY & DOCUMENTATION ───────────────────────────────────────────────
+    function TheoryView(){
+      useEffect(()=>{
+        if(window.MathJax && window.MathJax.typesetPromise){
+          window.MathJax.typesetPromise();
+        }
+      }, []);
+      const H3 = ({ children }) => <div style={{ fontSize:15, fontWeight:800, color:CLR.accent, marginTop:"1.5rem", marginBottom:"0.5rem" }}>{children}</div>;
+      const H4 = ({ children }) => <div style={{ fontSize:13, fontWeight:700, color:CLR.text, marginTop:"1rem", marginBottom:"0.5rem" }}>{children}</div>;
+      const P = ({ children }) => <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.75, marginBottom:"0.75rem" }}>{children}</p>;
+      return (
+        <div>
+          <div style={S.card}>
+            <div style={{ fontSize:18, fontWeight:800, color:CLR.accent, marginBottom:"1rem" }}>Theory &amp; Documentation — 3D Space Frame Analysis</div>
+
+            <H3>1. Engineering Theory</H3>
+            <P>This application performs a first-order, linear-elastic analysis of 3D space frames using the <strong>Direct Stiffness Method</strong> (DSM), following Kassimali, <em>Matrix Analysis of Structures</em>, McGuire, Gallagher &amp; Ziemian, <em>Matrix Structural Analysis</em>, and Przemieniecki, <em>Theory of Matrix Structural Analysis</em>. Each node has six degrees of freedom: translations {"\\(u_x,u_y,u_z\\)"} and rotations {"\\(\\theta_x,\\theta_y,\\theta_z\\)"}. Members are prismatic Euler–Bernoulli beam-columns (shear deformation neglected) that also carry axial force and St. Venant torsion.</P>
+
+            <H4>1.1 Local Member Stiffness Matrix (Equation 1)</H4>
+            <P>For a member of length {"\\(L\\)"}, with local DOF ordered {"\\(\\{u,v,w,\\theta_x,\\theta_y,\\theta_z\\}\\)"} at each end ({"\\(u\\)"}=axial, {"\\(v\\)"}=local-y, {"\\(w\\)"}=local-z, {"\\(\\theta_x\\)"}=twist), the 12×12 local stiffness decomposes into four uncoupled blocks superimposed on the same matrix:</P>
+            <div style={{overflowX:"auto", padding:"0.5rem 0"}}>
+            {"\\[ k_{axial}=\\frac{EA}{L}\\begin{bmatrix}1&-1\\\\-1&1\\end{bmatrix}_{u_1,u_2}, \\qquad k_{torsion}=\\frac{GJ}{L}\\begin{bmatrix}1&-1\\\\-1&1\\end{bmatrix}_{\\theta_{x1},\\theta_{x2}} \\]"}
+            {"\\[ k_{bend,z}=\\frac{EI_z}{L^3}\\begin{bmatrix}12&6L&-12&6L\\\\6L&4L^2&-6L&2L^2\\\\-12&-6L&12&-6L\\\\6L&2L^2&-6L&4L^2\\end{bmatrix}_{v_1,\\theta_{z1},v_2,\\theta_{z2}} \\quad \\text{(Equation 1a — in-plane, x-y)} \\]"}
+            {"\\[ k_{bend,y}=\\frac{EI_y}{L^3}\\begin{bmatrix}12&-6L&-12&-6L\\\\-6L&4L^2&6L&2L^2\\\\-12&6L&12&6L\\\\-6L&2L^2&6L&4L^2\\end{bmatrix}_{w_1,\\theta_{y1},w_2,\\theta_{y2}} \\quad \\text{(Equation 1b — out-of-plane, x-z)} \\]"}
+            </div>
+            <P>Equation 1b's sign pattern is mirrored relative to 1a by the right-hand-rule orientation of the {"\\(y\\)"} vs. {"\\(z\\)"} axes — substituting {"\\(\\theta_y\\to-\\theta_z\\)"} reduces it to the identical form as 1a. This was verified numerically (Theory §4) rather than assumed.</P>
+
+            <H4>1.2 Member Axes &amp; the Roll Angle β (Equation 2)</H4>
+            <P>Local-x is the member chord, {"\\(\\hat{e}_x=(\\text{far}-\\text{near})/L\\)"}. Local-y/z come from a reference vector {"\\(\\hat{r}\\)"} — global {"\\(Z\\)"} by default, or global {"\\(X\\)"} if the member is vertical (i.e. {"\\(\\hat{e}_x\\)"} nearly parallel to {"\\(Z\\)"}, avoiding the classic vertical-member singularity where {"\\(C_x=C_y=0\\)"}):</P>
+            <div style={{overflowX:"auto", padding:"0.5rem 0"}}>
+            {"\\[ \\hat{e}_y = \\frac{\\hat{r}\\times\\hat{e}_x}{|\\hat{r}\\times\\hat{e}_x|}, \\qquad \\hat{e}_z=\\hat{e}_x\\times\\hat{e}_y \\quad \\text{(Equation 2)} \\]"}
+            </div>
+            <P>The roll angle {"\\(\\beta\\)"} then rotates {"\\(\\hat{e}_y,\\hat{e}_z\\)"} about {"\\(\\hat{e}_x\\)"} by a standard 2D rotation, letting the user orient a section's strong axis arbitrarily (e.g. a beam's web vertical vs. a brace rolled 90°).</P>
+
+            <H4>1.3 Transformation Matrix (Equation 3)</H4>
+            <P>The 3×3 matrix {"\\([R]\\)"} whose rows are {"\\(\\hat{e}_x,\\hat{e}_y,\\hat{e}_z\\)"} (expressed in global coordinates) block-diagonalizes into the 12×12 transformation, repeated once per translation/rotation triple at each end:</P>
+            <div style={{overflowX:"auto", padding:"0.5rem 0"}}>
+            {"\\[ [T] = \\mathrm{blockdiag}([R],[R],[R],[R]), \\qquad [k]_{global} = [T]^{T}[k][T] \\quad \\text{(Equation 3)} \\]"}
+            </div>
+
+            <H4>1.4 Member End Releases (Equation 4)</H4>
+            <P>Static condensation (Guyan reduction) eliminates released rotational DOF from {"\\([k]\\)"} and the load vector {"\\(\\{f\\}\\)"} directly:</P>
+            <div style={{overflowX:"auto", padding:"0.5rem 0"}}>
+            {"\\[ [k]_{mod} = [k]_{cc} - [k]_{cr}[k]_{rr}^{-1}[k]_{rc}, \\qquad \\{f\\}_{mod} = \\{f\\}_c - [k]_{cr}[k]_{rr}^{-1}\\{f\\}_r \\quad \\text{(Equation 4)} \\]"}
+            </div>
+            <P>A member's Fixity (Fix-Fix / Pin-Fix / Fix-Pin / Pin-Pin) releases {"\\(\\theta_y\\)"} and {"\\(\\theta_z\\)"} together at the given end (a physical pin/hinge transmits no bending moment about either axis); the separate Near/Far torsion-release checkboxes additionally free {"\\(\\theta_x\\)"} (a true pin that also can't transmit twist — uncommon, but available). Any combination generalizes automatically, including a member released at both ends in every rotation (a two-force / truss-like member).</P>
+
+            <H4>1.5 Consistent Equivalent Nodal Loads (Equation 5)</H4>
+            <P>Member loads — specified in a global direction (X/Y/Z, practical for e.g. gravity, which is always −Z regardless of member orientation) or a local direction (y/z) — are projected onto the local y and z axes by dot product, then converted to energy-equivalent nodal loads with the same cubic Hermitian shape functions used in the 2D formulation, applied independently to each plane:</P>
+            <div style={{overflowX:"auto", padding:"0.5rem 0"}}>
+            {"\\[ \\{f\\}_y = \\int_0^L w_y(x)\\{H_1,H_2,H_3,H_4\\}\\,dx, \\qquad \\{f\\}_z = \\int_0^L w_z(x)\\{H_1,-H_2,H_3,-H_4\\}\\,dx \\quad \\text{(Equation 5)} \\]"}
+            </div>
+            <P>(the sign flip on {"\\(H_2,H_4\\)"} in the z-plane matches Equation 1b's mirrored block). This reproduces classical fixed-end force tables exactly for uniform, trapezoidal, and point loads in either plane — verified against closed-form cantilever deflections in both directions.</P>
+
+            <H4>1.6 Global Assembly, Solution &amp; Reactions (Equation 6)</H4>
+            <P>Condensed local matrices transform and superimpose into the global {"\\([K]\\)"}/{"\\(\\{F\\}\\)"} (6 DOF/node); restrained DOF are partitioned out and the free system solved by Gaussian elimination with partial pivoting:</P>
+            <div style={{overflowX:"auto", padding:"0.5rem 0"}}>
+            {"\\[ [K_{ff}]\\{D_f\\}=\\{F_f\\}, \\qquad \\{R\\}=[K]\\{D\\}-\\{F\\}\\ \\text{(restrained DOF)}, \\qquad \\{Q\\}=[k]_{mod}\\{u\\}_{local}-\\{f\\}_{mod} \\quad \\text{(Equation 6)} \\]"}
+            </div>
+
+            <H4>1.7 Internal Force Diagrams (Equation 7)</H4>
+            <P>Recovered end actions {"\\(N_1,V_{y1},T_1,M_{y1},M_{z1}\\)"} (Equation 6) sweep into continuous functions along the member:</P>
+            <div style={{overflowX:"auto", padding:"0.5rem 0"}}>
+            {"\\[ N(x)=-N_1, \\quad T(x)=-T_1, \\quad V_y(x)=-V_{y1}-\\!\\int_0^x\\! w_y\\,ds-\\Sigma P_y,\\quad M_z(x)=M_{z1}-V_{y1}x-\\!\\int_0^x\\! w_y(x-s)\\,ds-\\Sigma P_y(x-a) \\]"}
+            {"\\[ V_z(x)=+V_{z1}+\\!\\int_0^x\\! w_z\\,ds+\\Sigma P_z, \\qquad M_y(x)=M_{y1}+V_{z1}x+\\!\\int_0^x\\! w_z(x-s)\\,ds+\\Sigma P_z(x-a) \\quad \\text{(Equation 7)} \\]"}
+            </div>
+            <P>The {"\\(V_z/M_y\\)"} (out-of-plane) pair carries the opposite sign convention from {"\\(V_y/M_z\\)"} because of the mirrored Equation 1b stiffness block — verified numerically rather than assumed (Theory §4). {"\\(M_z\\)"} is plotted on the tension face (bulging toward whichever fibre is in tension); the raw Q-vector convention used in Results Table 3 differs by the same end-specific sign flips noted in the 2D tool.</P>
+
+            <H4>1.8 Deflected Shape — Double Integration by Runge–Kutta (Equation 8)</H4>
+            <P>Both bending planes integrate independently from the FE-solved end displacement/rotation (exact initial conditions), via 4th-order Runge–Kutta over 40 steps:</P>
+            <div style={{overflowX:"auto", padding:"0.5rem 0"}}>
+            {"\\[ \\frac{dv}{dx}=\\theta_z,\\ \\ \\frac{d\\theta_z}{dx}=-\\frac{M_z(x)}{EI_z} \\qquad\\text{and}\\qquad \\frac{dw}{dx}=-\\theta_y,\\ \\ \\frac{d\\theta_y}{dx}=-\\frac{M_y(x)}{EI_y} \\quad \\text{(Equation 8)} \\]"}
+            </div>
+            <P>The extra minus sign in the {"\\(w\\)"}-plane pair mirrors Equation 1b. As a built-in consistency check the program verifies both planes reproduce the independently-known far-end {"\\(v_2,w_2\\)"} from Equation 6; this was also checked against the classical {"\\(\\delta=PL^3/3EI\\)"} cantilever benchmark in each direction. Axial elongation and twist are interpolated linearly (no distributed axial load or torque is modeled).</P>
+
+            <H3>2. Coding Theory</H3>
+            <P>The program is a single-file React application (no build step; Babel Standalone transpiles JSX in-browser). Pressing <strong>Analyze</strong> calls <code>solveFrame()</code> once — it assembles {"\\([K]\\)"} a single time (6 DOF/node, independent of load case) and re-solves for each load case using the pre-factorable stiffness matrix; load <em>combinations</em> are obtained by <strong>linear superposition</strong> of the already-solved per-case results, no re-solve needed. The Results tab exposes a diagram-type selector (Axial / Shear-y / Shear-z / Moment-z / Moment-y / Torsion / Deflection) sampled via Equation 7/8 at points along each member.</P>
+            <P>Geometry is rendered by projecting 3D coordinates to 2D: Plan (X-Y), Front (X-Z) and Side (Y-Z) are simple orthographic drops of one axis; Isometric applies a two-rotation axonometric projection (about global Z by an adjustable azimuth, then about the rotated X axis by an adjustable elevation) before dropping depth — implemented directly in SVG rather than pulling in a 3D rendering library, keeping the tool a single dependency-light file. Diagram overlays and the deflected shape are computed in true 3D world coordinates (auto-exaggerated for visibility) and then passed through the same projection as the frame geometry, so they stay correctly attached to each member in every view.</P>
+            <P>All quantities are stored internally in canonical N/mm; the Force and Length unit selectors only affect the display/input boundary via dimensional exponents (e.g. {"\\(E\\)"} scales as force{"\\(^1\\)"}·length{"\\(^{-2}\\)"}, {"\\(I,J\\)"} as length{"\\(^4\\)"}), so any unit system — SI, US customary, or a mixed convention — works without touching the analysis.</P>
+
+            <H3>3. Solver Validation</H3>
+            <P>Rather than trust hand-derived signs, the 3D element was validated three independent ways before being wired into the UI: (1) a cantilever with a tip torque reproduces the closed-form {"\\(\\theta=TL/GJ\\)"} exactly; (2) a cantilever with an out-of-plane tip load reproduces {"\\(\\delta=PL^3/3EI_y\\)"} exactly, in both the {"\\(y\\)"} and {"\\(z\\)"} directions; (3) most decisively, the previously-validated 2D portal-frame example (matched against a published textbook answer key) was re-modeled flat in 3D space — collapsing the model back to a planar case — and the 3D solver reproduced that exact answer key to four significant figures, including under a distributed member load. A roll-angle sweep (β = 0°, 90°, 180°, 270°) was also checked to correctly swap which section property (Iy vs. Iz) governs the response to a fixed global load direction.</P>
+
+            <H3>4. References</H3>
+            <P style={{fontSize:12}}>
+              Kassimali, A. (2012). <em>Matrix Analysis of Structures</em> (2nd ed.). Cengage Learning.<br/><br/>
+              McGuire, W., Gallagher, R. H., &amp; Ziemian, R. D. (2014). <em>Matrix Structural Analysis</em> (2nd ed.). John Wiley &amp; Sons.<br/><br/>
+              Hibbeler, R. C. (2015). <em>Structural Analysis</em> (9th ed.). Pearson Prentice Hall.<br/><br/>
+              Przemieniecki, J. S. (1968). <em>Theory of Matrix Structural Analysis</em>. McGraw-Hill.<br/><br/>
+              American Institute of Steel Construction. (2022). <em>Steel Construction Manual</em> (16th ed.). AISC.
+            </P>
+          </div>
+        </div>
+      );
+    }
+
+    // ── APP ────────────────────────────────────────────────────────────────
+    function App(){
+      const [tab, setTab] = useState("inputs");
+      const tabs = [{id:"inputs", label:"Inputs"}, {id:"results", label:"Results"}, {id:"theory", label:"Theory"}];
+
+      const [nodes, setNodes] = useState(()=>DEFAULT_NODES.map(n=>({...n})));
+      const [members, setMembers] = useState(()=>DEFAULT_MEMBERS.map(m=>({...m})));
+      const [loadCases, setLoadCases] = useState(()=>DEFAULT_LOAD_CASES.map(c=>({...c})));
+      const [nodalLoads, setNodalLoads] = useState(()=>DEFAULT_NODAL_LOADS.map(l=>({...l})));
+      const [memberLoads, setMemberLoads] = useState(()=>DEFAULT_MEMBER_LOADS.map(l=>({...l})));
+      const [combos, setCombos] = useState(()=>DEFAULT_COMBOS.map(c=>({...c,enabled:c.enabled!==false,type:c.type||"Strength",description:c.description||"",terms:c.terms.map(t=>({...t}))})));
+      const [advanced,setAdvanced]=useState(DEFAULT_ADVANCED);
+      const [spectrum,setSpectrum]=useState(()=>DEFAULT_SPECTRUM.map(x=>({...x})));
+      const [rsSettings,setRsSettings]=useState(()=>({...DEFAULT_RS_SETTINGS}));
+      const [spectrumResults,setSpectrumResults]=useState({X:null,Y:null});
+
+      const [solved, setSolved] = useState(null);
+      const [solveError, setSolveError] = useState(null);
+      const [resultCaseKey, setResultCaseKey] = useState("combo:1");
+      const [diagramType, setDiagramType] = useState("MZ");
+      const [view, setView] = useState("ISO");
+      const [az, setAz] = useState(35);
+      const [el, setEl] = useState(22);
+      const [units, setUnits] = useState(()=>({ ...INITIAL_DISPLAY_UNITS }));
+      const D_ = DIM; // short alias used throughout the render below
+      const toDisp = (v, dim) => toDisplay(v, units, dim);
+      const toBse = (v, dim) => toBaseVal(v, units, dim);
+      const uLbl = dim => unitLabel(units, dim);
+
+      const nextId = useRef({ node:5, member:4, loadCase:3, nodalLoad:2, memberLoad:2, combo:3,spectrum:20 });
+
+      // ── generic row helpers ──
+      const updateRow = (setter, id, field, value) => setter(p=>p.map(r=>r.id===id?{...r,[field]:value}:r));
+      const delRow = (setter, id) => setter(p=>p.filter(r=>r.id!==id));
+
+      const addNode = () => { const id=nextId.current.node++; setNodes(p=>[...p,{id,label:`${id}`,x:0,y:0,z:0,ux:0,uy:0,uz:0,rx:0,ry:0,rz:0}]); };
+      const addMember = () => { const id=nextId.current.member++; setMembers(p=>[...p,{id,label:`M${id}`,near:nodes[0]?.label||"",far:nodes[1]?.label||"",E:200000,G:77000,A:10000,J:1e6,Iy:5e7,Iz:5e7,beta:0,fixity:"Fix-Fix",relNear:0,relFar:0}]); };
+      const addLoadCase = () => { const id=nextId.current.loadCase++; setLoadCases(p=>[...p,{id,name:`Case${id}`,type:"Other",description:"",enabled:true}]); };
+      const addNodalLoad = () => { const id=nextId.current.nodalLoad++; setNodalLoads(p=>[...p,{id,loadCase:loadCases[0]?.name||"",node:nodes[0]?.label||"",FX:0,FY:0,FZ:0,MX:0,MY:0,MZ:0}]); };
+      const addMemberLoad = () => { const id=nextId.current.memberLoad++; setMemberLoads(p=>[...p,{id,loadCase:loadCases[0]?.name||"",member:members[0]?.label||"",type:"udl",dir:"GZ",w1:0,w2:0,s1:0,s2:1,P:0,a:0}]); };
+      const addCombo = () => { const id=nextId.current.combo++; setCombos(p=>[...p,{id,name:`Combo${id}`,type:"Strength",description:"",enabled:true,terms:loadCases.map(lc=>({loadCase:lc.name,factor:0}))}]); };
+
+      const updateComboTerm = (comboId, loadCase, factor) => {
+        setCombos(p=>p.map(c=>{
+          if(c.id!==comboId) return c;
+          const exists = c.terms.some(t=>t.loadCase===loadCase);
+          const terms = exists ? c.terms.map(t=>t.loadCase===loadCase?{...t,factor}:t) : [...c.terms, {loadCase, factor}];
+          return {...c, terms};
+        }));
+      };
+      const comboFactorFor = (combo, loadCase) => {
+        const t = combo.terms.find(t=>t.loadCase===loadCase);
+        return t ? t.factor : 0;
+      };
+
+      useEffect(()=>{
+        const names=["Response Spectrum X","Response Spectrum Y"];
+        if(advanced){
+          setLoadCases(p=>{
+            const next=[...p];
+            names.forEach((name,i)=>{if(!next.some(c=>c.name===name))next.push({id:nextId.current.loadCase++,name,type:"Seismic",description:`Automatically generated SRSS response spectrum case in global ${i===0?"X":"Y"}`,enabled:true,generated:true});});
+            return next;
+          });
+        } else {
+          setLoadCases(p=>p.filter(c=>!c.generated));
+          setCombos(p=>p.map(c=>({...c,terms:(c.terms||[]).filter(t=>!names.includes(t.loadCase))})));
+          setSpectrumResults({X:null,Y:null});
+          if(resultCaseKey==="spectrum:X"||resultCaseKey==="spectrum:Y")setResultCaseKey(combos[0]?`combo:${combos[0].id}`:`case:${loadCases.find(c=>!c.generated)?.id||""}`);
+        }
+      },[advanced]);
+
+      const analyze = () => {
+        try {
+          const loadCaseNames = loadCases.filter(lc=>lc.enabled!==false&&!lc.generated).map(lc=>lc.name);
+          const result = solveFrame(nodes, members, memberLoads, nodalLoads, loadCaseNames);
+          if(result.error){ setSolveError(result.error); setSolved(null); }
+          else {
+            const firstErrCase = loadCaseNames.find(n=>result.caseResults[n] && result.caseResults[n].error);
+            if(firstErrCase){ setSolveError(`Load case "${firstErrCase}": ${result.caseResults[firstErrCase].error}`); setSolved(null); }
+            else {
+              setSolved(result);
+              if(advanced){
+                const xResult=solveSpectrum3D(result,nodes,members,nodalLoads,memberLoads,spectrum,{...rsSettings,direction:"X"});
+                const yResult=solveSpectrum3D(result,nodes,members,nodalLoads,memberLoads,spectrum,{...rsSettings,direction:"Y"});
+                setSpectrumResults({X:xResult&& !xResult.error?{...xResult,label:"Response Spectrum X (SRSS)",direction:"X"}:xResult,Y:yResult&& !yResult.error?{...yResult,label:"Response Spectrum Y (SRSS)",direction:"Y"}:yResult});
+              } else setSpectrumResults({X:null,Y:null});
+              setSolveError(null);setTab("results");
+            }
+          }
+        } catch(e){
+          setSolveError(e.message);
+          setSolved(null);
+        }
+      };
+
+      const activeResult = useMemo(()=>{
+        if(!solved) return null;
+        if(resultCaseKey==="spectrum:X") return spectrumResults.X;
+        if(resultCaseKey==="spectrum:Y") return spectrumResults.Y;
+        const [kind, idStr] = resultCaseKey.split(":");
+        const id = +idStr;
+        let terms;
+        let label;
+        if(kind==="combo"){
+          const combo = combos.find(c=>c.id===id);
+          if(!combo) return null;
+          terms = combo.terms.filter(t=>Math.abs(+t.factor||0)>1e-12);
+          label = combo.name;
+        } else {
+          const lc = loadCases.find(c=>c.id===id);
+          if(!lc) return null;
+          terms = [{loadCase:lc.name, factor:1}];
+          label = lc.name;
+        }
+        const combined = combineResults(solved, terms);
+        return { ...combined, label, terms };
+      }, [solved, resultCaseKey, combos, loadCases, spectrumResults]);
+
+      const reportDate = new Date().toLocaleString();
+
+      const printReport = () => {
+        if(!activeResult || activeResult.error) return;
+        if(window.MathJax && window.MathJax.typesetPromise){
+          window.MathJax.typesetPromise().then(()=>setTimeout(()=>window.print(), 250));
+        } else {
+          setTimeout(()=>window.print(), 100);
+        }
+      };
+
+      const saveWorkingFile = () => {
+        const safeJson = value => JSON.stringify(value, null, 2).replace(/</g, "\\u003c");
+        const replaceDefault = (source, name, value) => {
+          const serialized = typeof value === "string" ? JSON.stringify(value) : safeJson(value);
+          const pattern = new RegExp(`const\\\\s+${name}\\\\s*=\\\\s*[\\\\s\\\\S]*?;`);
+          return source.replace(pattern, `const ${name} = ${serialized};`);
+        };
+        const doc = document.cloneNode(true);
+        const root = doc.getElementById("root");
+        if(root) root.innerHTML = "";
+        let html = "<!DOCTYPE html>\\n" + doc.documentElement.outerHTML;
+        html = replaceDefault(html, "DEFAULT_NODES", nodes);
+        html = replaceDefault(html, "DEFAULT_MEMBERS", members);
+        html = replaceDefault(html, "DEFAULT_LOAD_CASES", loadCases);
+        html = replaceDefault(html, "DEFAULT_NODAL_LOADS", nodalLoads);
+        html = replaceDefault(html, "DEFAULT_MEMBER_LOADS", memberLoads);
+        html = replaceDefault(html, "DEFAULT_COMBOS", combos);
+        html = replaceDefault(html, "INITIAL_DISPLAY_UNITS", units);html=replaceDefault(html,"DEFAULT_ADVANCED",advanced);html=replaceDefault(html,"DEFAULT_SPECTRUM",spectrum);html=replaceDefault(html,"DEFAULT_RS_SETTINGS",rsSettings);
+        const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+        a.href = url;
+        a.download = `Space_Frames_v1_2_working_${stamp}.html`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      };
+
+      const nodeOptions = nodes.map(n=>n.label);
+      const memberOptions = members.map(m=>m.label);
+      const loadCaseOptions = loadCases.filter(c=>!c.generated).map(c=>c.name);
+
+      return (
+        <div style={S.app}>
+          <header style={S.header}>
+            <div>
+              <div style={{ fontSize:18, fontWeight:800, color:CLR.accent, letterSpacing:"0.05em" }}>Space Frames v1.2</div>
+              <div style={{ fontSize:10, color:CLR.muted, letterSpacing:"0.1em" }}>3D FRAME ANALYSIS — DIRECT STIFFNESS METHOD</div>
+            </div>
+            <nav style={S.nav}>
+              {tabs.map(t=>(
+                <button key={t.id} style={S.navBtn(tab===t.id)} onClick={()=>setTab(t.id)}>
+                  {t.label}
+                  {t.id==="results" && solved && !solveError && <span style={{ marginLeft:6, ...S.badge(CLR.green), fontSize:9, padding:"1px 5px" }}>✓</span>}
+                </button>
+              ))}
+            </nav>
+          </header>
+
+          <main style={S.main}>
+            {tab==="theory" && <TheoryView />}
+
+            {tab==="inputs" && (
+              <div>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:"1.5rem" }}>
+                  <div style={{ fontSize:20, fontWeight:800 }}>Model Inputs</div>
+                  <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"8px 18px", fontSize:13 }} onClick={saveWorkingFile}>💾 Save Working File</button>
+                  <button style={{ ...S.btn("primary"), padding:"8px 24px", fontSize:13 }} onClick={analyze}>▶ Analyze</button>
+                </div>
+
+                {solveError && (
+                  <div style={{ ...S.card, border:`1px solid ${CLR.red}`, marginBottom:"1.5rem" }}>
+                    <div style={{ color:CLR.red, fontWeight:700, fontSize:13 }}>Solver Error: {solveError}</div>
+                  </div>
+                )}
+
+                <div style={{ ...S.card }}>
+                  <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:10, marginBottom:"0.75rem" }}>
+                    <div style={S.h2}>Frame Geometry Preview</div>
+                    <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                      {["ISO","XY","XZ","YZ"].map(v=>(
+                        <button key={v} style={{ ...S.btn(view===v?"primary":"ghost"), padding:"5px 12px", fontSize:11 }} onClick={()=>setView(v)}>
+                          {v==="ISO"?"Isometric":v==="XY"?"Plan (X-Y)":v==="XZ"?"Front (X-Z)":"Side (Y-Z)"}
+                        </button>
+                      ))}
+                      {view==="ISO" && <>
+                        <label style={{ fontSize:11, color:CLR.muted }}>Az</label>
+                        <input style={{ ...S.input, width:56 }} type="number" value={az} onChange={e=>setAz(+e.target.value)} />
+                        <label style={{ fontSize:11, color:CLR.muted }}>El</label>
+                        <input style={{ ...S.input, width:56 }} type="number" value={el} onChange={e=>setEl(+e.target.value)} />
+                      </>}
+                    </div>
+                  </div>
+                  <FrameDiagram nodes={nodes} members={members} overlay={null} view={view} az={az} el={el} />
+                </div>
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                  <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}`, flexWrap:"wrap", gap:10 }}>
+                    <div>
+                      <div style={S.h2}>Units</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>All inputs and results convert instantly — internal storage stays exact regardless of display units.</div>
+                    </div>
+                    <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:14 }}>
+                      <label style={{fontSize:11,color:advanced?CLR.orange:CLR.muted,fontWeight:700}}><input type="checkbox" checked={advanced} onChange={e=>setAdvanced(e.target.checked)}/> Advanced</label><label style={{ fontSize:11, color:CLR.muted, fontWeight:700 }}>Force</label>
+                      <select style={S.select} value={units.force} onChange={e=>setUnits(u=>({...u, force:e.target.value}))}>
+                        {FORCE_UNIT_LIST.map(u=><option key={u} value={u}>{u}</option>)}
+                      </select>
+                      <label style={{ fontSize:11, color:CLR.muted, fontWeight:700 }}>Length</label>
+                      <select style={S.select} value={units.length} onChange={e=>setUnits(u=>({...u, length:e.target.value}))}>
+                        {LENGTH_UNIT_LIST.map(u=><option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {advanced&&<div style={{...S.card,padding:0,overflow:"hidden",border:`1px solid ${CLR.orange}66`}}><div style={{padding:"1rem 1.25rem",borderBottom:`1px solid ${CLR.border}`}}><div style={S.h2}>Advanced: 3D Response Spectrum Analysis — X and Y SRSS</div></div><div style={{padding:"1rem",display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:8}}><label style={{fontSize:10,color:CLR.muted}}>Mass source<select style={S.input} value={rsSettings.massSource} onChange={e=>setRsSettings(x=>({...x,massSource:e.target.value}))}>{loadCases.filter(c=>!c.generated).map(c=><option key={c.id}>{c.name}</option>)}</select></label><label style={{fontSize:10,color:CLR.muted}}>Generated directions<select style={S.input} value="XY" disabled><option value="XY">Global X + Global Y</option></select></label><label style={{fontSize:10,color:CLR.muted}}>Damping ratio<input style={S.input} type="number" step=".01" value={rsSettings.damping} onChange={e=>setRsSettings(x=>({...x,damping:+e.target.value}))}/></label><label style={{fontSize:10,color:CLR.muted}}>Modes<input style={S.input} type="number" value={rsSettings.modes} onChange={e=>setRsSettings(x=>({...x,modes:+e.target.value}))}/></label><label style={{fontSize:10,color:CLR.muted}}>Gravity (mm/s²)<input style={S.input} type="number" value={rsSettings.gravity} onChange={e=>setRsSettings(x=>({...x,gravity:+e.target.value}))}/></label><label style={{fontSize:10,color:CLR.muted}}>Scale<input style={S.input} type="number" value={rsSettings.scale} onChange={e=>setRsSettings(x=>({...x,scale:+e.target.value}))}/></label></div><div style={{display:"grid",gridTemplateColumns:"1fr 1.3fr",gap:12,padding:"0 1rem 1rem"}}><table style={S.table}><thead><tr><th style={S.th}>T (s)</th><th style={S.th}>Sa (g)</th><th style={S.th}>—</th></tr></thead><tbody>{spectrum.map(r=><tr key={r.id}><td style={S.td}><input style={S.input} type="number" value={r.T} onChange={e=>updateRow(setSpectrum,r.id,"T",+e.target.value)}/></td><td style={S.td}><input style={S.input} type="number" value={r.Sa} onChange={e=>updateRow(setSpectrum,r.id,"Sa",+e.target.value)}/></td><td style={S.td}><button style={{...S.btn("danger"),padding:"2px 7px"}} onClick={()=>delRow(setSpectrum,r.id)}>✕</button></td></tr>)}</tbody></table><SpectrumChart3D points={spectrum}/></div></div>}
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                  <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                    <div>
+                      <div style={S.h2}>Nodes</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>Coordinates in {units.length} (Z = up). Check a DOF to restrain it (support condition).</div>
+                    </div>
+                    <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addNode}>+ Add</button>
+                  </div>
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={S.table}>
+                      <thead><tr>
+                        <th style={S.th}>Label</th><th style={S.th}>X ({units.length})</th><th style={S.th}>Y ({units.length})</th><th style={S.th}>Z ({units.length})</th>
+                        <th style={S.th}>UX</th><th style={S.th}>UY</th><th style={S.th}>UZ</th><th style={S.th}>RX</th><th style={S.th}>RY</th><th style={S.th}>RZ</th>
+                        <th style={S.th}>Preset</th><th style={S.th}>—</th>
+                      </tr></thead>
+                      <tbody>
+                        {nodes.map((n,i)=>(
+                          <tr key={n.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                            <td style={S.td}><input style={S.input} value={n.label} onChange={e=>updateRow(setNodes,n.id,"label",e.target.value)} /></td>
+                            <td style={S.td}><input style={S.input} type="number" value={fmt4(toDisp(n.x,D_.length))} onChange={e=>updateRow(setNodes,n.id,"x",toBse(+e.target.value,D_.length))} /></td>
+                            <td style={S.td}><input style={S.input} type="number" value={fmt4(toDisp(n.y,D_.length))} onChange={e=>updateRow(setNodes,n.id,"y",toBse(+e.target.value,D_.length))} /></td>
+                            <td style={S.td}><input style={S.input} type="number" value={fmt4(toDisp(n.z,D_.length))} onChange={e=>updateRow(setNodes,n.id,"z",toBse(+e.target.value,D_.length))} /></td>
+                            {["ux","uy","uz","rx","ry","rz"].map(k=>(
+                              <td key={k} style={S.td}><input type="checkbox" checked={!!n[k]} onChange={e=>updateRow(setNodes,n.id,k,e.target.checked?1:0)} /></td>
+                            ))}
+                            <td style={S.td}>
+                              <select style={S.input} value="" onChange={e=>{
+                                const v=e.target.value;
+                                const set=(ux,uy,uz,rx,ry,rz)=>{ ["ux","uy","uz","rx","ry","rz"].forEach((k,idx)=>updateRow(setNodes,n.id,k,[ux,uy,uz,rx,ry,rz][idx])); };
+                                if(v==="fixed") set(1,1,1,1,1,1);
+                                else if(v==="pinned") set(1,1,1,0,0,0);
+                                else if(v==="free") set(0,0,0,0,0,0);
+                              }}>
+                                <option value="">—</option>
+                                <option value="fixed">Fixed</option>
+                                <option value="pinned">Pinned</option>
+                                <option value="free">Free</option>
+                              </select>
+                            </td>
+                            <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delRow(setNodes,n.id)}>✕</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                  <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                    <div>
+                      <div style={S.h2}>Members</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>E, G in {units.force}/{units.length}²; A in {units.length}²; J, Iy, Iz in {units.length}⁴; β = roll angle (deg). Fixity releases bending (My &amp; Mz) at that end; the torsion checkboxes separately release twist.</div>
+                    </div>
+                    <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addMember}>+ Add</button>
+                  </div>
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={S.table}>
+                      <thead><tr>
+                        <th style={S.th}>Label</th><th style={S.th}>Near</th><th style={S.th}>Far</th>
+                        <th style={S.th}>E</th><th style={S.th}>G</th><th style={S.th}>A</th><th style={S.th}>J</th><th style={S.th}>Iy</th><th style={S.th}>Iz</th>
+                        <th style={S.th}>β (°)</th><th style={S.th}>Fixity</th><th style={S.th}>Torsion Rel. (N/F)</th><th style={S.th}>—</th>
+                      </tr></thead>
+                      <tbody>
+                        {members.map((m,i)=>(
+                          <tr key={m.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                            <td style={S.td}><input style={{...S.input,width:44}} value={m.label} onChange={e=>updateRow(setMembers,m.id,"label",e.target.value)} /></td>
+                            <td style={S.td}>
+                              <select style={S.input} value={m.near} onChange={e=>updateRow(setMembers,m.id,"near",e.target.value)}>
+                                {nodeOptions.map(o=><option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </td>
+                            <td style={S.td}>
+                              <select style={S.input} value={m.far} onChange={e=>updateRow(setMembers,m.id,"far",e.target.value)}>
+                                {nodeOptions.map(o=><option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </td>
+                            <td style={S.td}><input style={{...S.input,width:60}} type="number" value={fmt2(toDisp(m.E,D_.pressure))} onChange={e=>updateRow(setMembers,m.id,"E",toBse(+e.target.value,D_.pressure))} /></td>
+                            <td style={S.td}><input style={{...S.input,width:60}} type="number" value={fmt2(toDisp(m.G,D_.pressure))} onChange={e=>updateRow(setMembers,m.id,"G",toBse(+e.target.value,D_.pressure))} /></td>
+                            <td style={S.td}><input style={{...S.input,width:56}} type="number" value={fmt4(toDisp(m.A,D_.area))} onChange={e=>updateRow(setMembers,m.id,"A",toBse(+e.target.value,D_.area))} /></td>
+                            <td style={S.td}><input style={{...S.input,width:56}} type="number" value={fmt4(toDisp(m.J,D_.inertia))} onChange={e=>updateRow(setMembers,m.id,"J",toBse(+e.target.value,D_.inertia))} /></td>
+                            <td style={S.td}><input style={{...S.input,width:56}} type="number" value={fmt4(toDisp(m.Iy,D_.inertia))} onChange={e=>updateRow(setMembers,m.id,"Iy",toBse(+e.target.value,D_.inertia))} /></td>
+                            <td style={S.td}><input style={{...S.input,width:56}} type="number" value={fmt4(toDisp(m.Iz,D_.inertia))} onChange={e=>updateRow(setMembers,m.id,"Iz",toBse(+e.target.value,D_.inertia))} /></td>
+                            <td style={S.td}><input style={{...S.input,width:48}} type="number" value={m.beta||0} onChange={e=>updateRow(setMembers,m.id,"beta",+e.target.value)} /></td>
+                            <td style={S.td}>
+                              <select style={S.input} value={m.fixity} onChange={e=>updateRow(setMembers,m.id,"fixity",e.target.value)}>
+                                {FIXITY_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </td>
+                            <td style={S.td}>
+                              <input type="checkbox" checked={!!m.relNear} onChange={e=>updateRow(setMembers,m.id,"relNear",e.target.checked?1:0)} />
+                              <input type="checkbox" style={{marginLeft:6}} checked={!!m.relFar} onChange={e=>updateRow(setMembers,m.id,"relFar",e.target.checked?1:0)} />
+                            </td>
+                            <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delRow(setMembers,m.id)}>✕</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                  <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                    <div>
+                      <div style={S.h2}>Load Cases</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>Define independent load cases (e.g. Dead, Live, Wind); combine them below.</div>
+                    </div>
+                    <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addLoadCase}>+ Add</button>
+                  </div>
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={S.table}>
+                      <thead><tr><th style={S.th}>Enabled</th><th style={S.th}>Name</th><th style={S.th}>Type</th><th style={S.th}>Description</th><th style={S.th}>—</th></tr></thead>
+                      <tbody>
+                        {loadCases.map((c,i)=>(
+                          <tr key={c.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                            <td style={S.td}><input type="checkbox" checked={c.enabled!==false} disabled={c.generated} onChange={e=>updateRow(setLoadCases,c.id,"enabled",e.target.checked)}/></td><td style={S.td}><input style={S.input} disabled={c.generated} value={c.name} onChange={e=>updateRow(setLoadCases,c.id,"name",e.target.value)} /></td><td style={S.td}><select style={S.input} disabled={c.generated} value={c.type||"Other"} onChange={e=>updateRow(setLoadCases,c.id,"type",e.target.value)}>{LOAD_CASE_TYPES.map(t=><option key={t}>{t}</option>)}</select></td><td style={S.td}><input style={S.input} value={c.description||""} onChange={e=>updateRow(setLoadCases,c.id,"description",e.target.value)}/></td>
+                            <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} disabled={c.generated} onClick={()=>delRow(setLoadCases,c.id)}>✕</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                  <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                    <div>
+                      <div style={S.h2}>Nodal Loads</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>Global directions. FX,FY,FZ in {units.force}; MX,MY,MZ in {units.force}·{units.length}.</div>
+                    </div>
+                    <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addNodalLoad}>+ Add</button>
+                  </div>
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={S.table}>
+                      <thead><tr>
+                        <th style={S.th}>Load Case</th><th style={S.th}>Node</th>
+                        <th style={S.th}>FX</th><th style={S.th}>FY</th><th style={S.th}>FZ</th>
+                        <th style={S.th}>MX</th><th style={S.th}>MY</th><th style={S.th}>MZ</th><th style={S.th}>—</th>
+                      </tr></thead>
+                      <tbody>
+                        {nodalLoads.map((l,i)=>(
+                          <tr key={l.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                            <td style={S.td}>
+                              <select style={S.input} value={l.loadCase} onChange={e=>updateRow(setNodalLoads,l.id,"loadCase",e.target.value)}>
+                                {loadCaseOptions.map(o=><option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </td>
+                            <td style={S.td}>
+                              <select style={S.input} value={l.node} onChange={e=>updateRow(setNodalLoads,l.id,"node",e.target.value)}>
+                                {nodeOptions.map(o=><option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </td>
+                            {["FX","FY","FZ"].map(k=>(
+                              <td key={k} style={S.td}><input style={{...S.input,width:64}} type="number" value={fmt3(toDisp(l[k],D_.force))} onChange={e=>updateRow(setNodalLoads,l.id,k,toBse(+e.target.value,D_.force))} /></td>
+                            ))}
+                            {["MX","MY","MZ"].map(k=>(
+                              <td key={k} style={S.td}><input style={{...S.input,width:64}} type="number" value={fmt3(toDisp(l[k],D_.moment))} onChange={e=>updateRow(setNodalLoads,l.id,k,toBse(+e.target.value,D_.moment))} /></td>
+                            ))}
+                            <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delRow(setNodalLoads,l.id)}>✕</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                  <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                    <div>
+                      <div style={S.h2}>Member Loads</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>Direction can be a global axis (e.g. gravity is always Global Z, whatever the member's orientation) or a local axis. UDL/trapezoidal (w1→w2) over a start/end fraction of span, or a point load P at distance a from the near node.</div>
+                    </div>
+                    <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addMemberLoad}>+ Add</button>
+                  </div>
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={S.table}>
+                      <thead><tr>
+                        <th style={S.th}>Load Case</th><th style={S.th}>Member</th><th style={S.th}>Type</th><th style={S.th}>Direction</th>
+                        <th style={S.th}>w1 ({units.force}/{units.length})</th><th style={S.th}>w2 ({units.force}/{units.length})</th><th style={S.th}>s1 (0–1)</th><th style={S.th}>s2 (0–1)</th>
+                        <th style={S.th}>P ({units.force})</th><th style={S.th}>a ({units.length})</th><th style={S.th}>—</th>
+                      </tr></thead>
+                      <tbody>
+                        {memberLoads.map((l,i)=>(
+                          <tr key={l.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                            <td style={S.td}>
+                              <select style={S.input} value={l.loadCase} onChange={e=>updateRow(setMemberLoads,l.id,"loadCase",e.target.value)}>
+                                {loadCaseOptions.map(o=><option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </td>
+                            <td style={S.td}>
+                              <select style={S.input} value={l.member} onChange={e=>updateRow(setMemberLoads,l.id,"member",e.target.value)}>
+                                {memberOptions.map(o=><option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </td>
+                            <td style={S.td}>
+                              <select style={S.input} value={l.type} onChange={e=>updateRow(setMemberLoads,l.id,"type",e.target.value)}>
+                                <option value="udl">UDL / Trapezoidal</option>
+                                <option value="point">Point Load</option>
+                              </select>
+                            </td>
+                            <td style={S.td}>
+                              <select style={S.input} value={l.dir||"GZ"} onChange={e=>updateRow(setMemberLoads,l.id,"dir",e.target.value)}>
+                                {LOAD_DIR_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+                              </select>
+                            </td>
+                            <td style={S.td}><input style={{...S.input,width:64}} type="number" step="any" disabled={l.type!=="udl"} value={fmt4(toDisp(l.w1,D_.distLoad))} onChange={e=>updateRow(setMemberLoads,l.id,"w1",toBse(+e.target.value,D_.distLoad))} /></td>
+                            <td style={S.td}><input style={{...S.input,width:64}} type="number" step="any" disabled={l.type!=="udl"} value={fmt4(toDisp(l.w2,D_.distLoad))} onChange={e=>updateRow(setMemberLoads,l.id,"w2",toBse(+e.target.value,D_.distLoad))} /></td>
+                            <td style={S.td}><input style={{...S.input,width:52}} type="number" step="any" min="0" max="1" disabled={l.type!=="udl"} value={l.s1} onChange={e=>updateRow(setMemberLoads,l.id,"s1",+e.target.value)} /></td>
+                            <td style={S.td}><input style={{...S.input,width:52}} type="number" step="any" min="0" max="1" disabled={l.type!=="udl"} value={l.s2} onChange={e=>updateRow(setMemberLoads,l.id,"s2",+e.target.value)} /></td>
+                            <td style={S.td}><input style={{...S.input,width:60}} type="number" step="any" disabled={l.type!=="point"} value={fmt3(toDisp(l.P,D_.force))} onChange={e=>updateRow(setMemberLoads,l.id,"P",toBse(+e.target.value,D_.force))} /></td>
+                            <td style={S.td}><input style={{...S.input,width:60}} type="number" step="any" disabled={l.type!=="point"} value={fmt3(toDisp(l.a,D_.length))} onChange={e=>updateRow(setMemberLoads,l.id,"a",toBse(+e.target.value,D_.length))} /></td>
+                            <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delRow(setMemberLoads,l.id)}>✕</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                  <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                    <div>
+                      <div style={S.h2}>Load Combinations</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>Each combination is a factored sum of load cases, obtained by linear superposition (no re-solve needed).</div>
+                    </div>
+                    <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addCombo}>+ Add</button>
+                  </div>
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={S.table}>
+                      <thead><tr>
+                        <th style={S.th}>Combination</th>
+                        {loadCaseOptions.map(o=><th key={o} style={S.th}>{o} Factor</th>)}
+                        <th style={S.th}>—</th>
+                      </tr></thead>
+                      <tbody>
+                        {combos.map((c,i)=>(
+                          <tr key={c.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                            <td style={S.td}><input style={S.input} value={c.name} onChange={e=>updateRow(setCombos,c.id,"name",e.target.value)} /></td>
+                            {loadCaseOptions.map(o=>(
+                              <td key={o} style={S.td}>
+                                <input style={S.input} type="number" step="any" value={comboFactorFor(c,o)} onChange={e=>updateComboTerm(c.id,o,+e.target.value)} />
+                              </td>
+                            ))}
+                            <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delRow(setCombos,c.id)}>✕</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tab==="results" && (
+              solved===null ? (
+                <div style={S.card}>
+                  <div style={{ color:CLR.muted, fontSize:13 }}>No results yet — go to the Inputs tab and click <strong>Analyze</strong>.</div>
+                </div>
+              ) : (!activeResult || activeResult.error) ? (
+                <div style={{ ...S.card, border:`1px solid ${CLR.red}` }}>
+                  <div style={{ color:CLR.red, fontWeight:700 }}>Error: {activeResult ? activeResult.error : "No result case selected."}</div>
+                </div>
+              ) : (
+                <div className="report-results-block">
+                  <div className="screen-only" style={{ display:"flex", alignItems:"center", gap:12, marginBottom:"1.25rem", flexWrap:"wrap" }}>
+                    <div>
+                      <div style={{ fontSize:20, fontWeight:800 }}>Analysis Results</div>
+                      <div style={{ fontSize:11, color:CLR.muted }}>Use the report button to print or save this results package as a PDF.</div>
+                    </div>
+                    <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                      <label style={{ fontSize:11, color:CLR.muted, textTransform:"uppercase", fontWeight:700 }}>Result Case</label>
+                      <select style={{ ...S.input, width:200, textAlign:"left" }} value={resultCaseKey} onChange={e=>setResultCaseKey(e.target.value)}>
+                        {advanced&&spectrumResults.X&&!spectrumResults.X.error&&<option value="spectrum:X">Response Spectrum X (SRSS)</option>}
+                        {advanced&&spectrumResults.Y&&!spectrumResults.Y.error&&<option value="spectrum:Y">Response Spectrum Y (SRSS)</option>}
+                        <optgroup label="Combinations">
+                          {combos.filter(c=>c.enabled!==false).map(c=><option key={"combo:"+c.id} value={"combo:"+c.id}>{c.name}</option>)}
+                        </optgroup>
+                        <optgroup label="Load Cases">
+                          {loadCases.filter(c=>!c.generated&&c.enabled!==false).map(c=><option key={"case:"+c.id} value={"case:"+c.id}>{c.name}</option>)}
+                        </optgroup>
+                      </select>
+                      <label style={{ fontSize:11, color:CLR.muted, textTransform:"uppercase", fontWeight:700 }}>Diagram</label>
+                      <select style={{ ...S.input, width:210, textAlign:"left" }} value={diagramType} onChange={e=>setDiagramType(e.target.value)}>
+                        <option value="N">Axial Force (AFD)</option>
+                        <option value="VY">Shear-y (SFD-y, in-plane)</option>
+                        <option value="VZ">Shear-z (SFD-z, out-of-plane)</option>
+                        <option value="MZ">Moment-z (BMD-z, tension face)</option>
+                        <option value="MY">Moment-y (BMD-y, tension face)</option>
+                        <option value="T">Torsion (TD)</option>
+                        <option value="D">Deflection (DD)</option>
+                      </select>
+                      <button style={{ ...S.btn("primary"), padding:"8px 20px", fontSize:13 }} onClick={printReport}>🖨 Print / Save PDF Report</button>
+                    </div>
+                  </div>
+
+                  <div className="print-report-header">
+                    <h1>Space Frames v1.2 — Frame Analysis Report</h1>
+                    <div className="meta">
+                      3D Direct Stiffness Method | Result Case: {activeResult.label} | Units: {units.force}, {units.length}<br/>
+                      Generated: {reportDate}<br/>
+                      Nodes: {nodes.length} | Members: {members.length} | Load Cases: {loadCases.length}
+                    </div>
+                  </div>
+
+                  <div className="print-avoid print-diagram-section" style={{ ...S.card, marginBottom:"1.5rem" }}>
+                    <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:10, marginBottom:"0.5rem" }}>
+                      <div style={S.h2}>
+                        {({N:"Axial Force Diagram",VY:"Shear-y Diagram",VZ:"Shear-z Diagram",MZ:"Moment-z Diagram (Tension Face)",MY:"Moment-y Diagram (Tension Face)",T:"Torsion Diagram",D:"Deflection Diagram (exaggerated)"})[diagramType]} — {activeResult.label}
+                      </div>
+                      <div className="screen-only" style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                        {["ISO","XY","XZ","YZ"].map(v=>(
+                          <button key={v} style={{ ...S.btn(view===v?"primary":"ghost"), padding:"4px 10px", fontSize:10.5 }} onClick={()=>setView(v)}>
+                            {v==="ISO"?"Iso":v==="XY"?"Plan":v==="XZ"?"Front":"Side"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <FrameDiagram nodes={nodes} members={members} view={view} az={az} el={el} overlay={{
+                      type: diagramType,
+                      memberSample: activeResult.memberSample,
+                      fmt: diagramType==="D" ? (v=>fmt4(toDisp(v,D_.length))+" "+units.length)
+                         : (diagramType==="MZ"||diagramType==="MY") ? (v=>fmt2(toDisp(v,D_.moment))+" "+units.force+"·"+units.length)
+                         : (v=>fmt2(toDisp(v,D_.force))+" "+units.force),
+                    }} />
+                    <div style={{ fontSize:10.5, color:CLR.muted, marginTop:"0.75rem", lineHeight:1.6 }}>
+                      {diagramType==="D"
+                        ? "Deflected shape from double integration of both bending planes (dv/dx=θz, dθz/dx=−Mz/EIz and dw/dx=−θy, dθy/dx=−My/EIy), solved numerically by 4th-order Runge–Kutta with the FE-solved end displacement/rotation as initial conditions. Yellow label marks the largest 3D displacement magnitude along each member; the dashed grey line is the undeformed member."
+                        : "Diagram values follow the internal-force sweep from the near end (start label) to the far end (end label) — Equation 7 in Theory. This can differ in sign from the raw Q-vector convention used in Table 3 below — see the note under that table."}
+                    </div>
+                  </div>
+
+                  {activeResult.isSpectrum&&<div className="print-avoid print-table-section" style={{...S.card,padding:0,overflow:"hidden",marginBottom:"1.5rem"}}><div style={{padding:"1rem 1.25rem",borderBottom:`1px solid ${CLR.border}`}}><div style={S.h2}>3D Modal Properties — {activeResult.direction||""} Direction SRSS</div></div><table style={S.table}><thead><tr><th style={S.th}>Mode</th><th style={S.th}>Period (s)</th><th style={S.th}>Sa (g)</th><th style={S.th}>Γ</th><th style={S.th}>Effective Mass</th></tr></thead><tbody>{activeResult.modes.map(m=><tr key={m.mode}><td style={S.td}>{m.mode}</td><td style={S.td}>{fmt4(m.T)}</td><td style={S.td}>{fmt4(m.Sa)}</td><td style={S.td}>{fmt4(m.Gamma)}</td><td style={S.td}>{fmt3(m.effectiveMass)}</td></tr>)}</tbody></table></div>}
+                  <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden", marginBottom:"1.5rem" }}>
+                    <div style={{ padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}><div style={S.h2}>Table 1: Support Reactions</div></div>
+                    <div style={{ overflowX:"auto" }}>
+                      <table style={S.table}>
+                        <thead><tr>
+                          <th style={S.th}>Node</th><th style={S.th}>Rx</th><th style={S.th}>Ry</th><th style={S.th}>Rz</th>
+                          <th style={S.th}>Mx</th><th style={S.th}>My</th><th style={S.th}>Mz</th>
+                        </tr></thead>
+                        <tbody>
+                          {nodes.filter(n=>n.ux||n.uy||n.uz||n.rx||n.ry||n.rz).map((n,i)=>{
+                            const gi = activeResult.dofIndex[n.label];
+                            const keys=["ux","uy","uz","rx","ry","rz"];
+                            return (
+                              <tr key={n.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                                <td style={{...S.td, fontWeight:700, color:CLR.accent}}>{n.label}</td>
+                                {keys.map((k,idx)=>(
+                                  <td key={k} style={S.td}>{n[k] ? fmt3(toDisp(activeResult.R[gi+idx], idx<3?D_.force:D_.moment)) : "—"}</td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden", marginBottom:"1.5rem" }}>
+                    <div style={{ padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}><div style={S.h2}>Table 2: Nodal Displacements</div></div>
+                    <div style={{ overflowX:"auto" }}>
+                      <table style={S.table}>
+                        <thead><tr>
+                          <th style={S.th}>Node</th><th style={S.th}>Ux</th><th style={S.th}>Uy</th><th style={S.th}>Uz</th>
+                          <th style={S.th}>Rx (rad)</th><th style={S.th}>Ry (rad)</th><th style={S.th}>Rz (rad)</th>
+                        </tr></thead>
+                        <tbody>
+                          {nodes.map((n,i)=>{
+                            const gi = activeResult.dofIndex[n.label];
+                            return (
+                              <tr key={n.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                                <td style={{...S.td, fontWeight:700, color:CLR.accent}}>{n.label}</td>
+                                <td style={S.td}>{fmt6(toDisp(activeResult.D[gi],D_.length))}</td>
+                                <td style={S.td}>{fmt6(toDisp(activeResult.D[gi+1],D_.length))}</td>
+                                <td style={S.td}>{fmt6(toDisp(activeResult.D[gi+2],D_.length))}</td>
+                                <td style={S.td}>{fmt6(activeResult.D[gi+3])}</td>
+                                <td style={S.td}>{fmt6(activeResult.D[gi+4])}</td>
+                                <td style={S.td}>{fmt6(activeResult.D[gi+5])}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                    <div style={{ padding:"1rem 1.25rem", borderBottom:`1px solid ${CLR.border}` }}>
+                      <div style={S.h2}>Table 3: Member End Actions — Q Vector (Stiffness-Method Convention)</div>
+                      <div style={{ fontSize:11, color:CLR.muted, marginTop:4 }}>Local-axis end forces exactly as recovered from the stiffness solution — the force/moment the joint applies to the member end, positive in the local +x/+y/+z directions, matching the classical matrix-analysis convention (Kassimali, McGuire et al.). This differs by end-specific sign flips from the diagram sweep above; both are correct, self-consistent conventions for their respective purpose (see Theory §1.7).</div>
+                    </div>
+                    <div style={{ overflowX:"auto" }}>
+                      <table style={S.table}>
+                        <thead><tr>
+                          <th style={S.th}>Member</th><th style={S.th}>End</th>
+                          <th style={S.th}>N</th><th style={S.th}>Vy</th><th style={S.th}>Vz</th>
+                          <th style={S.th}>T</th><th style={S.th}>My</th><th style={S.th}>Mz</th>
+                        </tr></thead>
+                        <tbody>
+                          {members.map((m,i)=>{
+                            const q = activeResult.memberEndForces[m.label];
+                            if(!q) return null;
+                            const row = (label, idxN,idxVy,idxVz,idxT,idxMy,idxMz) => (
+                              <tr style={{ background: i%2===0?"transparent":"#ffffff05" }}>
+                                {label==="Near (1)" && <td style={{...S.td, fontWeight:700, color:CLR.accent}} rowSpan={2}>{m.label}</td>}
+                                <td style={S.td}>{label}</td>
+                                <td style={S.td}>{fmt3(toDisp(q[idxN],D_.force))}</td>
+                                <td style={S.td}>{fmt3(toDisp(q[idxVy],D_.force))}</td>
+                                <td style={S.td}>{fmt3(toDisp(q[idxVz],D_.force))}</td>
+                                <td style={S.td}>{fmt3(toDisp(q[idxT],D_.moment))}</td>
+                                <td style={S.td}>{fmt3(toDisp(q[idxMy],D_.moment))}</td>
+                                <td style={S.td}>{fmt3(toDisp(q[idxMz],D_.moment))}</td>
+                              </tr>
+                            );
+                            return (
+                              <React.Fragment key={m.id}>
+                                {row("Near (1)", 0,1,2,3,4,5)}
+                                {row("Far (2)", 6,7,8,9,10,11)}
+                              </React.Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById("root"));
+  </script>
+</body>
+</html>
