@@ -28,27 +28,30 @@
   .print-avoid { break-inside: avoid; page-break-inside: avoid; }
 
   @media print {
-    @page { size: letter portrait; margin: 0.55in; }
-    html, body { background:#fff !important; color:#111827 !important; font-family: Arial, Helvetica, sans-serif !important; font-size:10pt !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-    * { color:#111827 !important; border-color:#c9ced6 !important; box-shadow:none !important; text-shadow:none !important; }
+    @page { size: letter portrait; margin: 0.55in; background:#0d1117; }
+    html, body { background:#0d1117 !important; color:#e6edf3 !important; color-scheme: dark !important; font-family: Arial, Helvetica, sans-serif !important; font-size:10pt !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    body::before { content:""; position:fixed; inset:0; z-index:-1000; background:#0d1117 !important; }
+    * { border-color:#30363d !important; box-shadow:none !important; text-shadow:none !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
     header, nav, .screen-only { display:none !important; }
-    #root, main { background:#fff !important; padding:0 !important; margin:0 !important; max-width:none !important; width:100% !important; }
-    .print-report-header { display:block !important; margin:0 0 14pt 0 !important; padding-bottom:10pt !important; border-bottom:2px solid #111827 !important; break-after:avoid; page-break-after:avoid; }
-    .print-report-header h1 { font-size:18pt !important; line-height:1.2 !important; margin:0 0 4pt 0 !important; font-weight:800 !important; }
-    .print-report-header .meta { font-size:8.5pt !important; line-height:1.45 !important; color:#374151 !important; }
-    .print-avoid { background:#fff !important; border:1px solid #c9ced6 !important; border-radius:0 !important; margin:0 0 12pt 0 !important; padding:10pt !important; overflow:visible !important; break-inside:avoid !important; page-break-inside:avoid !important; }
+    #root, main { background:#0d1117 !important; color:#e6edf3 !important; padding:0 !important; margin:0 !important; max-width:none !important; width:100% !important; }
+    .print-report-header { display:block !important; margin:0 0 14pt 0 !important; padding-bottom:10pt !important; border-bottom:2px solid #58a6ff !important; break-after:avoid; page-break-after:avoid; background:#0d1117 !important; }
+    .print-report-header h1 { font-size:18pt !important; line-height:1.2 !important; margin:0 0 4pt 0 !important; font-weight:800 !important; color:#58a6ff !important; }
+    .print-report-header .meta { font-size:8.5pt !important; line-height:1.45 !important; color:#8b949e !important; }
+    .print-avoid { background:#1c2333 !important; color:#e6edf3 !important; border:1px solid #30363d !important; border-radius:0 !important; margin:0 0 12pt 0 !important; padding:10pt !important; overflow:visible !important; break-inside:avoid !important; page-break-inside:avoid !important; }
     .print-table-section { padding:0 !important; }
-    .print-table-section > div:first-child, .print-diagram-section > div:first-child { padding:8pt 9pt !important; background:#eef2f7 !important; border-bottom:1px solid #c9ced6 !important; }
+    .print-table-section > div:first-child, .print-diagram-section > div:first-child { padding:8pt 9pt !important; background:#161b22 !important; color:#58a6ff !important; border-bottom:1px solid #30363d !important; }
     .print-table-section > div:nth-child(2) { overflow:visible !important; }
-    table { width:100% !important; border-collapse:collapse !important; font-size:8.3pt !important; page-break-inside:auto !important; }
+    table { width:100% !important; border-collapse:collapse !important; font-size:8.3pt !important; page-break-inside:auto !important; background:#161b22 !important; }
     thead { display:table-header-group !important; } tfoot { display:table-footer-group !important; }
     tr { break-inside:avoid !important; page-break-inside:avoid !important; }
-    th, td { padding:4pt 4.5pt !important; border:1px solid #c9ced6 !important; background:#fff !important; color:#111827 !important; }
-    th { background:#e8edf5 !important; font-size:7.6pt !important; font-weight:700 !important; }
-    svg { max-width:100% !important; height:auto !important; display:block !important; margin-left:auto !important; margin-right:auto !important; break-inside:avoid !important; page-break-inside:avoid !important; }
+    th, td { padding:4pt 4.5pt !important; border:1px solid #30363d !important; background:#1c2333 !important; color:#e6edf3 !important; }
+    th { background:#21262d !important; color:#8b949e !important; font-size:7.6pt !important; font-weight:700 !important; }
+    svg { max-width:100% !important; height:auto !important; display:block !important; margin-left:auto !important; margin-right:auto !important; break-inside:avoid !important; page-break-inside:avoid !important; background:#0d1117 !important; }
     .print-diagram-section { break-inside:avoid !important; page-break-inside:avoid !important; }
     .print-diagram-section svg { max-height:2.8in !important; }
-    .MathJax { break-inside:avoid !important; page-break-inside:avoid !important; }
+    .MathJax { break-inside:avoid !important; page-break-inside:avoid !important; color:#e6edf3 !important; }
+    .printSection { display:block !important; }
+    .printSection + .printSection { margin-top:0; break-before:page; page-break-before:always; }
   }
 </style>
 </head>
@@ -873,8 +876,12 @@ function App(){
       </header>
       <main style={S.main}>
         {tab==="inputs" && <InputsView inp={inp} setField={setField} sp={preview.sp} fibers={preview.fibers} onAnalyze={analyze} onSave={saveWorkingFile} />}
-        {tab==="results" && <ResultsView inp={inp} result={result} reportDate={reportDate} />}
-        {tab==="theory" && <TheoryView />}
+        <div className="printSection" style={{display: tab==="results" ? "block" : "none"}}>
+          <ResultsView inp={inp} result={result} reportDate={reportDate} />
+        </div>
+        <div className="printSection" style={{display: tab==="theory" ? "block" : "none"}}>
+          <TheoryView />
+        </div>
       </main>
     </div>
   );
