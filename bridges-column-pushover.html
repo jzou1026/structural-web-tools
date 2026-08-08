@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Circular RC Column Pushover Analysis Tool v1.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="mathjax-script"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; color: #e6edf3; font-family: 'JetBrains Mono','Fira Code','Cascadia Code',monospace; }
+  input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+  select { -webkit-appearance: none; appearance: none; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #0d1117; }
+  ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+  .print-report-header { display: none; }
+  .screen-only { display: inherit; }
+  .print-avoid { break-inside: avoid; page-break-inside: avoid; }
+
+  @media print {
+    @page { size: letter portrait; margin: 0.55in; }
+    html, body { background:#fff !important; color:#111827 !important; font-family: Arial, Helvetica, sans-serif !important; font-size:10pt !important; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    * { color:#111827 !important; border-color:#c9ced6 !important; box-shadow:none !important; text-shadow:none !important; }
+    header, nav, .screen-only { display:none !important; }
+    #root, main { background:#fff !important; padding:0 !important; margin:0 !important; max-width:none !important; width:100% !important; }
+    .print-report-header { display:block !important; margin:0 0 14pt 0 !important; padding-bottom:10pt !important; border-bottom:2px solid #111827 !important; break-after:avoid; page-break-after:avoid; }
+    .print-report-header h1 { font-size:18pt !important; line-height:1.2 !important; margin:0 0 4pt 0 !important; font-weight:800 !important; }
+    .print-report-header .meta { font-size:8.5pt !important; line-height:1.45 !important; color:#374151 !important; }
+    .print-avoid { background:#fff !important; border:1px solid #c9ced6 !important; border-radius:0 !important; margin:0 0 12pt 0 !important; padding:10pt !important; overflow:visible !important; break-inside:avoid !important; page-break-inside:avoid !important; }
+    .print-table-section { padding:0 !important; }
+    .print-table-section > div:first-child, .print-diagram-section > div:first-child { padding:8pt 9pt !important; background:#eef2f7 !important; border-bottom:1px solid #c9ced6 !important; }
+    .print-table-section > div:nth-child(2) { overflow:visible !important; }
+    table { width:100% !important; border-collapse:collapse !important; font-size:8.3pt !important; page-break-inside:auto !important; }
+    thead { display:table-header-group !important; } tfoot { display:table-footer-group !important; }
+    tr { break-inside:avoid !important; page-break-inside:avoid !important; }
+    th, td { padding:4pt 4.5pt !important; border:1px solid #c9ced6 !important; background:#fff !important; color:#111827 !important; }
+    th { background:#e8edf5 !important; font-size:7.6pt !important; font-weight:700 !important; }
+    svg { max-width:100% !important; height:auto !important; display:block !important; margin-left:auto !important; margin-right:auto !important; break-inside:avoid !important; page-break-inside:avoid !important; }
+    .print-diagram-section { break-inside:avoid !important; page-break-inside:avoid !important; }
+    .print-diagram-section svg { max-height:2.8in !important; }
+    .MathJax { break-inside:avoid !important; page-break-inside:avoid !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useRef, useEffect } = React;
+
+// ── COLORS (extracted from suite master template, reused exactly) ─────────
+const CLR = {
+  bg:"#0d1117", surface:"#161b22", card:"#1c2333", border:"#30363d",
+  accent:"#58a6ff", green:"#3fb950", red:"#f85149", yellow:"#d29922",
+  text:"#e6edf3", muted:"#8b949e", teal:"#39d353", violet:"#bc8cff", orange:"#f0883e",
+};
+const S = {
+  app:{ minHeight:"100vh", background:CLR.bg, color:CLR.text, display:"flex", flexDirection:"column" },
+  header:{ background:CLR.surface, borderBottom:`1px solid ${CLR.border}`, padding:"0 2rem", display:"flex", alignItems:"center", gap:"2rem", minHeight:60 },
+  nav:{ display:"flex", gap:0, marginLeft:"auto" },
+  navBtn: active => ({ background:"none", border:"none", borderBottom: active?`2px solid ${CLR.accent}`:"2px solid transparent", color: active?CLR.accent:CLR.muted, padding:"18px 20px", cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight: active?700:400 }),
+  main:{ flex:1, padding:"2rem", maxWidth:1440, margin:"0 auto", width:"100%" },
+  card:{ background:CLR.card, border:`1px solid ${CLR.border}`, borderRadius:8, padding:"1.5rem", marginBottom:"1.5rem" },
+  h2:{ fontSize:14, fontWeight:700, color:CLR.accent, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"1rem" },
+  table:{ width:"100%", borderCollapse:"collapse", fontSize:12 },
+  th:{ background:"#21262d", color:CLR.muted, padding:"7px 10px", textAlign:"center", fontWeight:600, fontSize:11, textTransform:"uppercase", borderBottom:`1px solid ${CLR.border}` },
+  td:{ padding:"6px 10px", textAlign:"center", borderBottom:"1px solid #21262d", color:CLR.text },
+  input:{ background:"#0d1117", border:`1px solid ${CLR.border}`, borderRadius:4, color:CLR.text, fontFamily:"inherit", fontSize:12, padding:"5px 7px", width:"100%", textAlign:"center", outline:"none" },
+  label:{ fontSize:10.5, color:CLR.muted, marginBottom:3, display:"block", textTransform:"uppercase", letterSpacing:"0.04em" },
+  field:{ marginBottom:10 },
+  row2:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 },
+  row3:{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 },
+  btn:(v="primary")=>({ background: v==="primary"?CLR.accent:v==="danger"?"#3d1f1f":v==="ghost"?"#21262d":"#21262d", color: v==="danger"?CLR.red:v==="primary"?"#000":CLR.text, border:`1px solid ${v==="danger"?CLR.red:v==="primary"?CLR.accent:CLR.border}`, borderRadius:6, padding:"8px 18px", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700 }),
+  badge: color => ({ display:"inline-block", background:color+"22", color, border:`1px solid ${color}55`, borderRadius:4, padding:"2px 8px", fontSize:11, fontWeight:700 }),
+  select:{ background:"#0d1117", border:`1px solid ${CLR.border}`, borderRadius:4, color:CLR.text, fontFamily:"inherit", fontSize:12, padding:"6px 7px", outline:"none", width:"100%" },
+  sub:{ fontSize:11, color:CLR.muted, marginTop:4, lineHeight:1.5 },
+};
+const fmt = (v,n=2) => (typeof v==="number" && isFinite(v)) ? v.toFixed(n) : "—";
+
+// ── REBAR DATABASES ─────────────────────────────────────────────────────
+// CSA G30.18 metric bar sizes: area (mm^2), nominal diameter (mm)
+const CSA_BARS = {
+  "10M":{A:100, d:11.3}, "15M":{A:200, d:16.0}, "20M":{A:300, d:19.5},
+  "25M":{A:500, d:25.2}, "30M":{A:700, d:29.9}, "35M":{A:1000, d:35.7},
+  "45M":{A:1500, d:43.7}, "55M":{A:2500, d:56.4},
+};
+const CSA_GRADES = { "400":{fy:400,fu:540}, "400W":{fy:400,fu:500}, "400R":{fy:400,fu:400}, "Custom":{fy:400,fu:400} };
+// ASTM A615/A706 imperial bar sizes: area (in^2), nominal diameter (in) — converted to SI (mm^2, mm) at use
+const ASTM_BARS = {
+  "#2":{A:0.05,d:0.250}, "#3":{A:0.11,d:0.375}, "#4":{A:0.20,d:0.500}, "#5":{A:0.31,d:0.625},
+  "#6":{A:0.44,d:0.750}, "#7":{A:0.60,d:0.875}, "#8":{A:0.79,d:1.000}, "#9":{A:1.00,d:1.128},
+  "#10":{A:1.27,d:1.270}, "#11":{A:1.56,d:1.410}, "#14":{A:2.25,d:1.693}, "#18":{A:4.00,d:2.257},
+};
+const ASTM_GRADES = { "Grade 60":{fy:414,fu:620}, "Grade 80":{fy:552,fu:690}, "Custom":{fy:414,fu:414} };
+const in2_to_mm2 = v => v*645.16;
+const in_to_mm = v => v*25.4;
+
+function barAreaDia(standard, size){
+  if (standard==="CSA"){ const b=CSA_BARS[size]; return { A_mm2:b.A, d_mm:b.d }; }
+  const b=ASTM_BARS[size]; return { A_mm2:in2_to_mm2(b.A), d_mm:in_to_mm(b.d) };
+}
+
+// ── DEFAULT INPUTS — matches the source CSiBridge fibre-hinge worked example ──
+const DEFAULT_INPUTS = {
+  // Geometry
+  D: 0.61,            // column diameter, m
+  cover: 0.03,         // clear cover to outside of spiral, m
+  L: 2.2,              // clear column height, base to top (cantilever), m
+  Hcap: 0.23,           // rigid extension above column top to load point (half pier-cap height), m
+  // Concrete
+  fc: 31,               // expected concrete compressive strength, MPa
+  Ec: 25159,            // concrete modulus of elasticity, MPa
+  eco: 0.002,            // unconfined strain at peak stress
+  ecu_cover: 0.0064,       // unconfined (cover) ultimate/spalling strain
+  crackedRatio: 0.5,        // I_eff / I_gross for elastic (non-hinge) frame length
+  // Longitudinal steel
+  nBars: 11,
+  longStandard: "ASTM", longSize: "#5", longGrade: "Custom",
+  fy_long: 469, fu_long: 469, Es_long: 200000, esu_long: 0.09,
+  // Spiral
+  spiralStandard: "ASTM", spiralSize: "#2", spiralGrade: "Custom",
+  fyh_spiral: 668, Es_spiral: 200000, esu_spiral: 0.09, spacing: 0.032,
+  // Loads / analysis
+  P_axial: 653,          // axial (dead) load, kN, compression positive
+  targetDisp: 0.126,       // monitored top displacement target, m
+  includePDelta: true,
+  // Damage-state strain limits (CHBDC-style, typical published values — verify against current code edition)
+  ec_repairable: 0.004, es_repairable: 0.015,
+  ec_extensive_factor: 1.0,  // fraction of Mander confined ecu used as "extensive damage" concrete limit
+  es_extensive_factor: 0.6,  // fraction of steel rupture strain used as "extensive damage" steel limit
+  // Mesh
+  nRings: 24, nSectors: 36,
+};
+
+// ══════════════════════════════════════════════════════════════════════
+// ENGINEERING ENGINE
+// ══════════════════════════════════════════════════════════════════════
+function computeSectionProperties(inp){
+  const dbSpiral = barAreaDia(inp.spiralStandard, inp.spiralSize).d_mm/1000; // m
+  const AspiralBar = barAreaDia(inp.spiralStandard, inp.spiralSize).A_mm2/1e6; // m^2
+  const dbLong = barAreaDia(inp.longStandard, inp.longSize).d_mm/1000;
+  const AlongBar = barAreaDia(inp.longStandard, inp.longSize).A_mm2/1e6;
+
+  const dCore = inp.D - 2*inp.cover - dbSpiral;              // spiral centerline diameter, m
+  const Rcore_outer = dCore/2 + dbSpiral/2;                    // outer face of spiral = core/cover boundary
+  const sClear = inp.spacing - dbSpiral;
+  const Acore = Math.PI/4*dCore*dCore;
+  const Along_total = inp.nBars*AlongBar;
+  const rho_cc = Along_total/Acore;
+  const ke = Math.max(0, Math.min(1, (1 - sClear/(2*dCore)) / (1 - rho_cc)));
+  const rho_s = 4*AspiralBar/(dCore*inp.spacing);
+
+  const fco = inp.fc; // MPa
+  const fl = 0.5*ke*rho_s*inp.fyh_spiral;                       // MPa, effective lateral confining stress (circular spiral)
+  const flr = fl/fco;
+  const fcc = fco*(-1.254 + 2.254*Math.sqrt(1+7.94*flr) - 2*flr); // MPa
+  const ecc = inp.eco*(1 + 5*(fcc/fco - 1));
+  const ecu_conf = 0.004 + 1.4*rho_s*inp.fyh_spiral*inp.esu_spiral/fcc;
+
+  return { dbSpiral, AspiralBar, dbLong, AlongBar, dCore, Rcore_outer, sClear, Acore,
+           Along_total, rho_cc, ke, rho_s, fco, fl, fcc, ecc, ecu_conf };
+}
+
+function manderStress(ec, fpc, ecPeak, Ec){
+  if (ec<=0) return 0;
+  const Esec = fpc/ecPeak, r = Ec/(Ec-Esec), x = ec/ecPeak;
+  const val = fpc*x*r/(r-1+Math.pow(x,r));
+  return isFinite(val) && val>0 ? val : 0;
+}
+
+function buildFiberMesh(inp, sp){
+  const fibers = [];
+  const Rout = inp.D/2;
+  const nR = inp.nRings, nT = inp.nSectors;
+  for (let ir=0; ir<nR; ir++){
+    const r0 = Rout*ir/nR, r1 = Rout*(ir+1)/nR, rMid = (r0+r1)/2;
+    const areaCell = Math.PI*(r1*r1-r0*r0)/nT;
+    const isCore = rMid <= sp.Rcore_outer;
+    for (let is=0; is<nT; is++){
+      const th0 = 2*Math.PI*is/nT, th1 = 2*Math.PI*(is+1)/nT, thMid=(th0+th1)/2;
+      fibers.push({ x: rMid*Math.sin(thMid), y: rMid*Math.cos(thMid), r:rMid, th:thMid, area:areaCell, isCore, type:"concrete" });
+    }
+  }
+  // rebar fibers placed on the spiral-centerline circle; subtract bar area from the nearest concrete cell (avoid double counting)
+  const Rbar = sp.dCore/2;
+  const barFibers = [];
+  for (let i=0;i<inp.nBars;i++){
+    const th = 2*Math.PI*i/inp.nBars;
+    barFibers.push({ x:Rbar*Math.sin(th), y:Rbar*Math.cos(th), r:Rbar, th, area:sp.AlongBar, type:"steel" });
+  }
+  for (const bf of barFibers){
+    let best=null, bestD=Infinity;
+    for (const f of fibers){
+      if (f.type!=="concrete") continue;
+      const dth = Math.min(Math.abs(f.th-bf.th), 2*Math.PI-Math.abs(f.th-bf.th));
+      const dd = Math.abs(f.r-bf.r)+dth*bf.r;
+      if (dd<bestD){ bestD=dd; best=f; }
+    }
+    if (best) best.area = Math.max(best.area - bf.area, best.area*0.15);
+  }
+  return fibers.concat(barFibers);
+}
+
+function makeMaterialFns(inp, sp){
+  const concreteStress = (ec, isCore) => {
+    if (ec<=0) return 0;
+    if (isCore){ if (ec>sp.ecu_conf) return 0; return manderStress(ec, sp.fcc, sp.ecc, inp.Ec); }
+    if (ec>inp.ecu_cover) return 0;
+    return manderStress(ec, sp.fco, inp.eco, inp.Ec);
+  };
+  const steelStress = (es, fy, Es, esu) => {
+    const eY = fy/Es, sign = es<0?-1:1, a=Math.abs(es);
+    if (a>esu) return 0;
+    if (a<=eY) return Es*es;
+    return sign*fy;
+  };
+  return { concreteStress, steelStress };
+}
+
+// Section force/moment (kN, kN.m) for curvature phi (1/m) and neutral-axis depth c (m, from extreme compression fiber)
+function sectionForces(fibers, phi, c, Rout, inp, mat){
+  let N=0, M=0;
+  for (const f of fibers){
+    const yTop = Rout - f.y;
+    const e = phi*(c - yTop);
+    let s; // MPa
+    if (f.type==="steel") s = mat.steelStress(e, inp.fy_long, inp.Es_long, inp.esu_long);
+    else s = mat.concreteStress(e, f.isCore);
+    N += s*1000*f.area;   // MPa*1000=kPa; *area(m^2) -> kN
+    M += s*1000*f.area*f.y;
+  }
+  return { N, M };
+}
+
+function momentCurvatureAnalysis(inp){
+  const sp = computeSectionProperties(inp);
+  const fibers = buildFiberMesh(inp, sp);
+  const mat = makeMaterialFns(inp, sp);
+  const Rout = inp.D/2;
+  const results = [];
+  let c = Rout*1.2;
+  const nSteps = 300, phiMax = 0.30;
+  let stopReason = "Reached maximum curvature limit";
+  for (let i=1; i<=nSteps; i++){
+    const phi = phiMax*i/nSteps;
+    let cg = c;
+    for (let it=0; it<60; it++){
+      const { N } = sectionForces(fibers, phi, cg, Rout, inp, mat);
+      const dN=1e-6, { N:N2 } = sectionForces(fibers, phi, cg+dN, Rout, inp, mat);
+      const dNdc = (N2-N)/dN, resid = N - inp.P_axial;
+      if (Math.abs(resid)<0.05) break;
+      if (Math.abs(dNdc)<1e-9) break;
+      cg = cg - resid/dNdc;
+      if (cg<0.001) cg=0.001; if (cg>3*inp.D) cg=3*inp.D;
+    }
+    c = cg;
+    const { M } = sectionForces(fibers, phi, c, Rout, inp, mat);
+    const ecMax = phi*c;
+    const esMaxTension = phi*(c-(Rout-(-Rout)));
+    results.push({ phi, M, c, ecMax, esMaxTension });
+    if (ecMax > sp.ecu_conf*1.02){ stopReason="Core (confined) concrete reached ultimate compressive strain \u03B5cu"; break; }
+    if (Math.abs(esMaxTension) > inp.esu_long*1.02){ stopReason="Extreme tension bar reached rupture strain"; break; }
+  }
+  // Add the undeformed origin so the moment-curvature and pushover curves start at zero.
+  results.unshift({ phi:0, M:0, c:results[0]?.c || Rout, ecMax:0, esMaxTension:0 });
+  const eY = inp.fy_long/inp.Es_long;
+  let yieldPt = results.find(r=>r.phi>0 && Math.abs(r.esMaxTension)>=eY) || results.find(r=>r.phi>0) || results[0];
+  return { sp, fibers, mc: results, yieldPt, stopReason };
+}
+
+function hingeLength(inp, sp){
+  const inch = m => m/0.0254, ksi = mpa => mpa*0.14503774;
+  const dbl_in = inch(sp.dbLong), fye_ksi = ksi(inp.fy_long), L_in = inch(inp.L);
+  let Lp_in = 0.08*L_in + 0.15*fye_ksi*dbl_in;
+  const minLp = 0.3*fye_ksi*dbl_in;
+  if (Lp_in<minLp) Lp_in = minLp;
+  return Lp_in*0.0254; // m
+}
+
+function pushoverAnalysis(inp, mcResult){
+  const { sp, mc, yieldPt } = mcResult;
+  const Lp = hingeLength(inp, sp);
+  const Htot = inp.L + inp.Hcap;
+  const Ig = Math.PI/64*Math.pow(inp.D,4);
+  const EIeff = inp.crackedRatio*(inp.Ec*1000)*Ig; // kN.m^2 (Ec MPa*1000=kPa)
+  const phiY = yieldPt.phi;
+
+  const dispOf = phi => {
+    const elastic = (phi<=phiY?phi:phiY) * Htot*Htot/3;
+    const plastic = phi>phiY ? (phi-phiY)*Lp*(Htot-Lp/2) : 0;
+    return elastic + plastic;
+  };
+  const steps = mc.map(r => {
+    const D_ = dispOf(r.phi);
+    let V = r.M/Htot;
+    if (inp.includePDelta) V = (r.M - inp.P_axial*D_)/Htot;
+    return { ...r, D: D_, V: Math.max(V,0) };
+  });
+
+  // Newton-Raphson / interpolation to find state at target displacement
+  let atTarget = steps[0];
+  for (let i=0;i<steps.length-1;i++){
+    if (steps[i].D<=inp.targetDisp && steps[i+1].D>=inp.targetDisp){
+      const t = (inp.targetDisp-steps[i].D)/Math.max(steps[i+1].D-steps[i].D,1e-9);
+      atTarget = {
+        phi: steps[i].phi+t*(steps[i+1].phi-steps[i].phi),
+        M: steps[i].M+t*(steps[i+1].M-steps[i].M),
+        c: steps[i].c+t*(steps[i+1].c-steps[i].c),
+        ecMax: steps[i].ecMax+t*(steps[i+1].ecMax-steps[i].ecMax),
+        esMaxTension: steps[i].esMaxTension+t*(steps[i+1].esMaxTension-steps[i].esMaxTension),
+        D: inp.targetDisp, V: steps[i].V+t*(steps[i+1].V-steps[i].V),
+      };
+      break;
+    }
+    atTarget = steps[i+1];
+  }
+
+  const peak = steps.reduce((best,r)=> r.V>best.V?r:best, steps[0]);
+  return { Lp, Htot, EIeff, phiY, MY:yieldPt.M, steps, atTarget, peak };
+}
+
+function damageStateCheck(inp, sp, esu_long, state){
+  const ecuExt = sp.ecu_conf*inp.ec_extensive_factor;
+  const esuExt = esu_long*inp.es_extensive_factor;
+  const cState = state.ecMax <= inp.ec_repairable ? "Repairable" : (state.ecMax<=ecuExt ? "Extensive" : "Failure/Collapse");
+  const sState = Math.abs(state.esMaxTension) <= inp.es_repairable ? "Repairable" : (Math.abs(state.esMaxTension)<=esuExt ? "Extensive" : "Failure/Collapse");
+  const rank = { "Repairable":0, "Extensive":1, "Failure/Collapse":2 };
+  const governing = rank[cState]>=rank[sState] ? {mode:"Concrete (core)", state:cState} : {mode:"Reinforcing steel", state:sState};
+  return { cState, sState, governing, ecuExt, esuExt };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// SVG DIAGRAMS
+// ══════════════════════════════════════════════════════════════════════
+function CrossSectionDiagram({ inp, sp, fibers, highlight }){
+  const W=320,H=320,cx=W/2,cy=H/2, Rout=inp.D/2, scale=120/Rout;
+  const px = (x,y) => [cx+x*scale, cy-y*scale];
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block",margin:"0 auto"}}>
+      <circle cx={cx} cy={cy} r={Rout*scale} fill={CLR.card} stroke={CLR.border} strokeWidth="1.5"/>
+      <circle cx={cx} cy={cy} r={sp.Rcore_outer*scale} fill="none" stroke={CLR.accent} strokeWidth="1" strokeDasharray="3,2"/>
+      {highlight ? fibers.filter(f=>f.type==="concrete").map((f,i)=>{
+        const [x,y]=px(f.x,f.y);
+        const c = highlight(f);
+        return <circle key={i} cx={x} cy={y} r={2.1} fill={c}/>;
+      }) : null}
+      {fibers.filter(f=>f.type==="steel").map((f,i)=>{ const [x,y]=px(f.x,f.y); return <circle key={i} cx={x} cy={y} r={4.2} fill={CLR.yellow} stroke="#000" strokeWidth="0.5"/>; })}
+      <text x={cx} y={H-6} textAnchor="middle" fill={CLR.muted} fontSize="10">D = {fmt(inp.D,3)} m &nbsp; core = confined (dashed) &nbsp; ● long. bars</text>
+    </svg>
+  );
+}
+
+function ElevationDiagram({ inp, Lp }){
+  const W=220,H=340, scaleY=(H-70)/(inp.L+inp.Hcap), baseY=H-30, colW=Math.max(24, inp.D*(60));
+  const topColY = baseY - inp.L*scaleY, topCapY = topColY - inp.Hcap*scaleY, hingeY = baseY - (Lp/2)*scaleY, hingeTopY = baseY-Lp*scaleY;
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block",margin:"0 auto"}}>
+      <rect x={W/2-colW/2} y={topColY} width={colW} height={baseY-topColY} fill={CLR.accent+"55"} stroke={CLR.accent} strokeWidth="1.5"/>
+      <rect x={W/2-colW/2} y={hingeTopY} width={colW} height={baseY-hingeTopY} fill={CLR.orange+"33"} stroke={CLR.orange} strokeDasharray="3,2"/>
+      <rect x={W/2-colW*0.65} y={topCapY} width={colW*1.3} height={topColY-topCapY} fill={CLR.violet+"33"} stroke={CLR.violet}/>
+      <rect x={W/2-colW*0.9} y={baseY} width={colW*1.8} height={14} fill={CLR.border}/>
+      <line x1={W/2} y1={topCapY-14} x2={W/2+34} y2={topCapY-14} stroke={CLR.red} strokeWidth="2" markerEnd="url(#arrow)"/>
+      <text x={W/2+38} y={topCapY-10} fill={CLR.red} fontSize="9">V</text>
+      <line x1={W/2} y1={topCapY-24} x2={W/2} y2={topCapY-4} stroke={CLR.teal} strokeWidth="2"/>
+      <text x={W/2+6} y={topCapY-26} fill={CLR.teal} fontSize="9">P</text>
+      <text x={8} y={(baseY+topColY)/2} fill={CLR.muted} fontSize="9">L={fmt(inp.L,2)}m</text>
+      <text x={8} y={(topColY+topCapY)/2} fill={CLR.muted} fontSize="9">cap</text>
+      <text x={W/2+colW/2+6} y={hingeY} fill={CLR.orange} fontSize="9">Lp={fmt(Lp,3)}m</text>
+      <defs><marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill={CLR.red}/></marker></defs>
+    </svg>
+  );
+}
+
+function LineChart({ points, xKey, yKey, xLabel, yLabel, color, markers=[], W=760, H=320 }){
+  const P=52;
+  const [hovered, setHovered] = useState(null);
+  const xs = points.map(p=>p[xKey]), ys = points.map(p=>p[yKey]);
+  const maxX = Math.max(...xs, ...markers.map(m=>m[xKey]||0), 1e-6)*1.08;
+  const maxY = Math.max(...ys, ...markers.map(m=>m[yKey]||0), 1e-6)*1.12;
+  const sx = x => P + x/maxX*(W-2*P);
+  const sy = y => H-P - y/maxY*(H-2*P);
+  const path = points.map(p=>`${sx(p[xKey])},${sy(p[yKey])}`).join(" ");
+  const onPointerMove = e => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = (e.clientX-rect.left)*W/rect.width;
+    if (mouseX<P || mouseX>W-P) { setHovered(null); return; }
+    let best = points[0], bestDist = Infinity;
+    for (const p of points){
+      const d = Math.abs(sx(p[xKey])-mouseX);
+      if (d<bestDist){ bestDist=d; best=p; }
+    }
+    setHovered(best);
+  };
+  const hx = hovered ? sx(hovered[xKey]) : 0;
+  const hy = hovered ? sy(hovered[yKey]) : 0;
+  const tooltipW=176, tooltipH=48;
+  const tooltipX = Math.min(W-P-tooltipW, Math.max(P+6, hx+12));
+  const tooltipY = Math.min(H-P-tooltipH, Math.max(P+4, hy-tooltipH-10));
+  return (
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} onMouseMove={onPointerMove} onMouseLeave={()=>setHovered(null)} style={{cursor:"crosshair"}}>
+      {[0,0.25,0.5,0.75,1].map((t,i)=>(
+        <g key={`grid-${i}`}>
+          <line x1={P} y1={H-P-t*(H-2*P)} x2={W-P} y2={H-P-t*(H-2*P)} stroke={CLR.border} strokeWidth="0.5"/>
+          <text x={P-8} y={H-P-t*(H-2*P)+3} textAnchor="end" fill={CLR.muted} fontSize="9">{fmt(t*maxY, maxY<1?3:1)}</text>
+          <line x1={P+t*(W-2*P)} y1={P} x2={P+t*(W-2*P)} y2={H-P} stroke={CLR.border} strokeWidth="0.35"/>
+          <text x={P+t*(W-2*P)} y={H-P+16} textAnchor="middle" fill={CLR.muted} fontSize="9">{fmt(t*maxX, maxX<1?3:1)}</text>
+        </g>
+      ))}
+      <line x1={P} y1={H-P} x2={W-P} y2={H-P} stroke={CLR.border}/>
+      <line x1={P} y1={P} x2={P} y2={H-P} stroke={CLR.border}/>
+      <polyline points={path} fill="none" stroke={color} strokeWidth="2.4"/>
+      {markers.map((m,i)=>(
+        <g key={i}>
+          <circle cx={sx(m[xKey])} cy={sy(m[yKey])} r="4.5" fill={m.color||CLR.red} stroke="#000" strokeWidth="0.5"/>
+          <text x={sx(m[xKey])+7} y={sy(m[yKey])-6} fill={m.color||CLR.red} fontSize="10" fontWeight="700">{m.label}</text>
+        </g>
+      ))}
+      {hovered && <g pointerEvents="none">
+        <line x1={hx} y1={P} x2={hx} y2={H-P} stroke={CLR.muted} strokeWidth="0.8" strokeDasharray="3,3"/>
+        <line x1={P} y1={hy} x2={W-P} y2={hy} stroke={CLR.muted} strokeWidth="0.8" strokeDasharray="3,3"/>
+        <circle cx={hx} cy={hy} r="5" fill={color} stroke="#fff" strokeWidth="1.5"/>
+        <rect x={tooltipX} y={tooltipY} width={tooltipW} height={tooltipH} rx="5" fill="#0d1117" stroke={CLR.accent}/>
+        <text x={tooltipX+9} y={tooltipY+18} fill={CLR.text} fontSize="10">{xLabel}: {fmt(hovered[xKey], xKey==="phi"?4:4)}</text>
+        <text x={tooltipX+9} y={tooltipY+36} fill={CLR.text} fontSize="10">{yLabel}: {fmt(hovered[yKey],1)}</text>
+      </g>}
+      <text x={W/2} y={H-10} textAnchor="middle" fill={CLR.muted} fontSize="11">{xLabel}</text>
+      <text x={14} y={H/2} fill={CLR.muted} fontSize="11" transform={`rotate(-90 14 ${H/2})`}>{yLabel}</text>
+    </svg>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// THEORY VIEW
+// ══════════════════════════════════════════════════════════════════════
+function P({ html, style }){
+  return <p style={style} dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function TheoryView(){
+  useEffect(()=>{ if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise(); },[]);
+  return (
+    <div>
+      <div style={{fontSize:20,fontWeight:800,marginBottom:"1.5rem"}}>Theory &amp; Documentation</div>
+
+      <div style={S.card}>
+        <div style={S.h2}>1. Engineering Theory</div>
+
+        <P style={S.sub} html={String.raw`<b>1.1 Scope and idealization.</b> The tool analyzes a circular reinforced-concrete cantilever column with a lumped, fibre-discretized plastic hinge at its base, following the same modelling idealization used in the CSiBridge fibre-hinge pushover procedure this tool is validated against: a short fibre hinge of length \(L_p\) captures section-level nonlinearity (concrete crushing, rebar yielding), while the remainder of the column is modelled as elastic with a user-specified cracked-stiffness ratio.`} />
+
+        <P style={S.sub} html={String.raw`<b>1.2 Fibre discretization.</b> The circular cross-section is divided into concentric rings and angular sectors (Fig. cross-section). Each concrete fibre is classified as <i>confined core</i> (inside the outer face of the spiral) or <i>unconfined cover</i> (outside it). Longitudinal bars are placed as discrete point fibres on the spiral centerline circle; the concrete cell nearest each bar has its area reduced by the bar area to avoid double-counting.`} />
+
+        <P style={S.sub} html={String.raw`<b>1.3 Mander confined concrete model (Mander, Priestley &amp; Park, 1988).</b> For a circular section with continuous spiral confinement, the effective lateral confining stress is`} />
+        <P html={String.raw`\[ f_l' = \tfrac{1}{2}\,k_e\,\rho_s\,f_{yh} \tag{1} \]`} />
+        <P style={S.sub} html={String.raw`where \(k_e\) is the confinement effectiveness coefficient, \(\rho_s = 4A_{sp}/(d_s s)\) is the volumetric transverse steel ratio, \(f_{yh}\) is the transverse (spiral) steel yield strength, \(A_{sp}\) is the spiral bar area, \(d_s\) is the spiral centerline diameter, and \(s\) is the spiral pitch. For continuous circular spirals,`} />
+        <P html={String.raw`\[ k_e = \frac{1-\dfrac{s'}{2d_s}}{1-\rho_{cc}} \tag{2} \]`} />
+        <P style={S.sub} html={String.raw`with \(s'\) the clear spacing between spiral turns and \(\rho_{cc}\) the ratio of longitudinal steel area to core area. The confined peak strength is`} />
+        <P html={String.raw`\[ f_{cc}' = f_{co}'\left(-1.254 + 2.254\sqrt{1+\dfrac{7.94 f_l'}{f_{co}'}} - \dfrac{2f_l'}{f_{co}'}\right) \tag{3} \]`} />
+        <P style={S.sub} html={String.raw`with \(f_{co}'\) the unconfined (expected) concrete strength. The strain at peak confined stress is`} />
+        <P html={String.raw`\[ \varepsilon_{cc} = \varepsilon_{co}\left[1+5\left(\dfrac{f_{cc}'}{f_{co}'}-1\right)\right] \tag{4} \]`} />
+        <P style={S.sub} html={String.raw`The full stress-strain curve (both confined and unconfined, with \(f_l'=0\) for the unconfined case) follows the Mander equation`} />
+        <P html={String.raw`\[ f_c = \dfrac{f_{cc}'\,x\,r}{r-1+x^r}, \qquad x=\dfrac{\varepsilon_c}{\varepsilon_{cc}}, \qquad r=\dfrac{E_c}{E_c-E_{sec}}, \qquad E_{sec}=\dfrac{f_{cc}'}{\varepsilon_{cc}} \tag{5} \]`} />
+        <P style={S.sub} html={String.raw`The confined ultimate compressive strain is computed from the Mander/Priestley energy-balance approach`} />
+        <P html={String.raw`\[ \varepsilon_{cu} = 0.004 + \dfrac{1.4\,\rho_s\,f_{yh}\,\varepsilon_{su}}{f_{cc}'} \tag{6} \]`} />
+        <P style={S.sub} html={String.raw`where \(\varepsilon_{su}\) is the spiral steel rupture strain. The unconfined cover is taken to spall at a user-specified strain (default 0.0064, a typical published spalling strain).`} />
+
+        <P style={S.sub} html={String.raw`<b>1.4 Reinforcing steel model.</b> An elastic-perfectly-plastic model is used: \(f_s = E_s\varepsilon_s\) for \(|\varepsilon_s|\le\varepsilon_y=f_y/E_s\), and \(f_s=\pm f_y\) for \(\varepsilon_y<|\varepsilon_s|\le\varepsilon_{su}\); the fibre is assumed ruptured (zero stress) beyond \(\varepsilon_{su}\). This matches the source calculation's stated assumption of equal yield and tensile (minimum) strengths for a conservative pushover estimate.`} />
+
+        <P style={S.sub} html={String.raw`<b>1.5 Moment-curvature analysis.</b> For a target curvature \(\phi\), the neutral-axis depth \(c\) (measured from the extreme compression fibre) is solved by Newton-Raphson iteration so that the section satisfies axial equilibrium with the applied axial load \(P\):`} />
+        <P html={String.raw`\[ N(\phi,c)=\sum_i \sigma_i(\varepsilon_i)\,A_i = P, \qquad \varepsilon_i = \phi\big[c-(R-y_i)\big] \tag{7} \]`} />
+        <P style={S.sub} html={String.raw`where \(R\) is the section outer radius and \(y_i\) is each fibre's coordinate along the bending axis. Once \(c\) converges, the moment is \(M=\sum_i \sigma_i A_i y_i\). Curvature is incremented until the confined core reaches \(\varepsilon_{cu}\) (Eq. 6) or a rebar fibre reaches \(\varepsilon_{su}\), defining the ultimate point of the \(M\)-\(\phi\) curve. The idealized yield point \((\phi_y,M_y)\) is taken as first yield of the extreme tension bar, following common Priestley/Paulay &amp; Priestley practice for plastic-hinge displacement calculations.`} />
+
+        <P style={S.sub} html={String.raw`<b>1.6 Plastic hinge length.</b> The analytical plastic hinge length (Caltrans SDC / AASHTO LRFD form, used identically to the source calculation) is`} />
+        <P html={String.raw`\[ L_p = 0.08L + 0.15 f_{ye} d_{bl} \ \ge\ 0.3 f_{ye} d_{bl} \tag{8} \]`} />
+        <P style={S.sub} html={String.raw`with \(L\) the distance from the point of maximum moment to the point of contraflexure (taken as the full cantilever height), \(f_{ye}\) the expected longitudinal bar yield strength (ksi), and \(d_{bl}\) the longitudinal bar diameter (in); the equation is evaluated in US customary units as published and converted back to SI.`} />
+
+        <P style={S.sub} html={String.raw`<b>1.7 Cantilever pushover displacement (lumped plasticity).</b> For a cantilever of total height \(H\) (column clear height plus rigid load-arm extension) with the plastic hinge lumped at the base, the top displacement is decomposed into an elastic (flexural) component and a plastic-rotation component:`} />
+        <P html={String.raw`\[ \Delta(\phi) = \underbrace{\phi_{el}\dfrac{H^2}{3}}_{\text{elastic}} \;+\; \underbrace{\theta_p\left(H-\dfrac{L_p}{2}\right)}_{\text{plastic}}, \qquad \phi_{el}=\min(\phi,\phi_y), \qquad \theta_p = \max(\phi-\phi_y,0)\,L_p \tag{9} \]`} />
+        <P style={S.sub} html={String.raw`The elastic term is the exact tip deflection of a cantilever with a linear (triangular) curvature/moment distribution; the plastic term adds the rigid-body rotation of the hinge acting at its centroid, \(L_p/2\) above the base. Base shear follows from equilibrium of the cantilever, optionally including the P-&Delta; secondary moment from the axial load acting through the lateral displacement (matching the source calculation's "P-Delta plus Large Displacements" setting for the primary P-&Delta; term):`} />
+        <P html={String.raw`\[ V = \dfrac{M_{base} - P\!\cdot\!\Delta}{H} \tag{10} \]`} />
+        <P style={S.sub} html={String.raw`Displacement-controlled analysis is performed by stepping curvature (Newton-Raphson on the section per Eq. 7) and interpolating the resulting \(\Delta\)-\(V\) points to the user's target monitored displacement, directly analogous to CSiBridge's displacement-control nonlinear static load case.`} />
+
+        <P style={S.sub} html={String.raw`<b>1.8 CHBDC-style damage-state strain checks.</b> At each analysis step, the extreme fibre concrete compressive strain and extreme rebar tensile strain are compared against user-editable strain limits representing "repairable" and "extensive" damage thresholds, consistent with the strain-based damage-state philosophy described in the source calculation for the Canadian Highway Bridge Design Code. <b>Default limit values are typical published figures and must be verified by the engineer against the current CHBDC edition/commentary for the specific project.</b>`} />
+      </div>
+
+      <div style={S.card}>
+        <div style={S.h2}>2. Coding Theory</div>
+        <p style={S.sub}>The application is a single-page React app (no build step; JSX is transpiled in-browser by Babel standalone). State for every input parameter lives in the top-level <code>App</code> component. Pressing <b>Analyze</b> runs, in order: (1) <code>computeSectionProperties()</code> — derives Mander confinement parameters from geometry/material inputs; (2) <code>buildFiberMesh()</code> — discretizes the circle into concrete ring/sector fibres plus discrete rebar fibres; (3) <code>momentCurvatureAnalysis()</code> — steps curvature, solving axial equilibrium for the neutral axis at each step via Newton-Raphson (<code>sectionForces()</code> sums fibre stress&times;area); (4) <code>hingeLength()</code> — Caltrans/AASHTO formula; (5) <code>pushoverAnalysis()</code> — converts each moment-curvature point to a base-shear/displacement point via the lumped-plasticity cantilever formulas, then interpolates to the target displacement; (6) <code>damageStateCheck()</code> — compares strains at the target step to the strain limits. Results are cached in component state and rendered as SVG charts/diagrams (no external charting library — line charts and the fibre cross-section/elevation views are hand-built SVG, coloured with the same palette as the input diagrams) and HTML tables. The <b>Save Working File</b> button clones the current document, replaces the <code>DEFAULT_INPUTS</code> constant with the current input state (via regex substitution on the serialized HTML), and downloads the self-contained result as a new runnable HTML file. <b>Print PDF Report</b> waits for MathJax to finish typesetting, then triggers the browser print dialog against dedicated print stylesheet rules that avoid breaking tables, diagrams, or equations across pages.</p>
+      </div>
+
+      <div style={S.card}>
+        <div style={S.h2}>3. References</div>
+        <p style={S.sub}>American Association of State Highway and Transportation Officials. (2020). <i>AASHTO LRFD bridge design specifications</i> (9th ed.). AASHTO.</p>
+        <p style={S.sub}>ASTM International. (2022). <i>Standard specification for deformed and plain carbon-steel bars for concrete reinforcement</i> (ASTM A615/A615M-22). ASTM International.</p>
+        <p style={S.sub}>ASTM International. (2022). <i>Standard specification for low-alloy steel deformed and plain bars for concrete reinforcement</i> (ASTM A706/A706M-22). ASTM International.</p>
+        <p style={S.sub}>California Department of Transportation. (2019). <i>Caltrans seismic design criteria</i> (Version 2.0). Caltrans.</p>
+        <p style={S.sub}>Canadian Standards Association. (2019). <i>Canadian highway bridge design code</i> (CSA S6:19). CSA Group.</p>
+        <p style={S.sub}>Canadian Standards Association. (2021). <i>Carbon steel bars for concrete reinforcement</i> (CSA G30.18:21). CSA Group.</p>
+        <p style={S.sub}>Mander, J. B., Priestley, M. J. N., &amp; Park, R. (1988). Theoretical stress-strain model for confined concrete. <i>Journal of Structural Engineering, 114</i>(8), 1804&ndash;1826.</p>
+        <p style={S.sub}>Paulay, T., &amp; Priestley, M. J. N. (1992). <i>Seismic design of reinforced concrete and masonry buildings</i>. Wiley.</p>
+        <p style={S.sub}>Priestley, M. J. N., Seible, F., &amp; Calvi, G. M. (1996). <i>Seismic design and retrofit of bridges</i>. Wiley.</p>
+        <p style={S.sub}>Zhang, Q. (n.d.). <i>Nonlinear pushover analysis using CSiBridge</i> [Lecture notes]. Used as the reference worked example and validation benchmark for this tool's default inputs and modelling assumptions.</p>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// INPUTS VIEW
+// ══════════════════════════════════════════════════════════════════════
+function NumField({ label, value, onChange, step="any" }){
+  return (
+    <div style={S.field}>
+      <label style={S.label}>{label}</label>
+      <input style={S.input} type="number" step={step} value={value}
+        onChange={e=>onChange(e.target.value===""?"":+e.target.value)} />
+    </div>
+  );
+}
+function SelField({ label, value, onChange, options }){
+  return (
+    <div style={S.field}>
+      <label style={S.label}>{label}</label>
+      <select style={S.select} value={value} onChange={e=>onChange(e.target.value)}>
+        {options.map(o=><option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+}
+function CheckField({ label, checked, onChange }){
+  return (
+    <div style={{...S.field, display:"flex", alignItems:"center", gap:8}}>
+      <input type="checkbox" checked={checked} onChange={e=>onChange(e.target.checked)} />
+      <label style={{...S.label, marginBottom:0}}>{label}</label>
+    </div>
+  );
+}
+
+function RebarPicker({ title, inp, set, standardKey, sizeKey, gradeKey, fyKey, fuKey, esKey, esuKey, includeFu }){
+  const standard = inp[standardKey], size = inp[sizeKey], grade = inp[gradeKey];
+  const barDB = standard==="CSA" ? CSA_BARS : ASTM_BARS;
+  const gradeDB = standard==="CSA" ? CSA_GRADES : ASTM_GRADES;
+  const applySize = sz => { set(sizeKey, sz); };
+  const applyGrade = g => {
+    set(gradeKey, g);
+    if (g!=="Custom"){ set(fyKey, gradeDB[g].fy); if (includeFu) set(fuKey, gradeDB[g].fu); }
+  };
+  const { A_mm2, d_mm } = barAreaDia(standard, size);
+  return (
+    <div>
+      <div style={{fontSize:12,fontWeight:700,color:CLR.text,marginBottom:8}}>{title}</div>
+      <div style={S.row3}>
+        <SelField label="Standard" value={standard} onChange={v=>{ set(standardKey,v); const sizes=Object.keys(v==="CSA"?CSA_BARS:ASTM_BARS); applySize(sizes[0]); const grades=Object.keys(v==="CSA"?CSA_GRADES:ASTM_GRADES); applyGrade(grades[grades.length-1]); }} options={["CSA","ASTM"]} />
+        <SelField label="Bar Size" value={size} onChange={applySize} options={Object.keys(barDB)} />
+        <SelField label="Grade" value={grade} onChange={applyGrade} options={Object.keys(gradeDB)} />
+      </div>
+      <div style={S.sub}>Area = {fmt(A_mm2,1)} mm&sup2; &nbsp; Dia = {fmt(d_mm,1)} mm</div>
+      <div style={S.row2}>
+        <NumField label="fy (MPa)" value={inp[fyKey]} onChange={v=>set(fyKey,v)} />
+        {includeFu ? <NumField label="fu (MPa)" value={inp[fuKey]} onChange={v=>set(fuKey,v)} /> : <NumField label="Rupture strain εsu" value={inp[esuKey]} onChange={v=>set(esuKey,v)} step="0.001" />}
+      </div>
+      <div style={S.row2}>
+        <NumField label="Es (MPa)" value={inp[esKey]} onChange={v=>set(esKey,v)} />
+        {includeFu ? <NumField label="Rupture strain εsu" value={inp[esuKey]} onChange={v=>set(esuKey,v)} step="0.001" /> : <div/>}
+      </div>
+    </div>
+  );
+}
+
+function InputsView({ inp, setField, sp, fibers, onAnalyze, onSave }){
+  const set = (k,v) => setField(k,v);
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:"1.5rem"}}>
+        <div style={{fontSize:20,fontWeight:800}}>Model Inputs</div>
+        <button style={{...S.btn("ghost"),marginLeft:"auto"}} onClick={onSave}>💾 Save Working File</button>
+        <button style={S.btn("primary")} onClick={onAnalyze}>▶ Run Pushover Analysis</button>
+      </div>
+
+      <div style={{display:"grid", gridTemplateColumns:"1fr 340px", gap:"1.5rem"}}>
+        <div>
+          <div style={S.card}>
+            <div style={S.h2}>Geometry</div>
+            <div style={S.row2}>
+              <NumField label="Column diameter D (m)" value={inp.D} onChange={v=>set("D",v)} />
+              <NumField label="Clear cover to spiral (m)" value={inp.cover} onChange={v=>set("cover",v)} />
+            </div>
+            <div style={S.row2}>
+              <NumField label="Clear column height L (m)" value={inp.L} onChange={v=>set("L",v)} />
+              <NumField label="Rigid load-arm above column, H_cap (m)" value={inp.Hcap} onChange={v=>set("Hcap",v)} />
+            </div>
+            <div style={S.sub}>Cantilever fixed at base, free at top; lateral pushover load and axial load applied through a rigid block of height H_cap (source model: half the pier-cap height).</div>
+          </div>
+
+          <div style={S.card}>
+            <div style={S.h2}>Concrete Material</div>
+            <div style={S.row3}>
+              <NumField label="f'c expected (MPa)" value={inp.fc} onChange={v=>set("fc",v)} />
+              <NumField label="Ec (MPa)" value={inp.Ec} onChange={v=>set("Ec",v)} />
+              <NumField label="εco (strain @ peak)" value={inp.eco} onChange={v=>set("eco",v)} step="0.0001" />
+            </div>
+            <div style={S.row2}>
+              <NumField label="Cover (unconfined) ultimate strain εcu,cover" value={inp.ecu_cover} onChange={v=>set("ecu_cover",v)} step="0.0001" />
+              <NumField label="Cracked-stiffness ratio (elastic length)" value={inp.crackedRatio} onChange={v=>set("crackedRatio",v)} step="0.01" />
+            </div>
+            {sp && <div style={S.sub}>Derived: k<sub>e</sub>={fmt(sp.ke,3)}, ρ<sub>s</sub>={fmt(sp.rho_s,4)}, f'<sub>l</sub>={fmt(sp.fl,2)} MPa, f'<sub>cc</sub>={fmt(sp.fcc,2)} MPa, ε<sub>cc</sub>={fmt(sp.ecc,4)}, ε<sub>cu</sub>(core)={fmt(sp.ecu_conf,4)}</div>}
+          </div>
+
+          <div style={S.card}>
+            <div style={S.h2}>Longitudinal Reinforcement</div>
+            <NumField label="Number of bars" value={inp.nBars} onChange={v=>set("nBars",v)} step="1" />
+            <RebarPicker title="Bar properties" inp={inp} set={set}
+              standardKey="longStandard" sizeKey="longSize" gradeKey="longGrade"
+              fyKey="fy_long" fuKey="fu_long" esKey="Es_long" esuKey="esu_long" includeFu={true} />
+          </div>
+
+          <div style={S.card}>
+            <div style={S.h2}>Transverse Reinforcement (Spiral)</div>
+            <NumField label="Spiral pitch, s (m)" value={inp.spacing} onChange={v=>set("spacing",v)} step="0.001" />
+            <RebarPicker title="Spiral bar properties" inp={inp} set={set}
+              standardKey="spiralStandard" sizeKey="spiralSize" gradeKey="spiralGrade"
+              fyKey="fyh_spiral" fuKey="fyh_spiral" esKey="Es_spiral" esuKey="esu_spiral" includeFu={false} />
+            {sp && <div style={S.sub}>Spiral centerline diameter (derived) = D &minus; 2&times;cover &minus; d<sub>b,spiral</sub> = {fmt(sp.dCore,4)} m</div>}
+          </div>
+
+          <div style={S.card}>
+            <div style={S.h2}>Loads &amp; Analysis Settings</div>
+            <div style={S.row2}>
+              <NumField label="Axial (dead) load P (kN)" value={inp.P_axial} onChange={v=>set("P_axial",v)} />
+              <NumField label="Target monitored displacement (m)" value={inp.targetDisp} onChange={v=>set("targetDisp",v)} step="0.001" />
+            </div>
+            <CheckField label="Include P-&Delta; effect" checked={inp.includePDelta} onChange={v=>set("includePDelta",v)} />
+            <div style={S.row2}>
+              <NumField label="Fiber mesh: radial rings" value={inp.nRings} onChange={v=>set("nRings",v)} step="1" />
+              <NumField label="Fiber mesh: angular sectors" value={inp.nSectors} onChange={v=>set("nSectors",v)} step="1" />
+            </div>
+          </div>
+
+          <div style={S.card}>
+            <div style={S.h2}>Damage-State Strain Limits (CHBDC-style, editable)</div>
+            <div style={S.row2}>
+              <NumField label="Concrete repairable limit εc" value={inp.ec_repairable} onChange={v=>set("ec_repairable",v)} step="0.0001" />
+              <NumField label="Steel repairable limit εs" value={inp.es_repairable} onChange={v=>set("es_repairable",v)} step="0.001" />
+            </div>
+            <div style={S.row2}>
+              <NumField label="Concrete extensive limit (× εcu,core)" value={inp.ec_extensive_factor} onChange={v=>set("ec_extensive_factor",v)} step="0.01" />
+              <NumField label="Steel extensive limit (× εsu)" value={inp.es_extensive_factor} onChange={v=>set("es_extensive_factor",v)} step="0.01" />
+            </div>
+            <div style={S.sub}>Default values are typical published figures for strain-based damage assessment; verify against the current CHBDC edition/commentary for the governing project.</div>
+          </div>
+        </div>
+
+        <div>
+          <div style={{...S.card, position:"sticky", top:16}}>
+            <div style={S.h2}>Elevation Preview</div>
+            {sp && <ElevationDiagram inp={inp} Lp={hingeLength(inp,sp)} />}
+          </div>
+          <div style={S.card}>
+            <div style={S.h2}>Cross-Section Preview</div>
+            {sp && <CrossSectionDiagram inp={inp} sp={sp} fibers={fibers} />}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// RESULTS VIEW
+// ══════════════════════════════════════════════════════════════════════
+function ResultsView({ inp, result, reportDate }){
+  const [stepIdx, setStepIdx] = useState(null);
+  if (!result) return <div style={S.card}>Run the analysis from the Inputs tab to see results.</div>;
+  const { mcResult, po, dmg } = result;
+  const { sp, mc } = mcResult;
+  const steps = po.steps;
+  const elasticMc = mc.filter(r=>r.phi<=po.phiY && r.phi>0);
+  const elasticEI = elasticMc.length
+    ? elasticMc.reduce((sum,r)=>sum+r.phi*r.M,0) / Math.max(elasticMc.reduce((sum,r)=>sum+r.phi*r.phi,0),1e-12)
+    : po.MY/Math.max(po.phiY,1e-12); // dM/dphi = EI, kN.m^2
+  const effectiveI = elasticEI/(inp.Ec*1000); // m^4; Ec input is MPa
+  const grossI = Math.PI/64*Math.pow(inp.D,4);
+  const effectiveIRatio = effectiveI/Math.max(grossI,1e-12);
+  const targetChartPoint = { ...po.atTarget, D: inp.targetDisp };
+  const baseShearPoints = steps.filter(r=>r.D < inp.targetDisp);
+  if (baseShearPoints.length && baseShearPoints[baseShearPoints.length-1].D >= inp.targetDisp) baseShearPoints.pop();
+  baseShearPoints.push(targetChartPoint);
+  const idx = stepIdx==null ? steps.reduce((bi,r,i)=>Math.abs(r.D-inp.targetDisp)<Math.abs(steps[bi].D-inp.targetDisp)?i:bi,0) : stepIdx;
+  const sel = steps[idx];
+
+  const highlight = f => {
+    const yTop = inp.D/2 - f.y;
+    const e = sel.phi*(sel.c - yTop);
+    if (e<=0) return CLR.muted+"55";
+    const capStrain = f.isCore ? sp.ecu_conf : inp.ecu_cover;
+    const t = Math.min(1, e/capStrain);
+    const r = Math.round(63+ (245-63)*t), g = Math.round(185-(185-81)*t), b = Math.round(131-(131-73)*t);
+    return `rgb(${r},${g},${b})`;
+  };
+
+  return (
+    <div>
+      <div className="print-report-header">
+        <h1>Circular RC Column Pushover Analysis Report</h1>
+        <div className="meta">Generated {reportDate} &middot; D={fmt(inp.D,3)} m, L={fmt(inp.L,2)} m, P={fmt(inp.P_axial,0)} kN, target &Delta;={fmt(inp.targetDisp,3)} m</div>
+      </div>
+
+      <div style={{fontSize:20,fontWeight:800,marginBottom:"1.5rem"}} className="screen-only">Results</div>
+
+      <div className="print-avoid" style={S.card}>
+        <div style={S.h2}>Summary of Capacities</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12}}>
+          {[
+            ["Peak base shear", fmt(po.peak.V,1)+" kN"],
+            ["Displacement at peak", fmt(po.peak.D,4)+" m"],
+            ["Idealized yield M / \u03C6", fmt(po.MY,1)+" kN\u00B7m"],
+            ["Plastic hinge length Lp", fmt(po.Lp,3)+" m"],
+            ["Base shear @ target \u0394", fmt(po.atTarget.V,1)+" kN"],
+            ["Base moment @ target \u0394", fmt(po.atTarget.M,1)+" kN\u00B7m"],
+            ["Confined \u03B5cu (core)", fmt(sp.ecu_conf,4)],
+            ["f'cc / \u03B5cc (confined)", fmt(sp.fcc,1)+" MPa / "+fmt(sp.ecc,4)],
+            ["Elastic slope, EI", fmt(elasticEI,0)+" kN.m²"],
+            ["Effective moment of inertia, Ieff", fmt(effectiveI,5)+" m⁴ ("+fmt(effectiveIRatio,2)+" Ig)"],
+          ].map(([k,v],i)=>(
+            <div key={i} style={{background:"#0d1117",border:`1px solid ${CLR.border}`,borderRadius:6,padding:"10px"}}>
+              <div style={{fontSize:10,color:CLR.muted,textTransform:"uppercase"}}>{k}</div>
+              <div style={{fontSize:16,fontWeight:700}}>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="print-avoid print-diagram-section" style={S.card}>
+        <div style={S.h2}>Base Shear vs. Monitored Displacement</div>
+        <LineChart points={baseShearPoints} xKey="D" yKey="V" xLabel="Displacement (m)" yLabel="Base Shear (kN)" color={CLR.teal}
+          markers={[
+            { D: steps.find(s=>s.phi>=po.phiY)?.D||0, V: po.MY/po.Htot, label:"Yield", color:CLR.yellow },
+            { D: inp.targetDisp, V: po.atTarget.V, label:"Target", color:CLR.accent },
+            { D: po.peak.D, V: po.peak.V, label:"Peak", color:CLR.red },
+          ]} />
+      </div>
+
+      <div className="print-avoid print-diagram-section" style={S.card}>
+        <div style={S.h2}>Moment-Curvature Curve</div>
+        <LineChart points={mc} xKey="phi" yKey="M" xLabel="Curvature φ (1/m)" yLabel="Moment (kN·m)" color={CLR.violet}
+          markers={[{ phi: po.phiY, M: po.MY, label:"Yield", color:CLR.yellow }]} />
+        <div style={{...S.sub,marginTop:8}}>Elastic fit through the origin using all moment-curvature points up to first yield: EI = {fmt(elasticEI,0)} kN.m²; Ieff = EI/Ec = {fmt(effectiveI,5)} m⁴ = {fmt(effectiveIRatio,2)} Ig.</div>
+      </div>
+
+      <div className="print-avoid" style={S.card}>
+        <div style={S.h2}>Damage-State Check</div>
+        <div className="screen-only" style={{marginBottom:10}}>
+          <label style={S.label}>Inspect step (drag to browse the pushover history)</label>
+          <input type="range" min="0" max={steps.length-1} value={idx} onChange={e=>setStepIdx(+e.target.value)} style={{width:"100%"}} />
+          <div style={S.sub}>&Delta; = {fmt(sel.D,4)} m &nbsp; V = {fmt(sel.V,1)} kN &nbsp; M = {fmt(sel.M,1)} kN·m &nbsp; εc,max = {fmt(sel.ecMax,4)} &nbsp; εs,max = {fmt(Math.abs(sel.esMaxTension),4)}</div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"260px 1fr",gap:16,alignItems:"start"}}>
+          <div className="print-diagram-section"><CrossSectionDiagram inp={inp} sp={sp} fibers={mcResult.fibers} highlight={highlight} /></div>
+          <table style={S.table}>
+            <thead><tr><th style={S.th}>Mode</th><th style={S.th}>Peak Strain</th><th style={S.th}>Repairable Limit</th><th style={S.th}>Extensive Limit</th><th style={S.th}>State</th></tr></thead>
+            <tbody>
+              <tr>
+                <td style={S.td}>Concrete (core)</td>
+                <td style={S.td}>{fmt(sel.ecMax,4)}</td>
+                <td style={S.td}>{fmt(inp.ec_repairable,4)}</td>
+                <td style={S.td}>{fmt(sp.ecu_conf*inp.ec_extensive_factor,4)}</td>
+                <td style={S.td}><span style={S.badge(dmg.cState==="Repairable"?CLR.green:dmg.cState==="Extensive"?CLR.yellow:CLR.red)}>{dmg.cState}</span></td>
+              </tr>
+              <tr>
+                <td style={S.td}>Reinforcing steel</td>
+                <td style={S.td}>{fmt(Math.abs(sel.esMaxTension),4)}</td>
+                <td style={S.td}>{fmt(inp.es_repairable,4)}</td>
+                <td style={S.td}>{fmt(inp.esu_long*inp.es_extensive_factor,4)}</td>
+                <td style={S.td}><span style={S.badge(dmg.sState==="Repairable"?CLR.green:dmg.sState==="Extensive"?CLR.yellow:CLR.red)}>{dmg.sState}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style={{marginTop:10}}>Governing damage state at the selected step: <span style={S.badge(dmg.governing.state==="Repairable"?CLR.green:dmg.governing.state==="Extensive"?CLR.yellow:CLR.red)}>{dmg.governing.mode} — {dmg.governing.state}</span></div>
+        <div style={S.sub}>Evaluated at target monitored displacement unless a different step is selected above. {mcResult.stopReason}</div>
+      </div>
+
+      <div className="print-avoid print-table-section" style={S.card}>
+        <div style={S.h2}>Detailed Pushover Steps (every 15th point)</div>
+        <div style={{maxHeight:360, overflow:"auto"}}>
+        <table style={S.table}>
+          <thead><tr><th style={S.th}>φ (1/m)</th><th style={S.th}>Δ (m)</th><th style={S.th}>V (kN)</th><th style={S.th}>M (kN·m)</th><th style={S.th}>εc,max</th><th style={S.th}>εs,max</th></tr></thead>
+          <tbody>
+            {steps.filter((_,i)=>i%15===0).map((r,i)=>(
+              <tr key={i}><td style={S.td}>{fmt(r.phi,4)}</td><td style={S.td}>{fmt(r.D,4)}</td><td style={S.td}>{fmt(r.V,1)}</td><td style={S.td}>{fmt(r.M,1)}</td><td style={S.td}>{fmt(r.ecMax,4)}</td><td style={S.td}>{fmt(Math.abs(r.esMaxTension),4)}</td></tr>
+            ))}
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// APP
+// ══════════════════════════════════════════════════════════════════════
+function App(){
+  const [tab, setTab] = useState("inputs");
+  const [inp, setInp] = useState(()=>({ ...DEFAULT_INPUTS }));
+  const [result, setResult] = useState(null);
+  const tabs = [{id:"inputs",label:"Inputs"},{id:"results",label:"Results"},{id:"theory",label:"Theory"}];
+
+  const setField = (k,v) => setInp(p=>({ ...p, [k]:v }));
+
+  const preview = useMemo(()=>{
+    try { const sp = computeSectionProperties(inp); const fibers = buildFiberMesh(inp, sp); return { sp, fibers }; }
+    catch(e){ return { sp:null, fibers:[] }; }
+  }, [inp]);
+
+  const analyze = () => {
+    try {
+      const mcResult = momentCurvatureAnalysis(inp);
+      const po = pushoverAnalysis(inp, mcResult);
+      const dmg = damageStateCheck(inp, mcResult.sp, inp.esu_long, po.atTarget);
+      setResult({ mcResult, po, dmg });
+      setTab("results");
+    } catch(e){
+      alert("Analysis error: "+e.message);
+    }
+  };
+
+  const reportDate = new Date().toLocaleString();
+
+  const printReport = () => {
+    if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise().then(()=>setTimeout(()=>window.print(),250));
+    else setTimeout(()=>window.print(),100);
+  };
+
+  const saveWorkingFile = () => {
+    const safeJson = value => JSON.stringify(value,null,2).replace(/</g,"\\u003c");
+    const doc = document.cloneNode(true);
+    const root = doc.getElementById("root"); if (root) root.innerHTML = "";
+    let html = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+    const pattern = /const\s+DEFAULT_INPUTS\s*=\s*[\s\S]*?;\n/;
+    html = html.replace(pattern, `const DEFAULT_INPUTS = ${safeJson(inp)};\n`);
+    const blob = new Blob([html], { type:"text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+    a.href = url; a.download = `Circular_Column_Pushover_working_${stamp}.html`;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={S.app}>
+      <header style={S.header}>
+        <div>
+          <div style={{fontSize:18,fontWeight:800,color:CLR.accent,letterSpacing:"0.05em"}}>Circular Column Pushover v1.0</div>
+          <div style={{fontSize:10,color:CLR.muted,letterSpacing:"0.1em"}}>FIBRE-HINGE NONLINEAR STATIC (PUSHOVER) ANALYSIS</div>
+        </div>
+        <nav style={S.nav}>
+          {tabs.map(t=>(
+            <button key={t.id} style={S.navBtn(tab===t.id)} onClick={()=>setTab(t.id)}>
+              {t.label}{t.id==="results" && result && <span style={{marginLeft:6,...S.badge(CLR.green),fontSize:9,padding:"1px 5px"}}>✓</span>}
+            </button>
+          ))}
+          <button className="screen-only" style={{...S.btn("ghost"), marginLeft:16, padding:"6px 12px", lineHeight:1, minHeight:0, display:"inline-flex", alignItems:"center", justifyContent:"center"}} onClick={printReport}>🖨 Print PDF Report</button>
+        </nav>
+      </header>
+      <main style={S.main}>
+        {tab==="inputs" && <InputsView inp={inp} setField={setField} sp={preview.sp} fibers={preview.fibers} onAnalyze={analyze} onSave={saveWorkingFile} />}
+        {tab==="results" && <ResultsView inp={inp} result={result} reportDate={reportDate} />}
+        {tab==="theory" && <TheoryView />}
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
