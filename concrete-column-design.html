@@ -219,7 +219,26 @@ function renderResults(r){
 }
 function badge(id,ok){let e=document.getElementById(id);e.className='status '+(ok?'ok':'fail');e.textContent=ok?'OK':'FAIL'}
 const layoutBase={paper_bgcolor:C.card,plot_bgcolor:C.card,font:{color:C.muted,family:'monospace',size:10},margin:{l:55,r:20,t:20,b:50},legend:{orientation:'h'}};
-function plots(r){let R=r.rings,z=R.map(q=>q.map(p=>p.P)),x=R.map(q=>q.map(p=>p.Mx)),y=R.map(q=>q.map(p=>p.My));Plotly.newPlot('plot3d',[{type:'surface',x,y,z,colorscale:[[0,C.violet],[.5,C.accent],[1,C.green]],opacity:.78,showscale:false},{type:'scatter3d',mode:'markers+text',x:r.cases.map(q=>q.lc.Mx),y:r.cases.map(q=>q.lc.My),z:r.cases.map(q=>q.lc.P),text:r.cases.map(q=>q.lc.name),textposition:'top center',marker:{size:5,color:r.cases.map(q=>q.pass?C.green:C.red)},name:'Load cases'}],{...layoutBase,scene:{xaxis:{title:'Mx (kN·m)'},yaxis:{title:'My (kN·m)'},zaxis:{title:'P (kN), + compression'},bgcolor:C.card},margin:{l:0,r:0,t:0,b:0}},{responsive:true,displaylogo:false});
+function plots(r){let R=r.rings,z=R.map(q=>q.map(p=>p.P)),x=R.map(q=>q.map(p=>p.Mx)),y=R.map(q=>q.map(p=>p.My));
+  // Wet-pour texture: dark slurry base + sharp aggregate flecks (small bright/dark stone chips) + slow rolling damp variation
+  let concreteNoise=R.map((q,ri)=>q.map((p,ci)=>{
+    let speck=(Math.sin(ri*12.9898+ci*78.233)*43758.5453)%1; speck=speck<0?speck+1:speck;
+    let speck2=(Math.sin(ri*39.346+ci*11.135)*24634.634)%1; speck2=speck2<0?speck2+1:speck2;
+    let stoneChip=Math.pow(speck,4)>0.85?0.9:(Math.pow(speck2,5)>0.9?0.05:0.45); // occasional bright or dark aggregate chip
+    let damp=Math.sin(ri*0.35)*Math.cos(ci*0.4)*0.15; // slow wet sheen roll-off
+    let grain=(Math.random()-0.5)*0.14;
+    return Math.max(0,Math.min(1, stoneChip+damp+grain ));
+  }));
+  Plotly.newPlot('plot3d',[{type:'surface',x,y,z,
+    surfacecolor:concreteNoise,
+    colorscale:[[0,'#232321'],[0.15,'#39372f'],[0.32,'#514e44'],[0.48,'#6b6759'],[0.62,'#847e6c'],[0.78,'#9c9683'],[0.9,'#b3ac96'],[1,'#c7c0a8']],
+    cmin:0,cmax:1,
+    opacity:1,
+    showscale:false,
+    lighting:{ambient:0.35,diffuse:0.75,specular:0.35,roughness:0.55,fresnel:0.2},
+    lightposition:{x:150,y:250,z:400},
+    contours:{x:{show:false},y:{show:false},z:{show:false}}
+  },{type:'scatter3d',mode:'markers+text',x:r.cases.map(q=>q.lc.Mx),y:r.cases.map(q=>q.lc.My),z:r.cases.map(q=>q.lc.P),text:r.cases.map(q=>q.lc.name),textposition:'top center',marker:{size:5,color:r.cases.map(q=>q.pass?C.green:C.red)},name:'Load cases'}],{...layoutBase,scene:{xaxis:{title:'Mx (kN·m)'},yaxis:{title:'My (kN·m)'},zaxis:{title:'P (kN), + compression'},bgcolor:C.card},margin:{l:0,r:0,t:0,b:0}},{responsive:true,displaylogo:false});
 // Avoid spreading the very dense 1 mm-c surface into Math.min/Math.max.
 // With hundreds of thousands of points, the spread operator exceeds the JS
 // argument limit and stopped execution before Figures 2 and 3 were drawn.
