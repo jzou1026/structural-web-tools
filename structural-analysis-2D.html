@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PlaneFrame v1.0 — 2D Frame Structural Analysis</title>
+  <title>PlaneFrame v2.1 — 2D Frame Structural Analysis</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -39,7 +39,18 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      * { color: #111827 !important; border-color: #c9ced6 !important; box-shadow: none !important; }
+      /* Force every element to the light report theme, regardless of any
+         inline dark-theme style (SVG canvases, inputs, selects, cards all
+         set inline `background` colors for the on-screen dark UI) — an
+         `!important` rule always wins over a non-important inline style
+         no matter how specific the inline style is, so this reliably
+         strips every dark background from the printed/PDF output. */
+      * {
+        color: #111827 !important;
+        background: #ffffff !important;
+        border-color: #c9ced6 !important;
+        box-shadow: none !important;
+      }
       .screen-only { display: none !important; }
       .print-report-header { display: block !important; }
       table { width: 100% !important; border-collapse: collapse !important; font-size: 8.3pt !important; page-break-inside: auto !important; }
@@ -48,6 +59,13 @@
       th, td { padding: 4pt 4.5pt !important; border: 1px solid #c9ced6 !important; background: #ffffff !important; color: #111827 !important; }
       th { background: #e8edf5 !important; font-size: 7.6pt !important; font-weight: 700 !important; }
       svg { max-width: 100% !important; height: auto !important; display: block !important; margin-left: auto !important; margin-right: auto !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+      /* Buttons have no meaning on paper; file pickers/checkboxes belong
+         only to the editable tabs, which are already fully hidden above.
+         Dropdowns (Load Combination, Diagram Type, etc.) are intentionally
+         left visible — browsers render a <select>'s current value as
+         static, readable text when printed, which is informative in a
+         report (e.g. showing which load combination the diagrams use). */
+      button, input[type="file"] { display: none !important; }
     }
   </style>
 </head>
@@ -2230,7 +2248,7 @@ function defaultModel() {
     ],
     dynamicsConfig: {
       enabled: false,
-      spectrum: { shape: "code", Sds: 1.0, Sd1: 0.4 },
+      spectrum: { shape: "custom", Sds: 1.0, Sd1: 0.4, points: [{ T: 0, Sa: 0.447 }, { T: 0.2, Sa: 1.03 }, { T: 0.5, Sa: 0.821 }, { T: 1.0, Sa: 0.477 }, { T: 2.0, Sa: 0.288 }, { T: 4.0, Sa: 0.1120 }, { T: 5.0, Sa: 0.0826 }, { T: 10.0, Sa: 0.0343 }] },
       massSource: { mode: "manual", patternId: null, includeManualMass: true },
     },
   };
@@ -2363,11 +2381,10 @@ function RestraintGlyph({ sx, sy, restraints, size }) {
     // Fixed support: hatched ground line
     return (
       <g>
-        <line x1={sx - s} y1={sy + s} x2={sx + s} y2={sy + s} stroke={CLR.orange} strokeWidth={2} />
+        <line x1={sx - s} y1={sy + 5} x2={sx + s} y2={sy + 5} stroke={CLR.orange} strokeWidth={3} />
         {[-1, -0.5, 0, 0.5, 1].map((f, i) => (
-          <line key={i} x1={sx + f * s} y1={sy + s} x2={sx + f * s - 5} y2={sy + s + 8} stroke={CLR.orange} strokeWidth={1.5} />
+          <line key={i} x1={sx + f * s} y1={sy + 5} x2={sx + f * s - 5} y2={sy + 13} stroke={CLR.orange} strokeWidth={1.5} />
         ))}
-        <rect x={sx - s} y={sy - 2} width={2 * s} height={4} fill={CLR.orange} />
       </g>
     );
   }
@@ -2392,7 +2409,7 @@ function RestraintGlyph({ sx, sy, restraints, size }) {
   );
 }
 
-function ModelCanvas({ model, selection, onSelectNode, onSelectMember, height, overlayMode, resultData }) {
+function ModelCanvas({ model, selection, onSelectNode, onSelectMember, height, overlayMode, resultData, loadPatternId }) {
   const vb = computeViewBox(model);
   const H = height || 420;
   // Screen transform: data (x,y) -> svg (sx, sy), Y flipped (screen down = +sy)
@@ -2408,6 +2425,7 @@ function ModelCanvas({ model, selection, onSelectNode, onSelectMember, height, o
         <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
           <path d="M0,0 L8,4 L0,8 Z" fill={CLR.red} />
         </marker>
+        <marker id="arrowhead-member" markerWidth="7" markerHeight="7" refX="5.5" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill={CLR.yellow} /></marker>
       </defs>
       {/* Members */}
       {model.members.map(m => {
@@ -2418,7 +2436,7 @@ function ModelCanvas({ model, selection, onSelectNode, onSelectMember, height, o
         return (
           <g key={m.id} onClick={() => onSelectMember && onSelectMember(m.id)} style={{ cursor: "pointer" }}>
             <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy}
-              stroke={isSel ? CLR.accent : CLR.text} strokeWidth={isSel ? 4 : 2.5} />
+              stroke={isSel ? "#b6e3ff" : "#79c0ff"} strokeWidth={isSel ? 4 : 2.5} />
             <text x={(p1.sx + p2.sx) / 2} y={(p1.sy + p2.sy) / 2 - 8} fill={CLR.muted} fontSize={10} textAnchor="middle">{m.id}</text>
           </g>
         );
@@ -2437,24 +2455,24 @@ function ModelCanvas({ model, selection, onSelectNode, onSelectMember, height, o
           </g>
         );
       })}
-      {/* Nodal load arrows */}
-      {model.loadPatterns && overlayMode === "loads" && model.loadPatterns.flatMap(pat =>
-        (pat.nodalLoads || []).map((nl, idx) => {
-          const n = nodeById(model, nl.nodeId);
-          if (!n) return null;
-          const p = toScreen(n.x, n.y);
-          const arrows = [];
-          if (nl.Fx) {
-            const dir = Math.sign(nl.Fx);
-            arrows.push(<line key={pat.id + "fx" + idx} x1={p.sx - dir * 35} y1={p.sy} x2={p.sx - 6 * dir} y2={p.sy} stroke={CLR.red} strokeWidth={2} markerEnd="url(#arrowhead)" />);
-          }
-          if (nl.Fy) {
-            const dir = Math.sign(nl.Fy);
-            arrows.push(<line key={pat.id + "fy" + idx} x1={p.sx} y1={p.sy + dir * 35} x2={p.sx} y2={p.sy + 6 * dir} stroke={CLR.red} strokeWidth={2} markerEnd="url(#arrowhead)" />);
-          }
-          return arrows;
-        })
-      )}
+      {/* Applied load preview */}
+      {overlayMode === "loads" && (model.loadPatterns || []).filter(p => !loadPatternId || p.id === loadPatternId).flatMap(pat => {
+        const graphics = [];
+        (pat.nodalLoads || []).forEach((nl,i) => {
+          const n=nodeById(model,nl.nodeId); if(!n) return; const q=toScreen(n.x,n.y);
+          if(nl.Fx){const d=Math.sign(nl.Fx);graphics.push(<g key={pat.id+"fx"+i}><line x1={q.sx-d*42} y1={q.sy} x2={q.sx-d*7} y2={q.sy} stroke={CLR.red} strokeWidth={2} markerEnd="url(#arrowhead)"/><text x={q.sx-d*47} y={q.sy-6} fill={CLR.red} fontSize={9} textAnchor="middle">{fmtShort(nl.Fx)}</text></g>)}
+          if(nl.Fy){const d=Math.sign(nl.Fy);graphics.push(<g key={pat.id+"fy"+i}><line x1={q.sx} y1={q.sy+d*42} x2={q.sx} y2={q.sy+d*7} stroke={CLR.red} strokeWidth={2} markerEnd="url(#arrowhead)"/><text x={q.sx+7} y={q.sy+d*45} fill={CLR.red} fontSize={9}>{fmtShort(nl.Fy)}</text></g>)}
+        });
+        (pat.memberLoads || []).forEach((ml,i) => {
+          const m=memberById(model,ml.memberId); if(!m)return; const a=nodeById(model,m.nearNodeId),b=nodeById(model,m.farNodeId); if(!a||!b)return;
+          const p1=toScreen(a.x,a.y),p2=toScreen(b.x,b.y),dx=p2.sx-p1.sx,dy=p2.sy-p1.sy,pl=Math.hypot(dx,dy)||1,tx=dx/pl,ty=dy/pl,nx=-ty,ny=tx,L=memberLength(model,m)||1;
+          const at=x=>({sx:p1.sx+tx*pl*x/L,sy:p1.sy+ty*pl*x/L}); const d=ml.direction==="gravity"?{x:0,y:1}:{x:-nx,y:-ny};
+          const arrow=(key,q,len=25,label=null)=><g key={key}><line x1={q.sx-d.x*len} y1={q.sy-d.y*len} x2={q.sx-d.x*4} y2={q.sy-d.y*4} stroke={CLR.yellow} strokeWidth={1.7} markerEnd="url(#arrowhead-member)"/>{label&&<text x={q.sx-d.x*(len+9)} y={q.sy-d.y*(len+9)} fill={CLR.yellow} fontSize={8.5} textAnchor="middle">{label}</text>}</g>;
+          if(ml.type==="point") graphics.push(arrow(pat.id+"p"+i,at(Math.max(0,Math.min(L,ml.a==null?L/2:ml.a))),30,"P "+fmtShort(ml.P||0)));
+          else if(ml.type==="uniform") { const qa=at(0),qb=at(L); graphics.push(<line key={pat.id+"line"+i} x1={qa.sx-d.x*25} y1={qa.sy-d.y*25} x2={qb.sx-d.x*25} y2={qb.sy-d.y*25} stroke={CLR.yellow} strokeWidth={1.7}/>); for(let k=0;k<=8;k++)graphics.push(arrow(pat.id+"u"+i+"-"+k,at(L*k/8),25,k===4?"w "+fmtShort(ml.w||0):null)); }
+          else if(ml.type==="trapezoidal") { const x0=ml.x0==null?0:ml.x0,x1=ml.x1==null?L:ml.x1,max=Math.max(Math.abs(ml.w1||0),Math.abs(ml.w2||0),1e-9); let tails=[]; for(let k=0;k<=8;k++){const r=k/8,x=x0+(x1-x0)*r,w=(ml.w1||0)+((ml.w2||0)-(ml.w1||0))*r,len=8+20*Math.abs(w)/max,q=at(x);tails.push({sx:q.sx-d.x*len,sy:q.sy-d.y*len});graphics.push(arrow(pat.id+"t"+i+"-"+k,q,len,k===4?fmtShort(ml.w1||0)+" → "+fmtShort(ml.w2||0):null));} graphics.push(<line key={pat.id+"tl"+i} x1={tails[0].sx} y1={tails[0].sy} x2={tails[8].sx} y2={tails[8].sy} stroke={CLR.yellow} strokeWidth={1.7}/>); }
+        }); return graphics;
+      })}
     </svg>
   );
 }
@@ -2671,6 +2689,7 @@ function MemberTable({ model, setModel, selection, setSelection }) {
 
 function ModelTab({ model, setModel }) {
   const [selection, setSelection] = useState(null);
+  const [previewPatternId, setPreviewPatternId] = useState(model.loadPatterns[0] ? model.loadPatterns[0].id : null);
   const handleUnitChange = (newSys) => {
     setModel(m => convertModelUnits(m, m.unitSystem, newSys));
   };
@@ -2683,7 +2702,8 @@ function ModelTab({ model, setModel }) {
             {Object.entries(UNIT_SYSTEMS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
         </div>
-        <ModelCanvas model={model} selection={selection}
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}><select style={{...S.select,width:280}} value={previewPatternId||""} onChange={e=>setPreviewPatternId(e.target.value)}>{model.loadPatterns.map(p=><option key={p.id} value={p.id}>Loads: {p.name}</option>)}</select></div>
+        <ModelCanvas model={model} selection={selection} overlayMode="loads" loadPatternId={previewPatternId}
           onSelectNode={id => setSelection({ type: "node", id })}
           onSelectMember={id => setSelection({ type: "member", id })} />
         <div style={{ ...S.smallMuted, marginTop: 8 }}>Click a node or member to highlight it in the tables below. Orange glyphs show support restraints (fixed / pinned / roller / partial). Switching unit systems automatically converts all model values (geometry, properties, loads) to the equivalent value in the new units.</div>
@@ -2721,10 +2741,13 @@ function LoadPatternEditor({ model, setModel, pattern }) {
 
   return (
     <div style={{ ...S.card, borderColor: CLR.accent + "55" }}>
-      <div style={S.h2}>
-        <input style={{ ...S.input, width: 260, textAlign: "left", fontWeight: 700 }} value={pattern.name}
-          onChange={e => updatePattern({ name: e.target.value })} />
-        <button style={S.btn("danger")} onClick={() => setModel(m => ({ ...m, loadPatterns: m.loadPatterns.filter(p => p.id !== pattern.id) }))}>Delete Pattern</button>
+      <div style={{ ...S.h2, alignItems: "flex-end" }}>
+        <div style={{ width: 300 }}>
+          <div style={{ ...S.smallMuted, color: CLR.accent, marginBottom: 5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>Load Case</div>
+          <input aria-label="Load Case name" style={{ ...S.input, width: "100%", textAlign: "left", fontWeight: 700 }} value={pattern.name}
+            onChange={e => updatePattern({ name: e.target.value })} />
+        </div>
+        <button style={S.btn("danger")} onClick={() => setModel(m => ({ ...m, loadPatterns: m.loadPatterns.filter(p => p.id !== pattern.id) }))}>Delete Load Case</button>
       </div>
 
       <div style={S.h3}>Nodal Loads</div>
@@ -2891,14 +2914,28 @@ function SimpleLineChart({ points, xLabel, yLabel, height, color }) {
 
 // ── ADVANCED DYNAMICS SETTINGS (response spectrum + mass source) ────────
 function AdvancedDynamicsEditor({ model, setModel }) {
-  const cfg = model.dynamicsConfig || { enabled: false, spectrum: { shape: "code", Sds: 1, Sd1: 0.4 }, massSource: { mode: "manual", patternId: null, includeManualMass: true } };
+  const cfg = model.dynamicsConfig || { enabled: false, spectrum: { shape: "custom", Sds: 1, Sd1: 0.4, points: [{ T: 0, Sa: 0.447 }, { T: 0.2, Sa: 1.03 }, { T: 0.5, Sa: 0.821 }, { T: 1.0, Sa: 0.477 }, { T: 2.0, Sa: 0.288 }, { T: 4.0, Sa: 0.1120 }, { T: 5.0, Sa: 0.0826 }, { T: 10.0, Sa: 0.0343 }] }, massSource: { mode: "manual", patternId: null, includeManualMass: true } };
   const units = UNIT_SYSTEMS[model.unitSystem];
   const updateCfg = (patch) => setModel(m => ({ ...m, dynamicsConfig: { ...cfg, ...patch } }));
   const updateSpectrum = (patch) => updateCfg({ spectrum: { ...cfg.spectrum, ...patch } });
   const updateMassSource = (patch) => updateCfg({ massSource: { ...cfg.massSource, ...patch } });
+  const spectrumPoints = (cfg.spectrum.points && cfg.spectrum.points.length ? cfg.spectrum.points : [{ T: 0, Sa: 0.447 }, { T: 0.2, Sa: 1.03 }, { T: 0.5, Sa: 0.821 }, { T: 1.0, Sa: 0.477 }, { T: 2.0, Sa: 0.288 }, { T: 4.0, Sa: 0.1120 }, { T: 5.0, Sa: 0.0826 }, { T: 10.0, Sa: 0.0343 }]);
+  const updateSpectrumPoint = (idx, patch) => updateSpectrum({ points: spectrumPoints.map((p, i) => i === idx ? { ...p, ...patch } : p) });
+  const addSpectrumPoint = () => {
+    const sorted = spectrumPoints.slice().sort((a, b) => a.T - b.T);
+    const last = sorted[sorted.length - 1] || { T: 0, Sa: 0 };
+    updateSpectrum({ points: [...spectrumPoints, { T: +(last.T + 0.5).toFixed(3), Sa: last.Sa }] });
+  };
+  const removeSpectrumPoint = idx => {
+    if (spectrumPoints.length <= 2) return;
+    updateSpectrum({ points: spectrumPoints.filter((_, i) => i !== idx) });
+  };
+  const sortSpectrumPoints = () => updateSpectrum({ points: spectrumPoints.slice().sort((a, b) => a.T - b.T) });
 
   const spectrumFn = buildSpectrumFn(cfg.spectrum, units.g);
-  const Tmax = cfg.spectrum.shape === "constant" ? 3 : Math.max(3, (cfg.spectrum.Sd1 || 0.4) / (cfg.spectrum.Sds || 1) * 4);
+  const Tmax = cfg.spectrum.shape === "constant" ? 3 : cfg.spectrum.shape === "custom"
+    ? Math.max(0.1, ...spectrumPoints.map(p => Number(p.T) || 0))
+    : Math.max(3, (cfg.spectrum.Sd1 || 0.4) / (cfg.spectrum.Sds || 1) * 4);
   const nPts = 80;
   const chartPoints = Array.from({ length: nPts + 1 }, (_, i) => {
     const T = (i / nPts) * Tmax;
@@ -2912,30 +2949,29 @@ function AdvancedDynamicsEditor({ model, setModel }) {
       <div style={S.h3}>Mass Source</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 14 }}>
         <div>
-          <div style={S.smallMuted}>Mode</div>
-          <select style={S.select} value={cfg.massSource.mode} onChange={e => updateMassSource({ mode: e.target.value })}>
-            <option value="manual">Manual (nodal/member mass fields)</option>
-            <option value="fromPattern">From Load Pattern (weight / g)</option>
+          <div style={S.smallMuted}>Mass Source</div>
+          <select
+            aria-label="Mass source load case"
+            style={S.select}
+            value={cfg.massSource.mode === "fromPattern" && cfg.massSource.patternId ? `case:${cfg.massSource.patternId}` : "manual"}
+            onChange={e => {
+              const value = e.target.value;
+              if (value === "manual") updateMassSource({ mode: "manual", patternId: null });
+              else updateMassSource({ mode: "fromPattern", patternId: value.replace("case:", "") });
+            }}>
+            <option value="manual">Manual — nodal/member mass fields</option>
+            {model.loadPatterns.map(p => <option key={p.id} value={`case:${p.id}`}>Load Case — {p.name}</option>)}
           </select>
         </div>
-        {cfg.massSource.mode === "fromPattern" && (
-          <React.Fragment>
-            <div>
-              <div style={S.smallMuted}>Source Load Pattern</div>
-              <select style={S.select} value={cfg.massSource.patternId || ""} onChange={e => updateMassSource({ patternId: e.target.value })}>
-                <option value="">— select —</option>
-                {model.loadPatterns.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 6 }}>
-              <input type="checkbox" checked={cfg.massSource.includeManualMass !== false} onChange={e => updateMassSource({ includeManualMass: e.target.checked })} />
-              <span style={S.smallMuted}>Also include manually-defined nodal/member mass</span>
-            </div>
-          </React.Fragment>
+        {cfg.massSource.mode === "fromPattern" && cfg.massSource.patternId && (
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6 }}>
+            <input type="checkbox" checked={cfg.massSource.includeManualMass !== false} onChange={e => updateMassSource({ includeManualMass: e.target.checked })} />
+            <span style={S.smallMuted}>Also include manually-defined nodal/member mass</span>
+          </div>
         )}
       </div>
       <div style={{ ...S.smallMuted, marginBottom: 18 }}>
-        "From Load Pattern" converts that pattern's nodal Fy loads and uniform member gravity loads into equivalent mass (mass = weight / {units.g} {units.length}/s², using {units.g} as the current unit system's gravitational acceleration). Point and trapezoidal member loads are lumped evenly to the member's two end nodes (total mass is exact; distribution along the member is approximated).
+        Select Manual or choose a specific Load Case directly from the Mass Source menu. A selected load case converts its gravity loads into equivalent mass (mass = weight / {units.g} {units.length}/s², using {units.g} as the current unit system's gravitational acceleration). The resulting mass model is used for modal participation and the Response Spectrum BMD, SFD, AFD, and deformation-envelope results. Point and trapezoidal member loads are lumped to the member end nodes (total mass is preserved; its distribution is approximated).
       </div>
 
       <div style={S.h3}>Response Spectrum</div>
@@ -2944,6 +2980,7 @@ function AdvancedDynamicsEditor({ model, setModel }) {
           <div style={S.smallMuted}>Shape</div>
           <select style={S.select} value={cfg.spectrum.shape} onChange={e => updateSpectrum({ shape: e.target.value })}>
             <option value="code">Code-style (3-branch, Sds/Sd1)</option>
+            <option value="custom">User-defined T–Sa points</option>
             <option value="constant">Constant Sa</option>
           </select>
         </div>
@@ -2952,12 +2989,43 @@ function AdvancedDynamicsEditor({ model, setModel }) {
             <div><div style={S.smallMuted}>Sds (× g)</div><input style={S.input} type="number" step="0.05" value={cfg.spectrum.Sds} onChange={e => updateSpectrum({ Sds: +e.target.value })} /></div>
             <div><div style={S.smallMuted}>Sd1 (× g)</div><input style={S.input} type="number" step="0.05" value={cfg.spectrum.Sd1} onChange={e => updateSpectrum({ Sd1: +e.target.value })} /></div>
           </React.Fragment>
-        ) : (
+        ) : cfg.spectrum.shape === "constant" ? (
           <div><div style={S.smallMuted}>Sa ({units.length}/s²)</div><input style={S.input} type="number" value={cfg.spectrum.Sa || 1} onChange={e => updateSpectrum({ Sa: +e.target.value })} /></div>
-        )}
+        ) : null}
       </div>
 
+      {cfg.spectrum.shape === "custom" && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <div style={S.h3}>User-Defined Spectrum Points</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={S.btn("secondary")} onClick={sortSpectrumPoints}>Sort by Period</button>
+              <button style={S.btn("secondary")} onClick={addSpectrumPoint}>+ Add Point</button>
+            </div>
+          </div>
+          <div style={{ overflowX: "auto", maxHeight: 320, overflowY: "auto", border: `1px solid ${CLR.border}`, borderRadius: 6 }}>
+            <table style={S.table}>
+              <thead><tr><th style={S.th}>Period T (s)</th><th style={S.th}>Spectral Acceleration Sa (× g)</th><th style={S.th}></th></tr></thead>
+              <tbody>
+                {spectrumPoints.map((pt, idx) => (
+                  <tr key={idx}>
+                    <td style={S.td}><input style={S.input} type="number" min="0" step="0.01" value={pt.T} onChange={e => updateSpectrumPoint(idx, { T: Math.max(0, +e.target.value) })} /></td>
+                    <td style={S.td}><input style={S.input} type="number" min="0" step="0.01" value={pt.Sa} onChange={e => updateSpectrumPoint(idx, { Sa: Math.max(0, +e.target.value) })} /></td>
+                    <td style={S.td}><button style={S.btn("danger")} disabled={spectrumPoints.length <= 2} onClick={() => removeSpectrumPoint(idx)}>✕</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ ...S.smallMuted, marginTop: 8 }}>Enter at least two period–acceleration pairs. The analysis sorts the points by period and uses linear interpolation between adjacent points. Below the first period and above the last period, the nearest endpoint Sa is used.</div>
+        </div>
+      )}
       <SimpleLineChart points={chartPoints} xLabel="Period T (s)" yLabel="Sa (g)" color={CLR.violet} />
+      {cfg.spectrum.shape === "custom" && (
+        <div style={{ ...S.smallMuted, marginTop: 8 }}>
+          Default spectrum: NBC 2025 2%-in-50-year values shown in the supplied reference image — PGA = 0.447g; Sa(0.2) = 1.03g; Sa(0.5) = 0.821g; Sa(1.0) = 0.477g; Sa(2.0) = 0.288g; Sa(4.0) = 0.1120g; Sa(5.0) = 0.0826g; Sa(10.0) = 0.0343g. Values remain fully editable.
+        </div>
+      )}
       <div style={{ ...S.smallMuted, marginTop: 8 }}>
         This spectrum shape and mass source are used automatically by the Response Spectrum and Modal analysis types on the Analysis tab whenever Advanced is enabled here.
       </div>
@@ -2966,9 +3034,11 @@ function AdvancedDynamicsEditor({ model, setModel }) {
 }
 
 function LoadsTab({ model, setModel }) {
+  const [previewPatternId, setPreviewPatternId] = useState(model.loadPatterns[0] ? model.loadPatterns[0].id : null);
+  useEffect(() => { if (!model.loadPatterns.some(p => p.id === previewPatternId)) setPreviewPatternId(model.loadPatterns[0] ? model.loadPatterns[0].id : null); }, [model.loadPatterns, previewPatternId]);
   const addPattern = () => {
     const id = newId("LP");
-    setModel(m => ({ ...m, loadPatterns: [...m.loadPatterns, { id, name: "New Pattern", nodalLoads: [], memberLoads: [] }] }));
+    setModel(m => ({ ...m, loadPatterns: [...m.loadPatterns, { id, name: "New Load Case", nodalLoads: [], memberLoads: [] }] }));
   };
   const cfg = model.dynamicsConfig || { enabled: false };
   const toggleAdvanced = (checked) => {
@@ -2976,19 +3046,24 @@ function LoadsTab({ model, setModel }) {
       ...m,
       dynamicsConfig: {
         enabled: checked,
-        spectrum: (m.dynamicsConfig && m.dynamicsConfig.spectrum) || { shape: "code", Sds: 1, Sd1: 0.4 },
+        spectrum: (m.dynamicsConfig && m.dynamicsConfig.spectrum) || { shape: "custom", Sds: 1, Sd1: 0.4, points: [{ T: 0, Sa: 0.447 }, { T: 0.2, Sa: 1.03 }, { T: 0.5, Sa: 0.821 }, { T: 1.0, Sa: 0.477 }, { T: 2.0, Sa: 0.288 }, { T: 4.0, Sa: 0.1120 }, { T: 5.0, Sa: 0.0826 }, { T: 10.0, Sa: 0.0343 }] },
         massSource: (m.dynamicsConfig && m.dynamicsConfig.massSource) || { mode: "manual", patternId: null, includeManualMass: true },
       },
     }));
   };
   return (
     <div>
+      <div style={S.card}>
+        <div style={S.h2}><span>Load Preview</span><select style={{...S.select,width:300}} value={previewPatternId||""} onChange={e=>setPreviewPatternId(e.target.value)}>{model.loadPatterns.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+        <ModelCanvas model={model} selection={null} overlayMode="loads" loadPatternId={previewPatternId} height={420}/>
+        <div style={{...S.smallMuted,marginTop:8}}>Frame geometry, nodes, supports, member labels, and the selected load pattern are shown here and update live.</div>
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
           <input type="checkbox" checked={!!cfg.enabled} onChange={e => toggleAdvanced(e.target.checked)} />
           <span style={{ fontSize: 12.5, fontWeight: 700, color: cfg.enabled ? CLR.accent : CLR.muted }}>Advanced (Response Spectrum &amp; Mass Source)</span>
         </label>
-        <button style={S.btn("primary")} onClick={addPattern}>+ New Load Pattern</button>
+        <button style={S.btn("primary")} onClick={addPattern}>+ New Load Case</button>
       </div>
       {cfg.enabled && <AdvancedDynamicsEditor model={model} setModel={setModel} />}
       {model.loadPatterns.map(p => <LoadPatternEditor key={p.id} model={model} setModel={setModel} pattern={p} />)}
@@ -3027,7 +3102,7 @@ function runAnalysis(model, settings) {
     }
     if (settings.type === "modal") {
       const { nodes: massNodes, members: massMembers } = applyMassSource(model, resolvedMembers);
-      const res = FC.modal.solveModal(massNodes, massMembers, { nModes: settings.nModes || 6, massType: settings.massType || "lumped" });
+      const res = FC.modal.solveModal(massNodes, massMembers, { nModes: model.nodes.length * 3, massType: settings.massType || "lumped" });
       return { ...res, comboUsed: null };
     }
     if (settings.type === "pdelta") {
@@ -3036,12 +3111,14 @@ function runAnalysis(model, settings) {
     }
     if (settings.type === "responseSpectrum") {
       const { nodes: massNodes, members: massMembers } = applyMassSource(model, resolvedMembers);
-      const modal = FC.modal.solveModal(massNodes, massMembers, { nModes: settings.nModes || 6, massType: settings.massType || "lumped" });
+      const modal = FC.modal.solveModal(massNodes, massMembers, { nModes: model.nodes.length * 3, massType: settings.massType || "lumped" });
       if (modal.status !== "Successful") return { status: "Failed", error: "Modal analysis (prerequisite) failed: " + modal.error };
       const spectrumSource = (model.dynamicsConfig && model.dynamicsConfig.enabled) ? model.dynamicsConfig.spectrum : settings.spectrum;
       const spectrumFn = buildSpectrumFn(spectrumSource, UNIT_SYSTEMS[model.unitSystem].g);
       const res = FC.responseSpectrum.solveResponseSpectrum(modal, spectrumFn, settings.direction || "X", settings.combination || "SRSS", settings.dampingRatio != null ? settings.dampingRatio : 0.05, model.nodes, resolvedMembers);
-      return { ...res, modal, comboUsed: null };
+      const massCfg = model.dynamicsConfig && model.dynamicsConfig.massSource;
+      const massPattern = massCfg && massCfg.mode === "fromPattern" ? model.loadPatterns.find(p => p.id === massCfg.patternId) : null;
+      return { ...res, modal, comboUsed: null, massSourceUsed: massPattern ? `Load Case — ${massPattern.name}` : "Manual nodal/member mass fields" };
     }
     if (settings.type === "movingLoad") {
       const responses = (resolvedMembers || []).map(m => ({ id: "M_" + m.id, type: "memberMoment", memberId: m.id, stationRatio: 0.5 }))
@@ -3066,6 +3143,31 @@ function buildSpectrumFn(spectrum, g) {
   if (!spectrum || spectrum.shape === "constant") {
     const Sa = (spectrum && spectrum.Sa) || 1;
     return () => Sa;
+  }
+  if (spectrum.shape === "custom") {
+    const pts = (spectrum.points || [])
+      .map(p => ({ T: Number(p.T), Sa: Number(p.Sa) }))
+      .filter(p => Number.isFinite(p.T) && Number.isFinite(p.Sa) && p.T >= 0 && p.Sa >= 0)
+      .sort((a, b) => a.T - b.T);
+    if (pts.length === 0) return () => 0;
+    // Collapse duplicate periods by retaining the last entered Sa value.
+    const unique = [];
+    for (const p of pts) {
+      if (unique.length && Math.abs(unique[unique.length - 1].T - p.T) < 1e-12) unique[unique.length - 1] = p;
+      else unique.push(p);
+    }
+    return T => {
+      if (T <= unique[0].T) return unique[0].Sa * gUse;
+      if (T >= unique[unique.length - 1].T) return unique[unique.length - 1].Sa * gUse;
+      for (let i = 0; i < unique.length - 1; i++) {
+        const a = unique[i], b = unique[i + 1];
+        if (T >= a.T && T <= b.T) {
+          const r = (T - a.T) / (b.T - a.T);
+          return (a.Sa + r * (b.Sa - a.Sa)) * gUse;
+        }
+      }
+      return unique[unique.length - 1].Sa * gUse;
+    };
   }
   const Sds = spectrum.Sds || 1, Sd1 = spectrum.Sd1 || 0.4, T0 = spectrum.T0 != null ? spectrum.T0 : 0.2 * (Sd1 / Sds);
   const Ts = Sd1 / Sds;
@@ -3224,10 +3326,16 @@ function AnalysisTab({ model, results, setResults, settings, setSettings }) {
               </select>
             </div>
           )}
-          {(settings.type === "modal" || settings.type === "buckling" || settings.type === "responseSpectrum") && (
+          {settings.type === "buckling" && (
             <div>
-              <div style={S.smallMuted}>Number of Modes</div>
+              <div style={S.smallMuted}>Number of Buckling Modes</div>
               <input style={S.input} type="number" value={settings.nModes} onChange={e => setSettings(s => ({ ...s, nModes: +e.target.value }))} />
+            </div>
+          )}
+          {(settings.type === "modal" || settings.type === "responseSpectrum") && (
+            <div>
+              <div style={S.smallMuted}>Modes Included</div>
+              <div style={{ ...S.input, color: CLR.green }}>All available structural modes</div>
             </div>
           )}
           {(settings.type === "modal" || settings.type === "responseSpectrum") && (
@@ -3500,7 +3608,7 @@ function FrameDiagramSVG({ model, data, mode, deflectionScale, height }) {
   });
   const globalMax = Math.max(...perMember.flatMap(pm => pm.pts.map(p => Math.abs(p.val))), 1e-9);
   const diagramPxHeight = Math.min(60, vb.w * drawScale * 0.09); // visual offset scale, capped
-  const color = mode === "moment" ? CLR.violet : mode === "shear" ? CLR.teal : CLR.orange;
+  const color = mode === "moment" ? CLR.orange : mode === "shear" ? CLR.green : CLR.red;
 
   return (
     <svg viewBox={`0 0 ${vb.w * drawScale} ${H}`} width="100%" height={H} style={{ background: "#0d1117", border: `1px solid ${CLR.border}`, borderRadius: 6 }}>
@@ -3536,6 +3644,7 @@ function FrameDiagramSVG({ model, data, mode, deflectionScale, height }) {
         });
         const baseStart = toScreen(ni.x, ni.y), baseEnd = toScreen(nj.x, nj.y);
         const pathD = pathPts.map((p, i) => `${i === 0 ? "M" : "L"}${p.sx},${p.sy}`).join(" ");
+        const ordinateLines = Array.from({length:17},(_,oi)=>{const targetX=oi*L/16;let bi=0;for(let pi=1;pi<pts.length;pi++)if(Math.abs(pts[pi].x-targetX)<Math.abs(pts[bi].x-targetX))bi=pi;return {base:toScreen(ni.x+c*pts[bi].x,ni.y+s*pts[bi].x),tip:pathPts[bi],key:oi};});
         const maxPt = pts.reduce((best, p) => Math.abs(p.val) > Math.abs(best.val) ? p : best, pts[0]);
         const maxScreenBase = toScreen(ni.x + c * maxPt.x, ni.y + s * maxPt.x);
         const maxOffsetFrac = diagramSign * (maxPt.val / globalMax) * diagramPxHeight;
@@ -3543,7 +3652,8 @@ function FrameDiagramSVG({ model, data, mode, deflectionScale, height }) {
         const labelY = maxScreenBase.sy - perpY * maxOffsetFrac * 1.15;
         return (
           <g key={m.id}>
-            <path d={`${pathD} L${baseEnd.sx},${baseEnd.sy} L${baseStart.sx},${baseStart.sy} Z`} fill={color + "38"} stroke={color} strokeWidth={1.5} />
+            <path d={`${pathD} L${baseEnd.sx},${baseEnd.sy} L${baseStart.sx},${baseStart.sy} Z`} fill={color + "26"} stroke={color} strokeWidth={1.7} />
+            {ordinateLines.map(o=><line key={"ord-"+o.key} x1={o.base.sx} y1={o.base.sy} x2={o.tip.sx} y2={o.tip.sy} stroke={color} strokeWidth={1} strokeOpacity={0.72}/>)}
             {Math.abs(maxPt.val) > globalMax * 0.02 && (
               <text x={labelX} y={labelY} fill={color} fontSize={9.5} fontWeight="700" textAnchor="middle">{fmt(maxPt.val, 2)}</text>
             )}
@@ -3612,7 +3722,7 @@ function LinearResultsExplorer({ model, analysisMode, pdeltaSettings }) {
           </div>
           {diagramMode === "deflection" && (
             <div>
-              <div style={S.smallMuted}>Deflection Scale ×</div>
+              <div style={S.smallMuted}>Static Deformation Scale ×</div>
               <input style={S.input} type="number" value={scale} onChange={e => setScale(+e.target.value)} />
             </div>
           )}
@@ -3704,39 +3814,64 @@ function LinearResultsExplorer({ model, analysisMode, pdeltaSettings }) {
   );
 }
 
+function CurvedModeShapeSVG({ model, eigenvector, height, scale }) {
+  const vb = computeViewBox(model, 0.3);
+  const H = height || 320;
+  const drawScale = Math.min(700 / vb.w, H / vb.h);
+  const toScreen = (x, y) => ({ sx: (x - vb.minX) * drawScale, sy: H - (y - vb.minY) * drawScale });
+  const nodeIndex = new Map(model.nodes.map((n, i) => [n.id, i]));
+  const geomSpan = Math.max(vb.w, vb.h, 1);
+  const amp = geomSpan * 0.12 * (scale == null ? 1 : scale);
+  const sampleMember = m => {
+    const ni = nodeById(model, m.nearNodeId), nj = nodeById(model, m.farNodeId);
+    const ii = nodeIndex.get(ni.id), ij = nodeIndex.get(nj.id);
+    const dx = nj.x - ni.x, dy = nj.y - ni.y, L = Math.hypot(dx, dy) || 1;
+    const c = dx / L, ss = dy / L;
+    const ui = eigenvector[3 * ii] || 0, vi = eigenvector[3 * ii + 1] || 0, ri = eigenvector[3 * ii + 2] || 0;
+    const uj = eigenvector[3 * ij] || 0, vj = eigenvector[3 * ij + 1] || 0, rj = eigenvector[3 * ij + 2] || 0;
+    const u1 = c * ui + ss * vi, w1 = -ss * ui + c * vi;
+    const u2 = c * uj + ss * vj, w2 = -ss * uj + c * vj;
+    return Array.from({ length: 31 }, (_, k) => {
+      const r = k / 30, x = r * L;
+      const N1 = 1 - 3*r*r + 2*r*r*r, N2 = L*(r - 2*r*r + r*r*r);
+      const N3 = 3*r*r - 2*r*r*r, N4 = L*(-r*r + r*r*r);
+      const u = u1*(1-r) + u2*r;
+      const w = N1*w1 + N2*ri + N3*w2 + N4*rj;
+      const bx = ni.x + c*x, by = ni.y + ss*x;
+      return toScreen(bx + amp*(c*u - ss*w), by + amp*(ss*u + c*w));
+    });
+  };
+  return <svg viewBox={`0 0 ${vb.w * drawScale} ${H}`} width="100%" height={H} style={{ background: "#0d1117", border: `1px solid ${CLR.border}`, borderRadius: 6 }}>
+    {model.members.map(m => { const a=nodeById(model,m.nearNodeId),b=nodeById(model,m.farNodeId),p1=toScreen(a.x,a.y),p2=toScreen(b.x,b.y); return <line key={"ref"+m.id} x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.border} strokeWidth={1.3} strokeDasharray="4,3"/>; })}
+    {model.members.map(m => { const pts=sampleMember(m); const d=pts.map((p,i)=>`${i?"L":"M"}${p.sx},${p.sy}`).join(" "); return <path key={m.id} d={d} fill="none" stroke={CLR.accent} strokeWidth={2.5}/>; })}
+  </svg>;
+}
+
 function ModalResultsView({ model, data }) {
   const [selMode, setSelMode] = useState(0);
+  const [shapeScale, setShapeScale] = useState(1);
+  if (!data.modes || !data.modes.length) return <div style={S.card}>No admissible vibration modes were found.</div>;
   return (
     <div>
       <div style={S.card}>
-        <div style={S.h2}>Modal Periods & Frequencies</div>
-        <table style={S.table}>
+        <div style={S.h2}>Modal Periods & Frequencies — All Available Modes</div>
+        <div style={{ overflowX: "auto" }}><table style={S.table}>
           <thead><tr><th style={S.th}>Mode</th><th style={S.th}>Period (s)</th><th style={S.th}>Freq (Hz)</th><th style={S.th}>ω (rad/s)</th><th style={S.th}>% Mass X</th><th style={S.th}>% Mass Y</th><th style={S.th}>Cum % Y</th></tr></thead>
-          <tbody>
-            {data.modes.map((mo, i) => (
-              <tr key={i} style={{ background: selMode === i ? "#21262d" : "transparent", cursor: "pointer" }} onClick={() => setSelMode(i)}>
-                <td style={S.td}><b>{mo.index}</b></td>
-                <td style={S.td}>{fmt(mo.period, 4)}</td>
-                <td style={S.td}>{fmt(mo.frequencyHz, 4)}</td>
-                <td style={S.td}>{fmt(mo.omega, 3)}</td>
-                <td style={S.td}>{fmt(mo.pctMassX * 100, 1)}%</td>
-                <td style={S.td}>{fmt(mo.pctMassY * 100, 1)}%</td>
-                <td style={S.td}>{fmt(mo.cumPctMassY * 100, 1)}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          <tbody>{data.modes.map((mo,i)=><tr key={i} style={{background:selMode===i?"#21262d":"transparent",cursor:"pointer"}} onClick={()=>setSelMode(i)}><td style={S.td}><b>{mo.index}</b></td><td style={S.td}>{fmt(mo.period,4)}</td><td style={S.td}>{fmt(mo.frequencyHz,4)}</td><td style={S.td}>{fmt(mo.omega,3)}</td><td style={S.td}>{fmt(mo.pctMassX*100,1)}%</td><td style={S.td}>{fmt(mo.pctMassY*100,1)}%</td><td style={S.td}>{fmt(mo.cumPctMassY*100,1)}%</td></tr>)}</tbody>
+        </table></div>
       </div>
       <div style={S.card}>
-        <div style={S.h2}>Mode Shape — Mode {data.modes[selMode].index} (T = {fmt(data.modes[selMode].period, 4)} s)</div>
-        <DeformedShapeSVG model={model} displacements={data.modes[selMode].eigenvector} scale={Math.max(...model.nodes.map(n => Math.hypot(n.x, n.y))) * 0.15 || 20} />
+        <div style={S.h2}><span>All Modal Shapes ({data.modes.length})</span><div style={{display:"flex",alignItems:"center",gap:8}}><span style={S.smallMuted}>Scale ×</span><input aria-label="Modal shape scale" style={{...S.input,width:90}} type="number" min="0" step="0.25" value={shapeScale} onChange={e=>setShapeScale(Math.max(0,+e.target.value))}/></div></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:14}}>{data.modes.map((mo,i)=><div key={i} onClick={()=>setSelMode(i)} style={{cursor:"pointer",border:`1px solid ${selMode===i?CLR.accent:CLR.border}`,borderRadius:8,padding:8}}><div style={{fontSize:11,fontWeight:700,color:selMode===i?CLR.accent:CLR.text,marginBottom:6}}>Mode {mo.index} — T = {fmt(mo.period,4)} s</div><CurvedModeShapeSVG model={model} eigenvector={mo.eigenvector} height={190} scale={shapeScale}/></div>)}</div>
       </div>
+      <div style={S.card}><div style={S.h2}>Selected Mode {data.modes[selMode].index} — Bent Member Shape</div><CurvedModeShapeSVG model={model} eigenvector={data.modes[selMode].eigenvector} height={460} scale={shapeScale}/></div>
     </div>
   );
 }
 
 function BucklingResultsView({ model, data }) {
   const [selMode, setSelMode] = useState(0);
+  const [bucklingScale, setBucklingScale] = useState(1);
 
   // Per-member elastic (Euler) buckling strength check: Pcr = pi^2*E*I/(K*L)^2
   // for each member's own properties and user-specified effective-length
@@ -3812,20 +3947,20 @@ function BucklingResultsView({ model, data }) {
           </div>
 
           <div style={S.card}>
-            <div style={S.h2}>All Buckling Mode Shapes</div>
+            <div style={S.h2}><span>All Buckling Mode Shapes</span><div style={{display:"flex",alignItems:"center",gap:8}}><span style={S.smallMuted}>Scale ×</span><input aria-label="Buckling shape scale" style={{...S.input,width:90}} type="number" min="0" step="0.25" value={bucklingScale} onChange={e=>setBucklingScale(Math.max(0,+e.target.value))}/></div></div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
               {data.modes.map((mo, i) => (
                 <div key={i} onClick={() => setSelMode(i)} style={{ cursor: "pointer", border: `1px solid ${selMode === i ? CLR.accent : CLR.border}`, borderRadius: 8, padding: 8, background: selMode === i ? CLR.accent + "11" : "transparent" }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: selMode === i ? CLR.accent : CLR.text, marginBottom: 6 }}>Mode {mo.index + 1} — λ = {fmt(mo.loadFactor, 4)}</div>
-                  <DeformedShapeSVG model={model} displacements={mo.eigenvector} scale={Math.max(...model.nodes.map(n => Math.hypot(n.x, n.y))) * 0.15 || 20} height={180} />
+                  <CurvedModeShapeSVG model={model} eigenvector={mo.eigenvector} height={180} scale={bucklingScale} />
                 </div>
               ))}
             </div>
           </div>
 
           <div style={S.card}>
-            <div style={S.h2}>Buckling Mode Shape {selMode + 1} (λ = {fmt(data.modes[selMode].loadFactor, 4)})</div>
-            <DeformedShapeSVG model={model} displacements={data.modes[selMode].eigenvector} scale={Math.max(...model.nodes.map(n => Math.hypot(n.x, n.y))) * 0.15 || 20} />
+            <div style={S.h2}>Buckling Mode Shape {selMode + 1} — Bent Members (λ = {fmt(data.modes[selMode].loadFactor, 4)})</div>
+            <CurvedModeShapeSVG model={model} eigenvector={data.modes[selMode].eigenvector} height={460} scale={bucklingScale} />
           </div>
 
           <div style={S.card}>
@@ -3873,11 +4008,44 @@ function MovingLoadResultsView({ model, data }) {
   );
 }
 
+function RSAForceDiagramSVG({ model, forceMap, mode, height }) {
+  const vb=computeViewBox(model,0.3),H=height||440,ds=Math.min(760/vb.w,H/vb.h);
+  const toScreen=(x,y)=>({sx:(x-vb.minX)*ds,sy:H-(y-vb.minY)*ds});
+  const vals=[];
+  model.members.forEach(m=>{const q=forceMap.get(m.id)||[0,0,0,0,0,0]; const pair=mode==="moment"?[-q[2],q[5]]:mode==="shear"?[q[1],-q[4]]:[-q[0],q[3]]; vals.push(...pair.map(Math.abs));});
+  const max=Math.max(...vals,1e-9), color=mode==="moment"?CLR.orange:mode==="shear"?CLR.green:CLR.red,px=60;
+  return <svg viewBox={`0 0 ${vb.w*ds} ${H}`} width="100%" height={H} style={{background:"#0d1117",border:`1px solid ${CLR.border}`,borderRadius:6}}>
+    {model.members.map(m=>{const a=nodeById(model,m.nearNodeId),b=nodeById(model,m.farNodeId),p1=toScreen(a.x,a.y),p2=toScreen(b.x,b.y);return <line key={"r"+m.id} x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.muted} strokeWidth={2}/>;})}
+    {model.members.map(m=>{const a=nodeById(model,m.nearNodeId),b=nodeById(model,m.farNodeId),q=forceMap.get(m.id)||[0,0,0,0,0,0],dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy)||1,c=dx/L,ss=dy/L,nx=-ss,ny=c; const pair=mode==="moment"?[-q[2],q[5]]:mode==="shear"?[q[1],-q[4]]:[-q[0],q[3]]; const samples=Array.from({length:17},(_,i)=>{const r=i/16,v=pair[0]*(1-r)+pair[1]*r,base=toScreen(a.x+c*L*r,a.y+ss*L*r),off=v/max*px;return {base,tip:{sx:base.sx+nx*off,sy:base.sy-ny*off},v};}); const path=samples.map((p,i)=>`${i?"L":"M"}${p.tip.sx},${p.tip.sy}`).join(" ");return <g key={m.id}><path d={`${path} L${samples[16].base.sx},${samples[16].base.sy} L${samples[0].base.sx},${samples[0].base.sy} Z`} fill={color+"26"} stroke={color} strokeWidth={1.7}/>{samples.map((p,i)=><line key={i} x1={p.base.sx} y1={p.base.sy} x2={p.tip.sx} y2={p.tip.sy} stroke={color} strokeWidth={1} strokeOpacity={0.72}/>)}<text x={samples[0].tip.sx + nx*12} y={samples[0].tip.sy - ny*12} fill={color} fontSize={10} fontWeight="700" textAnchor="middle">{fmt(pair[0],2)}</text><text x={samples[16].tip.sx + nx*12} y={samples[16].tip.sy - ny*12} fill={color} fontSize={10} fontWeight="700" textAnchor="middle">{fmt(pair[1],2)}</text></g>;})}
+  </svg>;
+}
+
+function RSAForceValuesTable({ model, forceMap, mode }) {
+  const units = UNIT_SYSTEMS[model.unitSystem];
+  const label = mode === "moment" ? "Bending Moment" : mode === "shear" ? "Shear Force" : "Axial Force";
+  const unit = mode === "moment" ? units.moment : units.force;
+  const pairFor = q => mode === "moment" ? [-q[2], q[5]] : mode === "shear" ? [q[1], -q[4]] : [-q[0], q[3]];
+  return (
+    <div style={{ overflowX: "auto", marginTop: 14 }}>
+      <table style={S.table}>
+        <thead><tr><th style={S.th}>Member</th><th style={S.th}>Near-End {label} ({unit})</th><th style={S.th}>Far-End {label} ({unit})</th><th style={S.th}>Member Maximum ({unit})</th></tr></thead>
+        <tbody>{model.members.map(m => {
+          const pair = pairFor(forceMap.get(m.id) || [0,0,0,0,0,0]);
+          return <tr key={m.id}><td style={S.td}><b>{m.id}</b></td><td style={S.td}>{fmt(pair[0],3)}</td><td style={S.td}>{fmt(pair[1],3)}</td><td style={{...S.td,color:mode==="moment"?CLR.orange:mode==="shear"?CLR.green:CLR.red,fontWeight:700}}>{fmt(Math.max(Math.abs(pair[0]),Math.abs(pair[1])),3)}</td></tr>;
+        })}</tbody>
+      </table>
+    </div>
+  );
+}
+
 function ResponseSpectrumResultsView({ model, data }) {
+  const [diagramMode, setDiagramMode] = useState("moment");
+  const [rsaDeformationScale, setRsaDeformationScale] = useState(1);
   return (
     <div>
       <div style={S.card}>
         <div style={S.h2}>Modal Contributions ({data.combinationMethod}, {data.direction}-direction)</div>
+        <div style={{ ...S.smallMuted, marginBottom: 10 }}>Mass source used: <b style={{ color: CLR.text }}>{data.massSourceUsed || "Manual nodal/member mass fields"}</b></div>
         <table style={S.table}>
           <thead><tr><th style={S.th}>Mode</th><th style={S.th}>Period (s)</th><th style={S.th}>Sa</th></tr></thead>
           <tbody>
@@ -3886,6 +4054,17 @@ function ResponseSpectrumResultsView({ model, data }) {
             ))}
           </tbody>
         </table>
+      </div>
+      <div style={S.card}>
+        <div style={S.h2}><span>Response Spectrum Deformation Envelope</span><div style={{display:"flex",alignItems:"center",gap:8}}><span style={S.smallMuted}>Scale ×</span><input aria-label="RSA deformation scale" style={{...S.input,width:90}} type="number" min="0" step="0.25" value={rsaDeformationScale} onChange={e=>setRsaDeformationScale(Math.max(0,+e.target.value))}/></div></div>
+        <CurvedModeShapeSVG model={model} eigenvector={data.combinedDisplacements} height={440} scale={rsaDeformationScale}/>
+        <div style={{...S.smallMuted,marginTop:8}}>This is the non-negative SRSS/CQC combined displacement envelope. The displayed direction is a visualization convention because response-spectrum combination does not preserve a unique simultaneous signed deformation state.</div>
+      </div>
+      <div style={S.card}>
+        <div style={S.h2}><span>Response Spectrum Force Diagrams</span><select style={{...S.select,width:260}} value={diagramMode} onChange={e=>setDiagramMode(e.target.value)}><option value="moment">Bending Moment (BMD)</option><option value="shear">Shear Force (SFD)</option><option value="axial">Axial Force (AFD)</option></select></div>
+        <RSAForceDiagramSVG model={model} forceMap={data.combinedMemberForces} mode={diagramMode}/>
+        <RSAForceValuesTable model={model} forceMap={data.combinedMemberForces} mode={diagramMode}/>
+        <div style={{...S.smallMuted,marginTop:8}}>Values are shown at both member ends on the diagram and in the table below. SRSS/CQC force diagrams are non-negative modal-combination envelopes. Diagram signs are display conventions based on member-end components; modal-combination sign information is not retained.</div>
       </div>
       <div style={S.card}>
         <div style={S.h2}>Combined (Envelope) Nodal Displacements</div>
@@ -4031,7 +4210,7 @@ function TheoryTab() {
       <p>The tool ships with generic, purpose-built default load cases so every analysis type produces a meaningful result immediately, without requiring the user to first assemble a suitable load combination:</p>
       <ul style={{ paddingLeft: 20, marginTop: 6 }}>
         <li><b>Linear Static Default</b> — the reference lateral + gravity load combination (independently verified to machine precision against the Frames v0.1.xlsx benchmark).</li>
-        <li><b>Response Spectrum Default</b> — a generic code-style 3-branch spectrum (Sds = 1.0g, Sd1 = 0.4g) with nodal mass already assigned, so Response Spectrum runs immediately with the default Manual mass source (switch to "From Load Pattern" under Advanced on the Loads tab to derive mass from a gravity load case instead).</li>
+        <li><b>Response Spectrum Default</b> — a generic code-style 3-branch spectrum (Sds = 1.0g, Sd1 = 0.4g) with nodal mass already assigned, so Response Spectrum runs immediately with the default Manual mass source (switch to "From Load Case" under Advanced on the Loads tab to derive mass from a gravity load case instead).</li>
         <li><b>P-Delta Default</b> — combines the Linear Static Default lateral load with an additional gravity load case on the columns, giving genuine (if modest) second-order amplification to demonstrate the effect without approaching the structure's buckling capacity.</li>
         <li><b>Vibration Mode Shapes (Modal)</b> — uses the default nodal mass already assigned to the frame; no load case is needed since modal analysis depends only on mass and stiffness.</li>
         <li><b>Buckling Mode Shapes</b> — the Buckling Default load case (gravity load applied directly to the columns) puts them in clean axial compression, giving well-defined positive buckling load factors.</li>
@@ -4092,7 +4271,7 @@ function App() {
   return (
     <div style={S.app}>
       <div style={S.header} className="screen-only">
-        <div style={S.brand}><span style={S.brandBadge}>PF</span> PlaneFrame v1.0</div>
+        <div style={S.brand}><span style={S.brandBadge}>PF</span> PlaneFrame v2.1</div>
         <div style={{ display: "flex", gap: 8 }}>
           <button style={S.btn("secondary")} onClick={() => saveWorkingFile(model)}>💾 Save</button>
           <button style={S.btn("secondary")} onClick={() => fileInputRef.current.click()}>📂 Open</button>
@@ -4105,7 +4284,7 @@ function App() {
         </div>
       </div>
 
-      <div style={S.main}>
+      <div style={S.main} className="screen-only">
         {tab === "model" && <ModelTab model={model} setModel={setModel} />}
         {tab === "loads" && <LoadsTab model={model} setModel={setModel} />}
         {tab === "analysis" && <AnalysisTab model={model} results={results} setResults={setResults} settings={analysisSettings} setSettings={setAnalysisSettings} />}
@@ -4114,7 +4293,7 @@ function App() {
       </div>
 
       <div className="print-report-header">
-        <h1 style={{ fontSize: 18, marginBottom: 4 }}>PlaneFrame v1.0 — Structural Analysis Report</h1>
+        <h1 style={{ fontSize: 18, marginBottom: 4 }}>PlaneFrame v2.1 — Structural Analysis Report</h1>
         <div style={{ fontSize: 10, color: "#555" }}>Generated {new Date().toLocaleString()}</div>
         <div style={{ marginTop: 16 }}>
           <h2 style={{ fontSize: 13 }}>Model Summary</h2>
