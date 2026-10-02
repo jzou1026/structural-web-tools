@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PlaneFrame v2.1 — 2D Frame Structural Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <title>PlaneFrame v2.2 — 2D Frame Structural Analysis</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -16,12 +18,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js" id="MathJax-script" async></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0d1117; color: #e6edf3; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; }
+    body { background: #090d16; color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; }
+    ::selection { background: #06b6d4; color: #090d16; }
+    input:focus, select:focus { border-color: #06b6d4 !important; box-shadow: 0 0 0 1px #06b6d4; }
     input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
     select { -webkit-appearance: none; appearance: none; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0d1117; }
-    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     button { cursor: pointer; }
 
     /* ── PRINT / PDF REPORT STYLES ─────────────────────────────────────────── */
@@ -66,6 +70,9 @@
          static, readable text when printed, which is informative in a
          report (e.g. showing which load combination the diagrams use). */
       button, input[type="file"] { display: none !important; }
+      /* MathJax equations must never split across pages or be clipped */
+      mjx-container { break-inside: avoid !important; page-break-inside: avoid !important; overflow: visible !important; max-width: 100% !important; }
+      .print-eq { break-inside: avoid !important; page-break-inside: avoid !important; }
     }
   </style>
 </head>
@@ -1961,34 +1968,43 @@ const { useState, useCallback, useEffect, useRef, useMemo } = React;
 const FC = window.FrameCore;
 
 // ── COLORS (matching Two Way Slabs reference tool palette) ─────────────────
+// -- COLORS (dark slate / cyan / emerald / amber / rose graphic language) --
 const CLR = {
-  bg: "#0d1117", surface: "#161b22", card: "#1c2333", border: "#30363d",
-  accent: "#58a6ff", green: "#3fb950", red: "#f85149", yellow: "#d29922",
-  text: "#e6edf3", muted: "#8b949e", teal: "#39d353", violet: "#bc8cff",
-  orange: "#f0883e",
+  bg: "#090d16", surface: "#0f172a", card: "#131B2E", border: "#1e293b", border2: "#334155",
+  accent: "#06b6d4", accentSoft: "#67e8f9", green: "#10b981", red: "#f43f5e", redSoft: "#fb7185",
+  yellow: "#f59e0b", text: "#f8fafc", muted: "#94a3b8", teal: "#10b981", violet: "#a78bfa",
+  orange: "#f59e0b", concrete: "#1e293b",
+};
+const MONO = "'JetBrains Mono', monospace";
+const GRAD = "linear-gradient(90deg, #06b6d4, #34d399)";
+// Shared look of EVERY SVG graphic: dark plot box, faint square grid, rounded corners, mono labels.
+const SVG_BOX = {
+  background: CLR.bg,
+  backgroundImage: "linear-gradient(#131B2E 1px, transparent 1px), linear-gradient(90deg, #131B2E 1px, transparent 1px)",
+  backgroundSize: "40px 40px", border: `1px solid ${CLR.border}`, borderRadius: 12, fontFamily: MONO,
 };
 
-// ── STYLES ───────────────────────────────────────────────────────────────
+// -- STYLES --
 const S = {
   app: { minHeight: "100vh", background: CLR.bg, color: CLR.text, display: "flex", flexDirection: "column" },
-  header: { background: CLR.surface, borderBottom: `1px solid ${CLR.border}`, padding: "0 1.5rem", display: "flex", alignItems: "center", gap: "1.5rem", minHeight: 60, flexWrap: "wrap" },
-  brand: { fontWeight: 800, fontSize: 15, letterSpacing: "0.03em", color: CLR.text, display: "flex", alignItems: "center", gap: 8 },
-  brandBadge: { fontSize: 10, fontWeight: 700, color: CLR.bg, background: CLR.accent, borderRadius: 4, padding: "2px 6px" },
-  nav: { display: "flex", gap: 0, marginLeft: "auto", flexWrap: "wrap" },
-  navBtn: active => ({ background: "none", border: "none", borderBottom: active ? `2px solid ${CLR.accent}` : "2px solid transparent", color: active ? CLR.accent : CLR.muted, padding: "18px 16px", cursor: "pointer", fontSize: 12.5, fontFamily: "inherit", fontWeight: active ? 700 : 400, transition: "color 0.15s,border-color 0.15s", whiteSpace: "nowrap" }),
+  header: { background: "rgba(15,23,42,0.9)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${CLR.border}`, padding: "0.8rem 1.5rem", display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap", position: "sticky", top: 0, zIndex: 50 },
+  brand: { fontWeight: 700, fontSize: 15, color: CLR.text, display: "flex", alignItems: "center", gap: 12 },
+  brandBadge: { fontSize: 11, fontFamily: MONO, color: "#22d3ee", background: "#083344", border: "1px solid rgba(21,94,117,0.7)", borderRadius: 999, padding: "1px 8px" },
+  nav: { display: "flex", gap: 2, marginLeft: "auto", flexWrap: "wrap", background: "rgba(15,23,42,0.8)", padding: 5, borderRadius: 12, border: `1px solid ${CLR.border}` },
+  navBtn: active => ({ background: active ? CLR.accent : "none", border: "none", borderRadius: 8, color: active ? CLR.bg : CLR.muted, padding: "7px 16px", cursor: "pointer", fontSize: 12.5, fontFamily: "inherit", fontWeight: active ? 700 : 500, transition: "all 0.2s" }),
   main: { flex: 1, padding: "1.5rem", maxWidth: 1500, margin: "0 auto", width: "100%" },
-  card: { background: CLR.card, border: `1px solid ${CLR.border}`, borderRadius: 8, padding: "1.25rem", marginBottom: "1.25rem" },
-  h2: { fontSize: 13, fontWeight: 700, color: CLR.accent, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.9rem", display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" },
+  card: { background: "rgba(19,27,46,0.85)", border: `1px solid ${CLR.border}`, borderRadius: 16, padding: "1.25rem", marginBottom: "1.25rem", boxShadow: "0 10px 25px rgba(0,0,0,0.35)" },
+  h2: { fontSize: 12, fontWeight: 700, color: CLR.accent, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.9rem", paddingBottom: "0.7rem", borderBottom: `1px solid ${CLR.border}`, display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" },
   h3: { fontSize: 12, fontWeight: 700, color: CLR.text, marginBottom: "0.6rem" },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 11.5 },
-  th: { background: "#21262d", color: CLR.muted, padding: "6px 8px", textAlign: "center", fontWeight: 600, fontSize: 10.5, textTransform: "uppercase", borderBottom: `1px solid ${CLR.border}`, whiteSpace: "nowrap" },
-  td: { padding: "4px 6px", textAlign: "center", borderBottom: "1px solid #21262d", color: CLR.text },
-  input: { background: "#0d1117", border: `1px solid ${CLR.border}`, borderRadius: 4, color: CLR.text, fontFamily: "inherit", fontSize: 11.5, padding: "4px 6px", width: "100%", textAlign: "center", outline: "none" },
-  select: { background: "#0d1117", border: `1px solid ${CLR.border}`, borderRadius: 4, color: CLR.text, fontFamily: "inherit", fontSize: 11.5, padding: "4px 6px", width: "100%", outline: "none" },
-  btn: (v = "primary") => ({ background: v === "primary" ? CLR.accent : v === "danger" ? "#3d1f1f" : v === "ghost" ? "transparent" : "#21262d", color: v === "danger" ? CLR.red : v === "primary" ? "#000" : CLR.text, border: `1px solid ${v === "danger" ? CLR.red : v === "primary" ? CLR.accent : CLR.border}`, borderRadius: 6, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 11.5, fontWeight: 700 }),
-  badge: color => ({ display: "inline-block", background: color + "22", color, border: `1px solid ${color}55`, borderRadius: 4, padding: "2px 8px", fontSize: 10.5, fontWeight: 700 }),
+  table: { width: "100%", borderCollapse: "collapse", fontSize: 11.5, fontFamily: MONO },
+  th: { background: "rgba(15,23,42,0.9)", color: CLR.muted, padding: "7px 8px", textAlign: "center", fontWeight: 600, fontSize: 10.5, textTransform: "uppercase", borderBottom: `1px solid ${CLR.border}`, whiteSpace: "nowrap" },
+  td: { padding: "5px 6px", textAlign: "center", borderBottom: `1px solid ${CLR.border}`, color: CLR.text },
+  input: { background: CLR.bg, border: `1px solid ${CLR.border2}`, borderRadius: 10, color: CLR.accentSoft, fontFamily: MONO, fontSize: 12, padding: "5px 8px", width: "100%", textAlign: "center", outline: "none" },
+  select: { background: CLR.bg, border: `1px solid ${CLR.border2}`, borderRadius: 10, color: CLR.accentSoft, fontFamily: MONO, fontSize: 12, padding: "5px 8px", width: "100%", outline: "none" },
+  btn: (v = "primary") => ({ background: v === "primary" ? GRAD : v === "danger" ? "rgba(244,63,94,0.1)" : v === "ghost" ? "transparent" : CLR.border, color: v === "danger" ? CLR.redSoft : v === "primary" ? CLR.bg : "#e2e8f0", border: v === "primary" ? "none" : `1px solid ${v === "danger" ? "rgba(244,63,94,0.35)" : CLR.border2}`, borderRadius: 12, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, boxShadow: v === "primary" ? "0 8px 20px rgba(6,182,212,0.25)" : "none" }),
+  badge: color => ({ display: "inline-block", background: color + "22", color, border: `1px solid ${color}55`, borderRadius: 999, padding: "2px 10px", fontSize: 10.5, fontWeight: 700 }),
   tabRow: { display: "flex", gap: 6, marginBottom: "1rem", flexWrap: "wrap" },
-  subTab: active => ({ background: active ? CLR.accent + "22" : "transparent", color: active ? CLR.accent : CLR.muted, border: `1px solid ${active ? CLR.accent + "55" : CLR.border}`, borderRadius: 6, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontSize: 11.5, fontWeight: 700 }),
+  subTab: active => ({ background: active ? CLR.accent + "22" : "transparent", color: active ? CLR.accent : CLR.muted, border: `1px solid ${active ? CLR.accent + "66" : CLR.border2}`, borderRadius: 999, padding: "5px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 11.5, fontWeight: 700 }),
   smallMuted: { fontSize: 10.5, color: CLR.muted },
 };
 
@@ -2378,38 +2394,38 @@ function RestraintGlyph({ sx, sy, restraints, size }) {
   const { ux, uy, thz } = restraints;
   if (!ux && !uy && !thz) return null;
   if (ux && uy && thz) {
-    // Fixed support: hatched ground line
+    // Fixed support: emerald ground block, cyan rim, cyan hatching
     return (
       <g>
-        <line x1={sx - s} y1={sy + 5} x2={sx + s} y2={sy + 5} stroke={CLR.orange} strokeWidth={3} />
+        <rect x={sx - s} y={sy + 5} width={2 * s} height={7} fill={CLR.green} stroke={CLR.accent} strokeWidth={1.5} />
         {[-1, -0.5, 0, 0.5, 1].map((f, i) => (
-          <line key={i} x1={sx + f * s} y1={sy + 5} x2={sx + f * s - 5} y2={sy + 13} stroke={CLR.orange} strokeWidth={1.5} />
+          <line key={i} x1={sx + f * s} y1={sy + 12} x2={sx + f * s - 5} y2={sy + 19} stroke={CLR.accent} strokeWidth={1.2} />
         ))}
       </g>
     );
   }
   if (ux && uy && !thz) {
-    // Pin support: triangle
+    // Pin support: emerald triangle with cyan rim
     return (
       <g>
-        <polygon points={`${sx},${sy} ${sx - s},${sy + s * 1.4} ${sx + s},${sy + s * 1.4}`} fill="none" stroke={CLR.orange} strokeWidth={2} />
-        <line x1={sx - s * 1.3} y1={sy + s * 1.4} x2={sx + s * 1.3} y2={sy + s * 1.4} stroke={CLR.orange} strokeWidth={2} />
+        <polygon points={`${sx},${sy} ${sx - s},${sy + s * 1.4} ${sx + s},${sy + s * 1.4}`} fill={CLR.green} fillOpacity={0.35} stroke={CLR.accent} strokeWidth={2} />
+        <line x1={sx - s * 1.3} y1={sy + s * 1.4} x2={sx + s * 1.3} y2={sy + s * 1.4} stroke={CLR.accent} strokeWidth={2} />
       </g>
     );
   }
-  // Roller or partial restraint: circle + small ground marks, with direction indicators
+  // Roller or partial restraint: emerald circle + ground line, with direction indicators
   return (
     <g>
-      <circle cx={sx} cy={sy + s * 0.6} r={s * 0.55} fill="none" stroke={CLR.orange} strokeWidth={2} />
-      <line x1={sx - s} y1={sy + s * 1.15} x2={sx + s} y2={sy + s * 1.15} stroke={CLR.orange} strokeWidth={2} />
-      <text x={sx} y={sy - 10} fill={CLR.orange} fontSize={8} textAnchor="middle" fontWeight="700">
+      <circle cx={sx} cy={sy + s * 0.6} r={s * 0.55} fill={CLR.green} fillOpacity={0.35} stroke={CLR.accent} strokeWidth={2} />
+      <line x1={sx - s} y1={sy + s * 1.15} x2={sx + s} y2={sy + s * 1.15} stroke={CLR.accent} strokeWidth={2} />
+      <text x={sx} y={sy - 10} fill={CLR.green} fontSize={8} textAnchor="middle" fontWeight="700">
         {[ux && "X", uy && "Y", thz && "R"].filter(Boolean).join("")}
       </text>
     </g>
   );
 }
 
-function ModelCanvas({ model, selection, onSelectNode, onSelectMember, height, overlayMode, resultData, loadPatternId }) {
+function ModelCanvasSVG({ model, selection, onSelectNode, onSelectMember, height, overlayMode, resultData, loadPatternId }) {
   const vb = computeViewBox(model);
   const H = height || 420;
   // Screen transform: data (x,y) -> svg (sx, sy), Y flipped (screen down = +sy)
@@ -2420,7 +2436,7 @@ function ModelCanvas({ model, selection, onSelectNode, onSelectMember, height, o
   });
 
   return (
-    <svg viewBox={`0 0 ${vb.w * scale} ${H}`} width="100%" height={H} style={{ background: "#0d1117", border: `1px solid ${CLR.border}`, borderRadius: 6 }}>
+    <svg viewBox={`0 0 ${vb.w * scale} ${H}`} width="100%" height={H} style={SVG_BOX}>
       <defs>
         <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
           <path d="M0,0 L8,4 L0,8 Z" fill={CLR.red} />
@@ -2435,8 +2451,9 @@ function ModelCanvas({ model, selection, onSelectNode, onSelectMember, height, o
         const isSel = selection && selection.type === "member" && selection.id === m.id;
         return (
           <g key={m.id} onClick={() => onSelectMember && onSelectMember(m.id)} style={{ cursor: "pointer" }}>
+            <title>{`Member ${m.id}: ${m.nearNodeId} to ${m.farNodeId}, L = ${fmt(memberLength(model, m), 3)}`}</title>
             <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy}
-              stroke={isSel ? "#b6e3ff" : "#79c0ff"} strokeWidth={isSel ? 4 : 2.5} />
+              stroke={isSel ? CLR.accentSoft : CLR.accent} strokeWidth={isSel ? 5 : 3.5} strokeLinecap="round" />
             <text x={(p1.sx + p2.sx) / 2} y={(p1.sy + p2.sy) / 2 - 8} fill={CLR.muted} fontSize={10} textAnchor="middle">{m.id}</text>
           </g>
         );
@@ -2447,9 +2464,10 @@ function ModelCanvas({ model, selection, onSelectNode, onSelectMember, height, o
         const isSel = selection && selection.type === "node" && selection.id === n.id;
         return (
           <g key={n.id}>
+            <title>{`Node ${n.id}: x = ${fmt(n.x, 3)}, y = ${fmt(n.y, 3)}`}</title>
             <RestraintGlyph sx={p.sx} sy={p.sy} restraints={n.restraints} />
-            <circle cx={p.sx} cy={p.sy} r={isSel ? 7 : 5} fill={isSel ? CLR.accent : CLR.violet}
-              stroke="#000" strokeWidth={1} style={{ cursor: "pointer" }}
+            <circle cx={p.sx} cy={p.sy} r={isSel ? 7 : 5} fill={isSel ? CLR.yellow : CLR.green}
+              stroke={CLR.accent} strokeWidth={1.5} style={{ cursor: "pointer" }}
               onClick={() => onSelectNode && onSelectNode(n.id)} />
             <text x={p.sx + 10} y={p.sy - 8} fill={CLR.text} fontSize={11} fontWeight="700">{n.id}</text>
           </g>
@@ -2474,6 +2492,26 @@ function ModelCanvas({ model, selection, onSelectNode, onSelectMember, height, o
         }); return graphics;
       })}
     </svg>
+  );
+}
+
+// Legend row shown under every graphic (colored glyph + label, mono type)
+function DiagramLegend({ items, note }) {
+  return (
+    <div style={{ display: "flex", gap: 18, flexWrap: "wrap", justifyContent: "center", fontSize: 11, fontFamily: MONO, marginTop: 8 }}>
+      {items.map(([c, t], i) => <span key={i} style={{ color: c }}>{t}</span>)}
+      {note && <span style={{ color: CLR.muted }}>{note}</span>}
+    </div>
+  );
+}
+
+// Model graphic = SVG + legend (all call sites keep using <ModelCanvas .../>)
+function ModelCanvas(props) {
+  return (
+    <div>
+      <ModelCanvasSVG {...props} />
+      <DiagramLegend items={[[CLR.accent, "━ Member"], [CLR.green, "● Node / support"], [CLR.redSoft, "→ Nodal load"], [CLR.yellow, "↓ Member load"]]} />
+    </div>
   );
 }
 
@@ -2520,7 +2558,7 @@ function NodeTable({ model, setModel, selection, setSelection }) {
             {model.nodes.map(n => {
               const springs = n.springs || { kx: 0, ky: 0, kr: 0 };
               return (
-                <tr key={n.id} style={{ background: selection && selection.type === "node" && selection.id === n.id ? "#21262d" : "transparent" }}
+                <tr key={n.id} style={{ background: selection && selection.type === "node" && selection.id === n.id ? "#1e293b" : "transparent" }}
                   onClick={() => setSelection({ type: "node", id: n.id })}>
                   <td style={S.td}><b>{n.id}</b></td>
                   <td style={S.td}><input style={S.input} type="number" value={n.x} onChange={e => updateNode(n.id, { x: +e.target.value })} /></td>
@@ -2638,7 +2676,7 @@ function MemberTable({ model, setModel, selection, setSelection }) {
               const L = memberLength(model, mem);
               const resolved = resolveMemberProps(model, mem);
               return (
-                <tr key={mem.id} style={{ background: selection && selection.type === "member" && selection.id === mem.id ? "#21262d" : "transparent" }}
+                <tr key={mem.id} style={{ background: selection && selection.type === "member" && selection.id === mem.id ? "#1e293b" : "transparent" }}
                   onClick={() => setSelection({ type: "member", id: mem.id })}>
                   <td style={S.td}><b>{mem.id}</b></td>
                   <td style={S.td}>
@@ -2879,38 +2917,50 @@ function LoadCombinationEditor({ model, setModel }) {
 
 // ── SIMPLE SVG LINE CHART (no external charting library needed) ─────────
 function SimpleLineChart({ points, xLabel, yLabel, height, color }) {
-  const H = height || 220, W = 600, padL = 46, padB = 30, padT = 14, padR = 14;
+  const H = height || 220, W = 600, padL = 54, padB = 36, padT = 18, padR = 16;
   if (!points || points.length === 0) return null;
+  const c = color || CLR.accent;
   const xs = points.map(p => p.x), ys = points.map(p => p.y);
   const xMin = 0, xMax = Math.max(...xs, 1e-6);
   const yMin = 0, yMax = Math.max(...ys, 1e-6) * 1.1;
   const toX = x => padL + (x - xMin) / (xMax - xMin) * (W - padL - padR);
   const toY = y => H - padB - (y - yMin) / (yMax - yMin) * (H - padB - padT);
   const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${toX(p.x)},${toY(p.y)}`).join(" ");
+  const areaD = `${pathD} L${toX(points[points.length - 1].x)},${toY(0)} L${toX(points[0].x)},${toY(0)} Z`;
   const nXTicks = 5, nYTicks = 4;
   const xTicks = Array.from({ length: nXTicks + 1 }, (_, i) => xMin + (i / nXTicks) * (xMax - xMin));
   const yTicks = Array.from({ length: nYTicks + 1 }, (_, i) => yMin + (i / nYTicks) * (yMax - yMin));
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ background: "#0d1117", border: `1px solid ${CLR.border}`, borderRadius: 6 }}>
-      {yTicks.map((t, i) => (
-        <g key={"y" + i}>
-          <line x1={padL} y1={toY(t)} x2={W - padR} y2={toY(t)} stroke={CLR.border} strokeWidth={0.5} />
-          <text x={padL - 6} y={toY(t) + 3} fill={CLR.muted} fontSize={9} textAnchor="end">{fmt(t, 2)}</text>
-        </g>
-      ))}
-      {xTicks.map((t, i) => (
-        <g key={"x" + i}>
-          <text x={toX(t)} y={H - padB + 14} fill={CLR.muted} fontSize={9} textAnchor="middle">{fmt(t, 2)}</text>
-        </g>
-      ))}
-      <line x1={padL} y1={padT} x2={padL} y2={H - padB} stroke={CLR.border} strokeWidth={1} />
-      <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke={CLR.border} strokeWidth={1} />
-      <path d={pathD} fill="none" stroke={color || CLR.accent} strokeWidth={2} />
-      <text x={W / 2} y={H - 4} fill={CLR.muted} fontSize={10} textAnchor="middle">{xLabel}</text>
-      <text x={12} y={padT + 4} fill={CLR.muted} fontSize={10} textAnchor="start">{yLabel}</text>
-    </svg>
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={SVG_BOX}>
+        {yTicks.map((t, i) => (
+          <g key={"y" + i}>
+            <line x1={padL} y1={toY(t)} x2={W - padR} y2={toY(t)} stroke={CLR.border} strokeWidth={1} />
+            <text x={padL - 8} y={toY(t) + 3} fill={CLR.muted} fontSize={9.5} textAnchor="end">{fmt(t, 2)}</text>
+          </g>
+        ))}
+        {xTicks.map((t, i) => (
+          <g key={"x" + i}>
+            <line x1={toX(t)} y1={padT} x2={toX(t)} y2={H - padB} stroke={CLR.border} strokeWidth={1} />
+            <text x={toX(t)} y={H - padB + 15} fill={CLR.muted} fontSize={9.5} textAnchor="middle">{fmt(t, 2)}</text>
+          </g>
+        ))}
+        <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke={CLR.border2} strokeWidth={1.5} />
+        {/* translucent area under the curve + thick line + emerald data dots with hover tooltips */}
+        <path d={areaD} fill={c + "1f"} />
+        <path d={pathD} fill="none" stroke={c} strokeWidth={3} strokeLinejoin="round" />
+        {points.length <= 60 && points.map((p, i) => (
+          <circle key={i} cx={toX(p.x)} cy={toY(p.y)} r={3.5} fill={CLR.green} stroke={CLR.accent} strokeWidth={1.5}>
+            <title>{`${xLabel}: ${fmt(p.x, 3)}, ${yLabel}: ${fmt(p.y, 3)}`}</title>
+          </circle>
+        ))}
+        <text x={W / 2} y={H - 4} fill={CLR.muted} fontSize={10.5} textAnchor="middle">{xLabel}</text>
+        <text x={12} y={padT - 4} fill={CLR.muted} fontSize={10.5} textAnchor="start">{yLabel}</text>
+      </svg>
+    </div>
   );
 }
+
 
 // ── ADVANCED DYNAMICS SETTINGS (response spectrum + mass source) ────────
 function AdvancedDynamicsEditor({ model, setModel }) {
@@ -3412,7 +3462,7 @@ function DeformedShapeSVG({ model, displacements, scale, height }) {
     return { x: n.x + ux * scale, y: n.y + uy * scale };
   };
   return (
-    <svg viewBox={`0 0 ${vb.w * drawScale} ${H}`} width="100%" height={H} style={{ background: "#0d1117", border: `1px solid ${CLR.border}`, borderRadius: 6 }}>
+    <svg viewBox={`0 0 ${vb.w * drawScale} ${H}`} width="100%" height={H} style={SVG_BOX}>
       {model.members.map(m => {
         const ni = nodeById(model, m.nearNodeId), nj = nodeById(model, m.farNodeId);
         const p1 = toScreen(ni.x, ni.y), p2 = toScreen(nj.x, nj.y);
@@ -3420,7 +3470,7 @@ function DeformedShapeSVG({ model, displacements, scale, height }) {
         const dp1 = toScreen(d1.x, d1.y), dp2 = toScreen(d2.x, d2.y);
         return (
           <g key={m.id}>
-            <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.border} strokeWidth={1.5} strokeDasharray="4,3" />
+            <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.border2} strokeWidth={1.5} strokeDasharray="4,3" />
             <line x1={dp1.sx} y1={dp1.sy} x2={dp2.sx} y2={dp2.sy} stroke={CLR.accent} strokeWidth={2.5} />
           </g>
         );
@@ -3428,7 +3478,7 @@ function DeformedShapeSVG({ model, displacements, scale, height }) {
       {model.nodes.map(n => {
         const d = defPos(n);
         const p = toScreen(d.x, d.y);
-        return <circle key={n.id} cx={p.sx} cy={p.sy} r={4} fill={CLR.accent} />;
+        return <circle key={n.id} cx={p.sx} cy={p.sy} r={4.5} fill={CLR.green} stroke={CLR.accent} strokeWidth={1.5} />;
       })}
     </svg>
   );
@@ -3552,7 +3602,7 @@ const DIAGRAM_MODES = [
   { id: "axial", label: "Axial Force (AFD)" },
 ];
 
-function FrameDiagramSVG({ model, data, mode, deflectionScale, height }) {
+function FrameDiagramSVGInner({ model, data, mode, deflectionScale, height }) {
   const vb = computeViewBox(model, 0.3);
   const H = height || 460;
   const drawScale = Math.min(760 / vb.w, H / vb.h);
@@ -3561,7 +3611,7 @@ function FrameDiagramSVG({ model, data, mode, deflectionScale, height }) {
 
   if (mode === "deflection") {
     return (
-      <svg viewBox={`0 0 ${vb.w * drawScale} ${H}`} width="100%" height={H} style={{ background: "#0d1117", border: `1px solid ${CLR.border}`, borderRadius: 6 }}>
+      <svg viewBox={`0 0 ${vb.w * drawScale} ${H}`} width="100%" height={H} style={SVG_BOX}>
         {model.members.map(m => {
           const ni = nodeById(model, m.nearNodeId), nj = nodeById(model, m.farNodeId);
           const p1 = toScreen(ni.x, ni.y), p2 = toScreen(nj.x, nj.y);
@@ -3582,7 +3632,7 @@ function FrameDiagramSVG({ model, data, mode, deflectionScale, height }) {
           const pathD = curvePts.map((p, i) => `${i === 0 ? "M" : "L"}${p.sx},${p.sy}`).join(" ");
           return (
             <g key={m.id}>
-              <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.border} strokeWidth={1.5} strokeDasharray="4,3" />
+              <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.border2} strokeWidth={1.5} strokeDasharray="4,3" />
               <path d={pathD} fill="none" stroke={CLR.accent} strokeWidth={2.5} />
             </g>
           );
@@ -3591,7 +3641,7 @@ function FrameDiagramSVG({ model, data, mode, deflectionScale, height }) {
           const i = nodeIndexOf(n.id);
           const ux = data.displacements[3 * i] || 0, uy = data.displacements[3 * i + 1] || 0;
           const p = toScreen(n.x + ux * deflectionScale, n.y + uy * deflectionScale);
-          return <circle key={n.id} cx={p.sx} cy={p.sy} r={4} fill={CLR.accent} />;
+          return <circle key={n.id} cx={p.sx} cy={p.sy} r={4.5} fill={CLR.green} stroke={CLR.accent} strokeWidth={1.5} />;
         })}
       </svg>
     );
@@ -3608,10 +3658,10 @@ function FrameDiagramSVG({ model, data, mode, deflectionScale, height }) {
   });
   const globalMax = Math.max(...perMember.flatMap(pm => pm.pts.map(p => Math.abs(p.val))), 1e-9);
   const diagramPxHeight = Math.min(60, vb.w * drawScale * 0.09); // visual offset scale, capped
-  const color = mode === "moment" ? CLR.orange : mode === "shear" ? CLR.green : CLR.red;
+  const color = mode === "moment" ? CLR.accent : mode === "shear" ? CLR.green : CLR.red;
 
   return (
-    <svg viewBox={`0 0 ${vb.w * drawScale} ${H}`} width="100%" height={H} style={{ background: "#0d1117", border: `1px solid ${CLR.border}`, borderRadius: 6 }}>
+    <svg viewBox={`0 0 ${vb.w * drawScale} ${H}`} width="100%" height={H} style={SVG_BOX}>
       {/* Undeformed frame reference lines */}
       {model.members.map(m => {
         const ni = nodeById(model, m.nearNodeId), nj = nodeById(model, m.farNodeId);
@@ -3662,9 +3712,23 @@ function FrameDiagramSVG({ model, data, mode, deflectionScale, height }) {
       })}
       {model.nodes.map(n => {
         const p = toScreen(n.x, n.y);
-        return <circle key={n.id} cx={p.sx} cy={p.sy} r={3.5} fill={CLR.violet} />;
+        return <circle key={n.id} cx={p.sx} cy={p.sy} r={4} fill={CLR.green} stroke={CLR.accent} strokeWidth={1.5} />;
       })}
     </svg>
+  );
+}
+
+// Result diagram = SVG + legend keyed to the diagram mode (moment cyan, shear emerald, axial rose)
+function FrameDiagramSVG(props) {
+  const m = props.mode;
+  const items = m === "deflection"
+    ? [[CLR.accent, "━ Deflected shape"], [CLR.muted, "┄ Undeformed frame"]]
+    : [[m === "moment" ? CLR.accent : m === "shear" ? CLR.green : CLR.red, m === "moment" ? "■ Bending moment (tension side)" : m === "shear" ? "■ Shear force" : "■ Axial force"], [CLR.muted, "━ Undeformed frame"], [CLR.green, "● Node"]];
+  return (
+    <div>
+      <FrameDiagramSVGInner {...props} />
+      <DiagramLegend items={items} note="Member end forces per Theory, Equation 3" />
+    </div>
   );
 }
 
@@ -3841,8 +3905,8 @@ function CurvedModeShapeSVG({ model, eigenvector, height, scale }) {
       return toScreen(bx + amp*(c*u - ss*w), by + amp*(ss*u + c*w));
     });
   };
-  return <svg viewBox={`0 0 ${vb.w * drawScale} ${H}`} width="100%" height={H} style={{ background: "#0d1117", border: `1px solid ${CLR.border}`, borderRadius: 6 }}>
-    {model.members.map(m => { const a=nodeById(model,m.nearNodeId),b=nodeById(model,m.farNodeId),p1=toScreen(a.x,a.y),p2=toScreen(b.x,b.y); return <line key={"ref"+m.id} x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.border} strokeWidth={1.3} strokeDasharray="4,3"/>; })}
+  return <svg viewBox={`0 0 ${vb.w * drawScale} ${H}`} width="100%" height={H} style={SVG_BOX}>
+    {model.members.map(m => { const a=nodeById(model,m.nearNodeId),b=nodeById(model,m.farNodeId),p1=toScreen(a.x,a.y),p2=toScreen(b.x,b.y); return <line key={"ref"+m.id} x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.border2} strokeWidth={1.3} strokeDasharray="4,3"/>; })}
     {model.members.map(m => { const pts=sampleMember(m); const d=pts.map((p,i)=>`${i?"L":"M"}${p.sx},${p.sy}`).join(" "); return <path key={m.id} d={d} fill="none" stroke={CLR.accent} strokeWidth={2.5}/>; })}
   </svg>;
 }
@@ -3857,7 +3921,7 @@ function ModalResultsView({ model, data }) {
         <div style={S.h2}>Modal Periods & Frequencies — All Available Modes</div>
         <div style={{ overflowX: "auto" }}><table style={S.table}>
           <thead><tr><th style={S.th}>Mode</th><th style={S.th}>Period (s)</th><th style={S.th}>Freq (Hz)</th><th style={S.th}>ω (rad/s)</th><th style={S.th}>% Mass X</th><th style={S.th}>% Mass Y</th><th style={S.th}>Cum % Y</th></tr></thead>
-          <tbody>{data.modes.map((mo,i)=><tr key={i} style={{background:selMode===i?"#21262d":"transparent",cursor:"pointer"}} onClick={()=>setSelMode(i)}><td style={S.td}><b>{mo.index}</b></td><td style={S.td}>{fmt(mo.period,4)}</td><td style={S.td}>{fmt(mo.frequencyHz,4)}</td><td style={S.td}>{fmt(mo.omega,3)}</td><td style={S.td}>{fmt(mo.pctMassX*100,1)}%</td><td style={S.td}>{fmt(mo.pctMassY*100,1)}%</td><td style={S.td}>{fmt(mo.cumPctMassY*100,1)}%</td></tr>)}</tbody>
+          <tbody>{data.modes.map((mo,i)=><tr key={i} style={{background:selMode===i?"#1e293b":"transparent",cursor:"pointer"}} onClick={()=>setSelMode(i)}><td style={S.td}><b>{mo.index}</b></td><td style={S.td}>{fmt(mo.period,4)}</td><td style={S.td}>{fmt(mo.frequencyHz,4)}</td><td style={S.td}>{fmt(mo.omega,3)}</td><td style={S.td}>{fmt(mo.pctMassX*100,1)}%</td><td style={S.td}>{fmt(mo.pctMassY*100,1)}%</td><td style={S.td}>{fmt(mo.cumPctMassY*100,1)}%</td></tr>)}</tbody>
         </table></div>
       </div>
       <div style={S.card}>
@@ -3935,7 +3999,7 @@ function BucklingResultsView({ model, data }) {
               <thead><tr><th style={S.th}>Mode</th><th style={S.th}>Load Factor λ</th><th style={S.th}>Residual</th></tr></thead>
               <tbody>
                 {data.modes.map((mo, i) => (
-                  <tr key={i} style={{ background: selMode === i ? "#21262d" : "transparent", cursor: "pointer" }} onClick={() => setSelMode(i)}>
+                  <tr key={i} style={{ background: selMode === i ? "#1e293b" : "transparent", cursor: "pointer" }} onClick={() => setSelMode(i)}>
                     <td style={S.td}><b>{mo.index + 1}</b></td>
                     <td style={S.td}>{fmt(mo.loadFactor, 4)}</td>
                     <td style={S.td}>{mo.residual.toExponential(2)}</td>
@@ -4013,8 +4077,8 @@ function RSAForceDiagramSVG({ model, forceMap, mode, height }) {
   const toScreen=(x,y)=>({sx:(x-vb.minX)*ds,sy:H-(y-vb.minY)*ds});
   const vals=[];
   model.members.forEach(m=>{const q=forceMap.get(m.id)||[0,0,0,0,0,0]; const pair=mode==="moment"?[-q[2],q[5]]:mode==="shear"?[q[1],-q[4]]:[-q[0],q[3]]; vals.push(...pair.map(Math.abs));});
-  const max=Math.max(...vals,1e-9), color=mode==="moment"?CLR.orange:mode==="shear"?CLR.green:CLR.red,px=60;
-  return <svg viewBox={`0 0 ${vb.w*ds} ${H}`} width="100%" height={H} style={{background:"#0d1117",border:`1px solid ${CLR.border}`,borderRadius:6}}>
+  const max=Math.max(...vals,1e-9), color=mode==="moment"?CLR.accent:mode==="shear"?CLR.green:CLR.red,px=60;
+  return <svg viewBox={`0 0 ${vb.w*ds} ${H}`} width="100%" height={H} style={SVG_BOX}>
     {model.members.map(m=>{const a=nodeById(model,m.nearNodeId),b=nodeById(model,m.farNodeId),p1=toScreen(a.x,a.y),p2=toScreen(b.x,b.y);return <line key={"r"+m.id} x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.muted} strokeWidth={2}/>;})}
     {model.members.map(m=>{const a=nodeById(model,m.nearNodeId),b=nodeById(model,m.farNodeId),q=forceMap.get(m.id)||[0,0,0,0,0,0],dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy)||1,c=dx/L,ss=dy/L,nx=-ss,ny=c; const pair=mode==="moment"?[-q[2],q[5]]:mode==="shear"?[q[1],-q[4]]:[-q[0],q[3]]; const samples=Array.from({length:17},(_,i)=>{const r=i/16,v=pair[0]*(1-r)+pair[1]*r,base=toScreen(a.x+c*L*r,a.y+ss*L*r),off=v/max*px;return {base,tip:{sx:base.sx+nx*off,sy:base.sy-ny*off},v};}); const path=samples.map((p,i)=>`${i?"L":"M"}${p.tip.sx},${p.tip.sy}`).join(" ");return <g key={m.id}><path d={`${path} L${samples[16].base.sx},${samples[16].base.sy} L${samples[0].base.sx},${samples[0].base.sy} Z`} fill={color+"26"} stroke={color} strokeWidth={1.7}/>{samples.map((p,i)=><line key={i} x1={p.base.sx} y1={p.base.sy} x2={p.tip.sx} y2={p.tip.sy} stroke={color} strokeWidth={1} strokeOpacity={0.72}/>)}<text x={samples[0].tip.sx + nx*12} y={samples[0].tip.sy - ny*12} fill={color} fontSize={10} fontWeight="700" textAnchor="middle">{fmt(pair[0],2)}</text><text x={samples[16].tip.sx + nx*12} y={samples[16].tip.sy - ny*12} fill={color} fontSize={10} fontWeight="700" textAnchor="middle">{fmt(pair[1],2)}</text></g>;})}
   </svg>;
@@ -4031,7 +4095,7 @@ function RSAForceValuesTable({ model, forceMap, mode }) {
         <thead><tr><th style={S.th}>Member</th><th style={S.th}>Near-End {label} ({unit})</th><th style={S.th}>Far-End {label} ({unit})</th><th style={S.th}>Member Maximum ({unit})</th></tr></thead>
         <tbody>{model.members.map(m => {
           const pair = pairFor(forceMap.get(m.id) || [0,0,0,0,0,0]);
-          return <tr key={m.id}><td style={S.td}><b>{m.id}</b></td><td style={S.td}>{fmt(pair[0],3)}</td><td style={S.td}>{fmt(pair[1],3)}</td><td style={{...S.td,color:mode==="moment"?CLR.orange:mode==="shear"?CLR.green:CLR.red,fontWeight:700}}>{fmt(Math.max(Math.abs(pair[0]),Math.abs(pair[1])),3)}</td></tr>;
+          return <tr key={m.id}><td style={S.td}><b>{m.id}</b></td><td style={S.td}>{fmt(pair[0],3)}</td><td style={S.td}>{fmt(pair[1],3)}</td><td style={{...S.td,color:mode==="moment"?CLR.accent:mode==="shear"?CLR.green:CLR.red,fontWeight:700}}>{fmt(Math.max(Math.abs(pair[0]),Math.abs(pair[1])),3)}</td></tr>;
         })}</tbody>
       </table>
     </div>
@@ -4150,6 +4214,19 @@ function saveWorkingFile(model) {
 }
 
 // ── THEORY / DOCUMENTATION TAB ───────────────────────────────────────────
+// Numbered display equation (MathJax LaTeX) + variable definitions immediately after it
+function Eq({ n, tex, where }) {
+  return (
+    <div className="print-eq" style={{ margin: "0.75rem 0 1rem" }}>
+      <div style={{ background: CLR.bg, border: `1px solid ${CLR.border}`, borderRadius: 12, padding: "0.6rem 1rem", display: "flex", alignItems: "center", gap: 12, overflowX: "auto" }}>
+        <div style={{ flex: 1 }}>{"\\[" + tex + "\\]"}</div>
+        <div style={{ fontSize: 11, color: CLR.muted, whiteSpace: "nowrap" }}>Equation {n}</div>
+      </div>
+      <div style={{ fontSize: 12, color: CLR.muted, lineHeight: 1.7, marginTop: 6 }}>{where}</div>
+    </div>
+  );
+}
+
 function TheoryTab() {
   const ref = useRef(null);
   useEffect(() => {
@@ -4159,19 +4236,21 @@ function TheoryTab() {
   }, []);
   return (
     <div ref={ref} style={{ ...S.card, lineHeight: 1.7, fontSize: 13 }}>
-      <div style={S.h2}>Theoretical Basis & References</div>
+      <div style={S.h2}>Part 1: Engineering Theory</div>
 
       <h3 style={{ color: CLR.accent, marginTop: 16 }}>1. Element Formulation</h3>
       <p>This tool uses the standard 2-node, 6-DOF prismatic Euler-Bernoulli plane frame element (local DOFs: axial and transverse translation plus rotation at each end). The local elastic stiffness matrix is the classical direct-stiffness-method formulation:</p>
-      <p>{"$$k' = \\begin{bmatrix} \\frac{EA}{L} & 0 & 0 & -\\frac{EA}{L} & 0 & 0 \\\\ 0 & \\frac{12EI}{L^3} & \\frac{6EI}{L^2} & 0 & -\\frac{12EI}{L^3} & \\frac{6EI}{L^2} \\\\ 0 & \\frac{6EI}{L^2} & \\frac{4EI}{L} & 0 & -\\frac{6EI}{L^2} & \\frac{2EI}{L} \\\\ -\\frac{EA}{L} & 0 & 0 & \\frac{EA}{L} & 0 & 0 \\\\ 0 & -\\frac{12EI}{L^3} & -\\frac{6EI}{L^2} & 0 & \\frac{12EI}{L^3} & -\\frac{6EI}{L^2} \\\\ 0 & \\frac{6EI}{L^2} & \\frac{2EI}{L} & 0 & -\\frac{6EI}{L^2} & \\frac{4EI}{L} \\end{bmatrix}$$"}</p>
+      <Eq n={1} tex={"k' = \\begin{bmatrix} \\frac{EA}{L} & 0 & 0 & -\\frac{EA}{L} & 0 & 0 \\\\ 0 & \\frac{12EI}{L^3} & \\frac{6EI}{L^2} & 0 & -\\frac{12EI}{L^3} & \\frac{6EI}{L^2} \\\\ 0 & \\frac{6EI}{L^2} & \\frac{4EI}{L} & 0 & -\\frac{6EI}{L^2} & \\frac{2EI}{L} \\\\ -\\frac{EA}{L} & 0 & 0 & \\frac{EA}{L} & 0 & 0 \\\\ 0 & -\\frac{12EI}{L^3} & -\\frac{6EI}{L^2} & 0 & \\frac{12EI}{L^3} & -\\frac{6EI}{L^2} \\\\ 0 & \\frac{6EI}{L^2} & \\frac{2EI}{L} & 0 & -\\frac{6EI}{L^2} & \\frac{4EI}{L} \\end{bmatrix}"} where={"where $E$ is Young's modulus, $A$ the cross-sectional area, $I$ the moment of inertia, and $L$ the member length; the DOF order is axial, transverse and rotation at the near end, then at the far end."} />
       <p style={{ color: CLR.muted, fontSize: 11.5 }}>Reference: McGuire, Gallagher & Ziemian, <i>Matrix Structural Analysis</i>, 2nd ed., Wiley.</p>
 
       <h3 style={{ color: CLR.accent, marginTop: 16 }}>2. Solution Method</h3>
       <p>{"Global stiffness assembly follows the direct stiffness method: each member's local stiffness is transformed to global coordinates via $K = T^T k' T$ and superposed at shared degrees of freedom. The resulting system is partitioned into free and restrained DOFs and solved as $K_{ff} d_f = P_f$."}</p>
+      <Eq n={2} tex={"K = T^{T} k' T"} where={"where $K$ is the member stiffness in global coordinates, $k'$ the local stiffness of Equation 1, and $T$ the rotation transformation from global to local axes."} />
       <p>The linear system is solved using an <b>LDL<sup>T</sup> factorization</b> (never an explicit matrix inverse), which exploits symmetry and provides a built-in mechanism/singularity check: any near-zero pivot during factorization is reported as a structural mechanism rather than silently producing an inaccurate result.</p>
 
       <h3 style={{ color: CLR.accent, marginTop: 16 }}>3. Member End-Force Sign Convention</h3>
       <p>{"Member end forces are recovered as $q' = k' d' + p'$, where $p'$ is the member's local fixed-end action vector for the applied load pattern."} This convention was calibrated and verified to match a reference spreadsheet benchmark (a classic 480×360 in portal frame under combined lateral and gravity load) to machine precision on all six displacement components and all eighteen member end-force components.</p>
+      <Eq n={3} tex={"q' = k' d' + p'"} where={"where $q'$ is the vector of local member end forces, $d'$ the local end displacements, and $p'$ the local fixed-end action vector."} />
       <p>On the Results diagrams, the bending moment diagram is drawn on the tension side of the member (standard structural engineering convention) — a positive (sagging) moment, which places the member's local -y fiber in tension, is offset toward that fiber; a negative (hogging) moment is offset toward the local +y fiber. This was verified directly against the closed-form midspan moment for a simply-supported beam under uniform load.</p>
 
       <h3 style={{ color: CLR.accent, marginTop: 16 }}>4. End Releases</h3>
@@ -4179,10 +4258,12 @@ function TheoryTab() {
 
       <h3 style={{ color: CLR.accent, marginTop: 16 }}>5. Buckling Analysis</h3>
       <p>{"Linear (Euler-type) buckling solves the generalized eigenproblem $(K_e + \\lambda K_g) \\phi = 0$, where $K_g$ is the geometric stiffness matrix assembled from member axial forces obtained from a user-specified reference load case."} {"Verified to match Euler's classical formula $P_{cr} = \\pi^2 EI/(KL)^2$ exactly for pinned-pinned ($K=1$), fixed-free ($K=2$), and fixed-fixed ($K=0.5$) columns."}</p>
+      <Eq n={4} tex={"\\left(K_e + \\lambda K_g\\right)\\phi = 0"} where={"where $K_e$ is the elastic stiffness matrix, $K_g$ the geometric stiffness matrix, $\\lambda$ the buckling load factor, and $\\phi$ the buckling mode shape."} />
       <p style={{ color: CLR.muted, fontSize: 11.5 }}>Reference: Przemieniecki, <i>Theory of Matrix Structural Analysis</i>, Ch. 10; Chen & Lui, <i>Structural Stability: Theory and Implementation</i>.</p>
 
       <h3 style={{ color: CLR.accent, marginTop: 16 }}>6. Modal Analysis</h3>
       <p>{"Free-vibration analysis solves $K\\phi = \\omega^2 M \\phi$ using a consistent or lumped mass matrix."} Massless DOFs (typical of lumped-mass rotational DOFs) are removed via Guyan (static) condensation prior to the eigensolve — a numerically robust alternative to mass regularization, verified against both an SDOF closed-form solution and Blevins' analytical cantilever-beam frequency formula.</p>
+      <Eq n={5} tex={"K\\phi = \\omega^{2} M \\phi"} where={"where $K$ is the structure stiffness, $M$ the mass matrix, $\\omega$ the circular frequency, and $\\phi$ the mode shape."} />
       <p style={{ color: CLR.muted, fontSize: 11.5 }}>Reference: Chopra, <i>Dynamics of Structures</i>, 4th/5th ed., Ch. 13; Guyan, "Reduction of Stiffness and Mass Matrices," <i>AIAA Journal</i>, 1965.</p>
 
       <h3 style={{ color: CLR.accent, marginTop: 16 }}>7. P-Delta Analysis</h3>
@@ -4205,6 +4286,7 @@ function TheoryTab() {
 
       <h3 style={{ color: CLR.accent, marginTop: 16 }}>12. Member Elastic Buckling Strength</h3>
       <p>{"In addition to the global (structure-level) buckling eigenanalysis, each member's own standalone Euler elastic buckling capacity is reported as $P_{cr} = \\pi^2 EI/(KL)^2$, using its resolved section properties, actual length, and a user-assigned effective-length factor K, compared against its actual axial force under the reference load case."}</p>
+      <Eq n={6} tex={"P_{cr} = \\frac{\\pi^{2} E I}{(K L)^{2}}"} where={"where $P_{cr}$ is the Euler critical load, $E$ the modulus, $I$ the moment of inertia, $K$ the effective length factor, and $L$ the member length."} />
 
       <h3 style={{ color: CLR.accent, marginTop: 16 }}>13. Generic Default Load Cases</h3>
       <p>The tool ships with generic, purpose-built default load cases so every analysis type produces a meaningful result immediately, without requiring the user to first assemble a suitable load combination:</p>
@@ -4219,6 +4301,22 @@ function TheoryTab() {
 
       <h3 style={{ color: CLR.accent, marginTop: 16 }}>14. Verification Summary</h3>
       <p>The numerical core underlying this tool has passed over 125 automated tests spanning closed-form beam solutions, Euler buckling (3 boundary conditions), SDOF/continuous-beam modal frequencies, exact beam-column P-Delta solutions, classical moving-load influence-line results, Hermitian shape-function fixed-end-action tables, spring and rigid-link kinematics, and machine-precision agreement with an independent spreadsheet benchmark. Analysis results are only as reliable as the model and load inputs provided by the user; engineering judgment and independent checks remain the user's responsibility.</p>
+      <div style={{ ...S.h2, marginTop: 28 }}>Part 2: Coding Theory</div>
+      <p>The app is a single HTML file. React 18 (UMD) is compiled in the browser by Babel; the numerical solver lives in a separate plain-JavaScript module exposed as <code>window.FrameCore</code>, so the interface never contains analysis math. The <code>model</code> object (nodes, members, materials, sections, load patterns, combinations) is held in one React state. <b>Run Analysis</b> resolves member properties, builds load vectors for the chosen combination, assembles and solves the system, and stores the result object; the Results tab reads that object to draw the SVG frame, force diagrams and tables. All graphics share one set of tokens (<code>CLR</code>, <code>SVG_BOX</code>) and one legend component. <b>Save</b> downloads the model as JSON and <b>Open</b> reads it back. <b>Print / PDF</b> waits for MathJax to finish, then calls <code>window.print()</code> with a stylesheet that turns the dark UI into a light report and keeps tables, figures and equations from splitting across pages.</p>
+
+      <div style={{ ...S.h2, marginTop: 28 }}>Part 3: References</div>
+      <div style={{ fontSize: 12.5, color: CLR.muted, lineHeight: 1.7 }}>
+        {[
+          "Chen, W. F., & Lui, E. M. (1987). Structural stability: Theory and implementation. Elsevier.",
+          "Chopra, A. K. (2017). Dynamics of structures: Theory and applications to earthquake engineering (5th ed.). Pearson.",
+          "Der Kiureghian, A. (1981). A response spectrum method for random vibration analysis of MDF systems. Earthquake Engineering & Structural Dynamics, 9(5), 419-435. https://doi.org/10.1002/eqe.4290090504",
+          "Guyan, R. J. (1965). Reduction of stiffness and mass matrices. AIAA Journal, 3(2), 380. https://doi.org/10.2514/3.2874",
+          "Hibbeler, R. C. (2017). Structural analysis (10th ed.). Pearson.",
+          "McGuire, W., Gallagher, R. H., & Ziemian, R. D. (2000). Matrix structural analysis (2nd ed.). John Wiley & Sons.",
+          "Przemieniecki, J. S. (1968). Theory of matrix structural analysis. McGraw-Hill.",
+          "Timoshenko, S. P., & Gere, J. M. (1961). Theory of elastic stability (2nd ed.). McGraw-Hill.",
+        ].map((r, i) => <p key={i} style={{ paddingLeft: "2rem", textIndent: "-2rem", marginBottom: 8 }}>{r}</p>)}
+      </div>
     </div>
   );
 }
@@ -4266,12 +4364,27 @@ function App() {
     e.target.value = "";
   };
 
-  const handlePrintReport = () => window.print();
+  // Wait until MathJax has typeset every equation before the print dialog captures the page
+  const handlePrintReport = async () => {
+    try { if (window.MathJax && window.MathJax.typesetPromise) await window.MathJax.typesetPromise(); } catch (e) {}
+    setTimeout(() => window.print(), 300);
+  };
 
   return (
     <div style={S.app}>
       <div style={S.header} className="screen-only">
-        <div style={S.brand}><span style={S.brandBadge}>PF</span> PlaneFrame v2.1</div>
+        <div style={S.brand}>
+          <svg width="38" height="38" viewBox="0 0 40 40" style={{ borderRadius: 12, boxShadow: "0 6px 16px rgba(6,182,212,0.3)" }}>
+            <defs><linearGradient id="pfLg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#0891b2" /><stop offset="1" stopColor="#10b981" /></linearGradient></defs>
+            <rect width="40" height="40" rx="12" fill="url(#pfLg)" />
+            <path d="M10 31 L10 12 L30 12 L30 31" fill="none" stroke="#090d16" strokeWidth="2.6" strokeLinejoin="round" />
+            <circle cx="10" cy="12" r="2.4" fill="#090d16" /><circle cx="30" cy="12" r="2.4" fill="#090d16" />
+          </svg>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 18 }}>PlaneFrame</span><span style={S.brandBadge}>v2.2</span></div>
+            <div style={{ fontSize: 11, color: CLR.muted, fontWeight: 400 }}>2D Frame Structural Analysis · Direct Stiffness Method</div>
+          </div>
+        </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button style={S.btn("secondary")} onClick={() => saveWorkingFile(model)}>💾 Save</button>
           <button style={S.btn("secondary")} onClick={() => fileInputRef.current.click()}>📂 Open</button>
@@ -4293,7 +4406,7 @@ function App() {
       </div>
 
       <div className="print-report-header">
-        <h1 style={{ fontSize: 18, marginBottom: 4 }}>PlaneFrame v2.1 — Structural Analysis Report</h1>
+        <h1 style={{ fontSize: 18, marginBottom: 4 }}>PlaneFrame v2.2 — Structural Analysis Report</h1>
         <div style={{ fontSize: 10, color: "#555" }}>Generated {new Date().toLocaleString()}</div>
         <div style={{ marginTop: 16 }}>
           <h2 style={{ fontSize: 13 }}>Model Summary</h2>
