@@ -3,1394 +3,501 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Structural Tools</title>
+  <title>Structural Tools — Free Structural Engineering Calculators</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 
   <style>
-    /* ─── Design Tokens ─────────────────────────────────────── */
+    /* ─── Design tokens (same palette as the engineering tools' CLR object) ─── */
     :root {
-      --bg-base:     #040812;
-      --bg-card:     #0d1117;
-      --bg-card2:    #111722;
-      --border:      rgba(255,255,255,0.07);
-      --border-hi:   rgba(255,255,255,0.14);
-      --accent-blue: #3b82f6;
-      --accent-teal: #14b8a6;
-      --accent-cyan: #22d3ee;
-      --accent-gold: #f59e0b;
-      --text-hi:     #f6f8ff;
-      --text-mid:    #b8c3d8;
-      --text-lo:     #7b879b;
-      --radius:      12px;
-      --radius-sm:   8px;
-      --mono:        'IBM Plex Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
-      --sans:        'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      --display:     'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --bg:#090d16; --surface:#0f172a; --card:#131B2E;
+      --border:#1e293b; --border2:#334155;
+      --accent:#06b6d4; --accent-soft:#67e8f9;
+      --green:#10b981; --red:#f43f5e; --red-soft:#fb7185; --yellow:#f59e0b;
+      --text:#f8fafc; --muted:#94a3b8; --concrete:#1e293b;
+      --grad:linear-gradient(90deg,var(--accent),var(--green));
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+      --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
     }
-
-    /* ─── Reset ─────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body {
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{
       background:
-        radial-gradient(circle at 70% 20%, rgba(59,130,246,0.16) 0%, rgba(59,130,246,0.055) 22%, transparent 48%),
-        radial-gradient(circle at 18% 75%, rgba(20,184,166,0.11) 0%, rgba(20,184,166,0.035) 24%, transparent 50%),
-        linear-gradient(135deg, #030712 0%, #050915 38%, #07111e 100%);
-      color: var(--text-hi);
-      font-family: var(--sans);
-      font-size: 16px;
-      line-height: 1.7;
-      overflow-x: hidden;
-      text-rendering: optimizeLegibility;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+        radial-gradient(circle at 72% 12%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 46%),
+        radial-gradient(circle at 15% 80%,color-mix(in srgb,var(--green) 8%,transparent),transparent 48%),
+        var(--bg);
+      color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.7;overflow-x:hidden;
+      -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
     }
-    a { color: inherit; text-decoration: none; }
-    img { display: block; max-width: 100%; }
+    a{color:inherit;text-decoration:none}
+    ::-webkit-scrollbar{width:6px}
+    ::-webkit-scrollbar-track{background:var(--bg)}
+    ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
 
-    /* ─── Scrollbar ──────────────────────────────────────────── */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg-base); }
-    ::-webkit-scrollbar-thumb { background: #1e2d47; border-radius: 99px; }
-
-    /* ─── Grid Dots Background ───────────────────────────────── */
-    body::before {
-      content: '';
-      position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background-image:
-        linear-gradient(rgba(59,130,246,0.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(59,130,246,0.035) 1px, transparent 1px),
-        radial-gradient(circle, rgba(96,165,250,0.18) 1px, transparent 1.3px);
-      background-size: 96px 96px, 96px 96px, 40px 40px;
-      mask-image: radial-gradient(circle at 50% 35%, black 0%, black 55%, transparent 100%);
-    }
-    body::after {
-      content: '';
-      position: fixed; inset: auto auto 0 0;
-      width: 420px; height: 260px; pointer-events: none; z-index: 0;
-      background:
-        linear-gradient(30deg, transparent 0 68%, rgba(59,130,246,0.12) 69% 70%, transparent 71%),
-        linear-gradient(150deg, transparent 0 64%, rgba(20,184,166,0.09) 65% 66%, transparent 67%);
-      opacity: 0.55;
+    /* faint engineering grid behind the page */
+    body::before{
+      content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+      background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);
+      background-size:48px 48px;opacity:.35;
+      mask-image:radial-gradient(circle at 50% 30%,#000 0%,transparent 75%);
     }
 
-    /* ─── Skyline / Crane / Bridge Backdrop ──────────────────── */
-    .skyline-bg {
-      position: fixed; left: 0; right: 0; bottom: 0;
-      height: 46vh; max-height: 460px;
-      pointer-events: none; z-index: 0;
-      opacity: 0.5;
-      mask-image: linear-gradient(180deg, transparent 0%, black 32%, black 100%);
+    /* ─── SVG graphic language (shared by every drawing on this page) ─── */
+    svg.ic{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.8}
+    .sa{stroke:var(--accent)} .sg{stroke:var(--green)} .sr{stroke:var(--red)}
+    .sy{stroke:var(--yellow)} .sb{stroke:var(--border2)}
+    .fr{fill:var(--red);stroke:var(--red)} .fy{fill:var(--yellow);stroke:var(--yellow)}
+    .m{stroke-width:3.2;stroke:var(--accent)}                                   /* members, beams */
+    .nd{fill:var(--green);stroke:var(--accent);stroke-width:1.5}                 /* nodes, bars */
+    .sp{fill:color-mix(in srgb,var(--green) 35%,transparent);stroke:var(--accent);stroke-width:1.5} /* supports */
+    .cc{fill:var(--concrete);stroke:var(--accent);stroke-width:2.2}              /* solid bodies */
+    .dash{stroke:var(--border2);stroke-dasharray:3 3;fill:none}                  /* reference geometry */
+    .plot{                                                                       /* shared plot box (SVG_BOX) */
+      display:block;width:100%;height:auto;background-color:var(--bg);border:1px solid var(--border);border-radius:12px;
+      background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);
+      background-size:24px 24px;font-family:var(--mono);
     }
-    .skyline-bg svg { width: 100%; height: 100%; }
+    .plot text{font-family:var(--mono);font-size:10px;fill:var(--muted)}
+    .plot text.nl{fill:var(--text);font-size:11px;font-weight:700}
+    .plot text.ld{fill:var(--red-soft)}
+    .legend{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:center;margin-top:8px;font:500 10.5px var(--mono)}
 
-    /* ─── NAV ────────────────────────────────────────────────── */
-    nav {
-      position: sticky; top: 0; z-index: 100;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 5vw;
-      height: 60px;
-      background: rgba(7,9,15,0.82);
-      backdrop-filter: blur(18px);
-      border-bottom: 1px solid var(--border);
-    }
-    .nav-brand {
-      display: flex; align-items: center; gap: 10px;
-      font-family: var(--display); font-size: 1.05rem; font-weight: 700;
-      letter-spacing: -0.01em;
-    }
-    .nav-brand svg { flex-shrink: 0; }
-    .nav-brand span { color: var(--accent-blue); }
-    .nav-links {
-      display: flex; gap: 2rem; list-style: none;
-    }
-    .nav-links a {
-      font-size: 0.95rem; font-weight: 600; color: var(--text-mid);
-      padding-bottom: 2px;
-      border-bottom: 1px solid transparent;
-      transition: color .2s, border-color .2s;
-    }
-    .nav-links a:hover, .nav-links a.active {
-      color: var(--text-hi);
-      border-color: var(--accent-blue);
-    }
+    /* skyline backdrop */
+    .skyline-bg{position:fixed;left:0;right:0;bottom:0;height:44vh;max-height:440px;pointer-events:none;z-index:0;opacity:.5;
+      mask-image:linear-gradient(180deg,transparent,#000 35%)}
+    .skyline-bg svg{width:100%;height:100%}
+    .sk-b{fill:var(--border);fill-opacity:.4;stroke:var(--border2)}
+    .sk-t{fill:none;stroke:var(--accent);stroke-opacity:.35;stroke-width:2;stroke-linecap:round}
+    .sk-c{fill:none;stroke:var(--green);stroke-opacity:.35;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 
-    /* ─── SECTIONS ───────────────────────────────────────────── */
-    section {
-      position: relative; z-index: 1;
-      padding: 100px 5vw;
+    /* ─── Header / nav (sticky, translucent, gradient logo tile, version pill, segmented tabs) ─── */
+    nav{
+      position:sticky;top:0;z-index:100;height:68px;padding:0 5vw;
+      display:flex;align-items:center;justify-content:space-between;gap:16px;
+      background:color-mix(in srgb,var(--surface) 82%,transparent);backdrop-filter:blur(16px);
+      border-bottom:1px solid var(--border);
     }
-    section + section { padding-top: 60px; }
+    .brand{display:flex;align-items:center;gap:12px;font-weight:700}
+    .brand svg{border-radius:12px;box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 30%,transparent);flex-shrink:0}
+    .brand-name{display:flex;align-items:center;gap:8px;font-size:1.05rem;line-height:1.2}
+    .pill{font:500 11px var(--mono);color:var(--accent-soft);background:color-mix(in srgb,var(--accent) 14%,var(--bg));
+      border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;padding:1px 9px}
+    .brand-sub{font-size:11px;font-weight:400;color:var(--muted);line-height:1.3}
+    .seg{display:flex;gap:4px;padding:4px;background:var(--bg);border:1px solid var(--border);border-radius:12px;list-style:none}
+    .seg a{display:block;padding:6px 16px;border-radius:9px;font-size:.88rem;font-weight:600;color:var(--muted);transition:color .2s,background .2s}
+    .seg a:hover{color:var(--text)}
+    .seg a.active{background:var(--accent);color:var(--bg)}
+    .seg a.ext{color:var(--accent-soft)}
+    .seg a.ext:hover{background:var(--border)}
 
-    .section-eyebrow {
-      font-family: var(--mono); font-size: 0.75rem; font-weight: 600;
-      letter-spacing: 0.12em; text-transform: uppercase;
-      color: var(--accent-blue);
-      margin-bottom: 14px;
-    }
-    .section-title {
-      font-family: var(--display); font-size: clamp(2rem, 4vw, 3.2rem);
-      font-weight: 800; line-height: 1.12; letter-spacing: -0.025em;
-      margin-bottom: 1.2rem;
-    }
-    .section-sub {
-      color: var(--text-mid); font-size: 1.04rem; max-width: 600px;
-      line-height: 1.75;
-    }
+    /* ─── Sections ─── */
+    section{position:relative;z-index:1;padding:90px 5vw}
+    section + section{padding-top:60px}
+    .eyebrow{font:700 .75rem var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+    .title{font-size:clamp(2rem,4vw,3.1rem);font-weight:800;line-height:1.12;letter-spacing:-.025em;margin-bottom:1.1rem}
+    .sub{color:var(--muted);font-size:1.04rem;max-width:620px;line-height:1.75}
+    hr.divider{border:none;border-top:1px solid var(--border);margin:0 5vw;position:relative;z-index:1}
 
-    /* ─── HERO ───────────────────────────────────────────────── */
-    #home {
-      min-height: calc(100vh - 60px);
-      display: grid;
-      grid-template-columns: 0.92fr 1.18fr;
-      gap: 60px;
-      align-items: center;
-      padding-top: 80px;
-      padding-bottom: 80px;
-    }
+    /* ─── Buttons: primary = cyan→emerald gradient with dark text; secondary = slate with border ─── */
+    .btn-primary,.btn-ghost{display:inline-flex;align-items:center;gap:8px;font:700 .92rem var(--sans);padding:11px 22px;
+      border-radius:10px;cursor:pointer;transition:transform .15s,box-shadow .2s,border-color .2s}
+    .btn-primary{background:var(--grad);color:var(--bg);border:none;box-shadow:0 0 24px color-mix(in srgb,var(--accent) 30%,transparent)}
+    .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 30px color-mix(in srgb,var(--accent) 50%,transparent)}
+    .btn-ghost{background:var(--border);color:var(--text);border:1px solid var(--border2)}
+    .btn-ghost:hover{border-color:var(--accent);transform:translateY(-1px)}
 
-    .hero-pill {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(59,130,246,0.1);
-      border: 1px solid rgba(59,130,246,0.25);
-      border-radius: 99px;
-      padding: 5px 14px;
-      font-family: var(--mono); font-size: 0.72rem; font-weight: 600;
-      letter-spacing: 0.10em; text-transform: uppercase;
-      color: var(--accent-blue);
-      margin-bottom: 24px;
-    }
-    .hero-pill::before {
-      content: '';
-      width: 6px; height: 6px;
-      background: var(--accent-teal);
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.8); }
-    }
+    /* ─── Hero ─── */
+    #home{min-height:calc(100vh - 68px);display:grid;grid-template-columns:.92fr 1.18fr;gap:56px;align-items:center;padding-top:70px;padding-bottom:70px}
+    .hero-pill{display:inline-flex;align-items:center;gap:8px;margin-bottom:22px;padding:5px 14px;border-radius:999px;
+      font:700 .72rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent-soft);
+      background:color-mix(in srgb,var(--accent) 12%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
+    .hero-pill::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+    .hero-title{font-size:clamp(2.3rem,5vw,3.9rem);font-weight:800;line-height:1.1;letter-spacing:-.025em;margin-bottom:1.3rem}
+    .hl-a{color:var(--accent)} .hl-g{color:var(--green)}
+    .hero-desc{color:var(--muted);font-size:1.07rem;max-width:520px;line-height:1.8;margin-bottom:1.9rem}
+    .hero-cta{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:2.6rem}
+    .hero-badges{display:flex;flex-wrap:wrap;gap:20px}
+    .hero-badge{display:flex;align-items:center;gap:10px}
+    .glyph{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+      font:700 .78rem var(--mono);color:var(--accent-soft);background:var(--bg);border:1px solid var(--border2)}
+    .hero-badge strong{display:block;font-size:.92rem;line-height:1.3}
+    .hero-badge span{font-size:.88rem;color:var(--muted)}
 
-    .hero-title {
-      font-family: var(--display);
-      font-size: clamp(2.4rem, 5vw, 4rem);
-      font-weight: 800;
-      line-height: 1.1;
-      letter-spacing: -0.025em;
-      margin-bottom: 1.4rem;
-    }
-    .hero-title .hl-blue { color: var(--accent-blue); }
-    .hero-title .hl-teal { color: var(--accent-teal); }
+    /* hero mock-up of a tool window */
+    .mock{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow),0 0 60px color-mix(in srgb,var(--accent) 10%,transparent);overflow:hidden}
+    .mock-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:color-mix(in srgb,var(--surface) 90%,transparent);border-bottom:1px solid var(--border)}
+    .mock-head .brand svg{box-shadow:none}
+    .mock-body{padding:18px}
+    .card-title{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:9px;margin-bottom:12px;
+      border-bottom:1px solid var(--border);font:700 11.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+    .caption{margin-top:10px;text-align:center;font:500 10.5px var(--mono);color:var(--muted)}
+    .status-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font:500 11px var(--mono);color:var(--muted)}
+    .badge{display:inline-block;padding:2px 11px;border-radius:999px;font:700 10.5px var(--sans);letter-spacing:.04em;
+      color:var(--green);background:color-mix(in srgb,var(--green) 14%,transparent);border:1px solid color-mix(in srgb,var(--green) 45%,transparent)}
 
-    .hero-desc {
-      color: var(--text-mid); font-size: 1.08rem;
-      max-width: 520px; line-height: 1.8;
-      margin-bottom: 2rem;
-    }
+    /* ─── User guides banner ─── */
+    .guide-banner{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin:0 auto 54px;max-width:960px;padding:22px 26px;
+      background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,var(--card)),var(--card));
+      border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border));border-radius:16px;box-shadow:var(--shadow)}
+    .guide-banner .tool-icon{margin:0}
+    .guide-text{flex:1;min-width:240px}
+    .guide-text h3{font-size:1.15rem;font-weight:800;letter-spacing:-.01em}
+    .guide-text p{color:var(--muted);font-size:.95rem;line-height:1.6}
 
-    .hero-cta {
-      display: flex; flex-wrap: wrap; gap: 12px;
-      margin-bottom: 3rem;
-    }
-    .btn-primary {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--accent-blue);
-      color: #fff; font-family: var(--sans); font-size: 0.95rem; font-weight: 700;
-      padding: 12px 24px; border-radius: var(--radius-sm);
-      border: none; cursor: pointer;
-      transition: background .2s, transform .15s, box-shadow .2s;
-      box-shadow: 0 0 24px rgba(59,130,246,0.35);
-    }
-    .btn-primary:hover {
-      background: #2563eb;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 32px rgba(59,130,246,0.5);
-    }
-    .btn-ghost {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: transparent;
-      color: var(--text-hi); font-family: var(--sans); font-size: 0.95rem; font-weight: 600;
-      padding: 12px 24px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border-hi); cursor: pointer;
-      transition: border-color .2s, background .2s, transform .15s;
-    }
-    .btn-ghost:hover {
-      border-color: var(--accent-blue);
-      background: rgba(59,130,246,0.06);
-      transform: translateY(-1px);
-    }
+    /* ─── Tools grid ─── */
+    #tools{padding-top:80px}
+    .tools-header{text-align:center;margin-bottom:44px}
+    .tools-header .sub{margin:0 auto}
+    .tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+    .cat-head{grid-column:1/-1;display:flex;align-items:baseline;gap:12px;margin-top:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+    .cat-head:first-child{margin-top:0}
+    .cat-head h3{font:700 .95rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ca)}
+    .cat-head span{font:500 .72rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+    .tool-card{position:relative;overflow:hidden;display:flex;flex-direction:column;padding:26px;background:var(--card);
+      border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);transition:border-color .25s,transform .2s,box-shadow .25s}
+    .tool-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--ca),transparent);opacity:0;transition:opacity .25s}
+    .tool-card:hover{border-color:var(--border2);transform:translateY(-3px);box-shadow:0 16px 48px rgba(0,0,0,.45)}
+    .tool-card:hover::before{opacity:1}
+    .tool-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;
+      background:var(--bg);border:1px solid var(--border2)}
+    .tool-icon svg{width:30px;height:30px}
+    .tool-number{font:500 .72rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+    .tool-name{font-size:1.2rem;font-weight:800;letter-spacing:-.015em;margin-bottom:4px}
+    .tool-sub{font:500 .76rem var(--mono);color:var(--ca);margin-bottom:12px}
+    .tool-desc{flex:1;margin-bottom:20px;color:var(--muted);font-size:.94rem;line-height:1.7}
+    .btn-launch{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 18px;border-radius:10px;
+      font:700 .9rem var(--sans);color:var(--ca);background:transparent;border:1px solid var(--ca);transition:background .2s,color .2s,transform .15s}
+    .btn-launch:hover{background:var(--ca);color:var(--bg);transform:translateY(-1px)}
+    .btn-launch svg{transition:transform .2s}
+    .btn-launch:hover svg{transform:translateX(3px)}
+    .c-accent{--ca:var(--accent)} .c-green{--ca:var(--green)} .c-yellow{--ca:var(--yellow)} .c-red{--ca:var(--red-soft)}
 
-    .hero-badges {
-      display: flex; flex-wrap: wrap; gap: 20px;
-    }
-    .hero-badge {
-      display: flex; align-items: center; gap: 10px;
-    }
-    .badge-icon {
-      width: 36px; height: 36px; border-radius: 50%;
-      border: 1px solid var(--border-hi);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1rem;
-    }
-    .badge-text strong { display: block; font-size: 0.92rem; font-weight: 700; letter-spacing: -0.005em; }
-    .badge-text span { font-size: 0.9rem; color: var(--text-mid); }
+    /* ─── Why ─── */
+    .why-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px;margin-top:44px}
+    .why-card{padding:26px;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);transition:border-color .2s}
+    .why-card:hover{border-color:var(--border2)}
+    .why-card .glyph{margin-bottom:14px}
+    .why-title{font-size:1.06rem;font-weight:800;letter-spacing:-.01em;margin-bottom:8px}
+    .why-desc{color:var(--muted);font-size:.94rem;line-height:1.7}
 
-    /* Hero right — preview card: mini app screenshot */
-    .hero-preview {
-      background: linear-gradient(180deg, #101722 0%, #0b1119 100%);
-      border: 1px solid rgba(96,165,250,0.18);
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 28px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.03) inset;
-      transform: perspective(1200px) rotateY(-1deg);
-    }
-    .preview-bar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px;
-      background: rgba(17,24,39,0.98);
-      border-bottom: 1px solid rgba(148,163,184,0.13);
-    }
-    .preview-bar-left {
-      display: flex; align-items: center; gap: 12px;
-      font-family: var(--sans); font-size: 0.92rem; font-weight: 700; color: var(--text-hi);
-    }
-    .preview-bar-left .hamburger {
-      width: 26px; height: 26px; border-radius: 7px;
-      display: inline-flex; align-items: center; justify-content: center;
-      color: var(--text-mid); background: rgba(255,255,255,0.025);
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-    .preview-actions { display: flex; align-items: center; gap: 8px; color: var(--text-mid); }
-    .preview-actions svg { opacity: 0.85; }
-    .preview-app-chip {
-      display: inline-flex; align-items: center; justify-content: center;
-      padding: 4px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(88,166,255,0.20);
-      background: rgba(88,166,255,0.10);
-      color: #7cc4ff;
-      font-size: 0.7rem; font-weight: 800; letter-spacing: 0.04em;
-    }
-    .window-dots { display:flex; align-items:center; gap:8px; }
-    .window-dots span {
-      width: 10px; height: 10px; border-radius: 50%; display:block;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.06) inset;
-    }
-    .window-dots .red { background:#ff5f57; }
-    .window-dots .yellow { background:#febc2e; }
-    .window-dots .green { background:#28c840; }
-    .preview-app {
-      display: grid;
-      grid-template-columns: 82px 1fr;
-      min-height: 360px;
-    }
-    .preview-sidebar {
-      background: rgba(8,13,22,0.72);
-      border-right: 1px solid rgba(148,163,184,0.12);
-      padding: 14px 9px;
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .preview-nav-item {
-      display: flex; align-items: center; gap: 8px;
-      border-radius: 8px;
-      padding: 9px 8px;
-      color: var(--text-mid);
-      font-size: 0.70rem;
-      font-weight: 700;
-    }
-    .preview-nav-item svg { width: 13px; height: 13px; flex-shrink: 0; }
-    .preview-nav-item.active {
-      color: var(--accent-blue);
-      background: rgba(59,130,246,0.11);
-      border: 1px solid rgba(59,130,246,0.20);
-    }
-    .preview-workspace { padding: 16px; }
-    .preview-top-grid {
-      display: grid;
-      grid-template-columns: 1.65fr 0.85fr;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-    .panel-tag {
-      font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em;
-      color: var(--accent-blue);
-      background: rgba(59,130,246,0.10);
-      border: 1px solid rgba(59,130,246,0.20);
-      border-radius: 999px;
-      padding: 4px 8px;
-    }
-    .preview-panel {
-      background: rgba(17,24,39,0.67);
-      border: 1px solid rgba(148,163,184,0.13);
-      border-radius: 10px;
-      box-shadow: 0 10px 24px rgba(0,0,0,0.18);
-    }
-    .preview-panel-head {
-      padding: 10px 12px 0;
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: 0.78rem; font-weight: 800;
-      color: var(--text-hi);
-    }
-    .preview-summary { padding: 11px 13px; }
-    .summary-row {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 10px; padding: 5px 0;
-      font-size: 0.72rem; color: var(--text-mid); font-weight: 700;
-    }
-    .summary-row strong { font-family: var(--mono); font-size: 0.76rem; }
-    .summary-row .blue { color: var(--accent-blue); }
-    .summary-row .teal { color: var(--accent-teal); }
-    .summary-row .gold { color: var(--accent-gold); }
-    .beam-svg { width: 100%; height: 132px; display: block; }
-    .preview-chart-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-    }
-    .preview-chart { padding: 10px 10px 8px; min-height: 138px; }
-    .chart-title {
-      font-size: 0.72rem; font-weight: 800; color: var(--text-hi);
-      margin-bottom: 4px;
-    }
-    .chart-svg { width: 100%; height: 98px; display: block; }
-    .axis { stroke: rgba(184,195,216,0.45); stroke-width: 1; }
-    .gridline { stroke: rgba(184,195,216,0.12); stroke-width: 1; }
-    .axis-label { fill: var(--text-mid); font-family: var(--mono); font-size: 7px; }
-    .plot-blue { stroke: var(--accent-blue); }
-    .plot-teal { stroke: var(--accent-teal); }
-    .plot-gold { stroke: var(--accent-gold); }
-    .plot-fill-blue { fill: rgba(59,130,246,0.12); }
-    .plot-fill-teal { fill: rgba(20,184,166,0.12); }
-    .plot-fill-gold { fill: rgba(245,158,11,0.12); }
+    /* ─── Contact ─── */
+    #contact{display:grid;grid-template-columns:1fr 1.3fr;gap:80px;align-items:start}
+    .contact-methods{display:flex;flex-direction:column;gap:16px}
+    .contact-card{display:flex;align-items:center;gap:18px;padding:20px 24px;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);transition:border-color .2s,transform .15s}
+    .contact-card:hover{border-color:var(--border2);transform:translateX(4px)}
+    .contact-card strong{display:block;font-size:.92rem;margin-bottom:2px}
+    .contact-card a{font:500 .86rem var(--mono);color:var(--accent);transition:color .2s}
+    .contact-card a:hover{color:var(--accent-soft)}
+    .contact-note{margin-top:28px;padding:22px 24px;background:var(--card);border:1px solid var(--border);border-radius:16px}
+    .contact-note p{color:var(--muted);font-size:.96rem}
+    .contact-note strong{color:var(--text)}
 
-    /* ─── Refined BOEF Snapshot Only ─────────────────────────── */
-    .hero-preview {
-      background: linear-gradient(180deg, rgba(15,23,42,0.96) 0%, rgba(5,10,18,0.98) 100%);
-      border: 1px solid rgba(96,165,250,0.34);
-      border-radius: 18px;
-      overflow: hidden;
-      box-shadow:
-        0 32px 110px rgba(0,0,0,0.62),
-        0 0 58px rgba(59,130,246,0.16),
-        0 0 0 1px rgba(255,255,255,0.05) inset;
-      transform: none;
-    }
-    .preview-bar {
-      padding: 14px 18px;
-      background: linear-gradient(180deg, rgba(18,28,44,0.98), rgba(12,18,31,0.98));
-      border-bottom: 1px solid rgba(148,163,184,0.16);
-    }
-    .preview-app {
-      grid-template-columns: 150px 1fr;
-      min-height: 420px;
-    }
-    .preview-sidebar {
-      padding: 18px 14px;
-      background: linear-gradient(180deg, rgba(8,13,22,0.88), rgba(5,10,18,0.93));
-    }
-    .preview-nav-item {
-      padding: 11px 9px;
-      font-size: 0.76rem;
-    }
-    .preview-nav-item.active {
-      box-shadow: inset 3px 0 0 var(--accent-blue);
-    }
-    .preview-units {
-      margin-top: auto;
-      border: 1px solid rgba(148,163,184,0.14);
-      background: rgba(15,23,42,0.65);
-      border-radius: 10px;
-      padding: 9px 10px;
-      color: var(--text-mid);
-      font-size: 0.70rem;
-      font-weight: 700;
-      line-height: 1.25;
-    }
-    .preview-workspace { padding: 18px; }
-    .preview-top-grid { grid-template-columns: 1.72fr 0.82fr; gap: 14px; margin-bottom: 14px; }
-    .preview-panel {
-      background: linear-gradient(180deg, rgba(15,23,42,0.76), rgba(9,15,26,0.82));
-      border: 1px solid rgba(148,163,184,0.17);
-      border-radius: 13px;
-      box-shadow: 0 16px 36px rgba(0,0,0,0.24), 0 1px 0 rgba(255,255,255,0.03) inset;
-    }
-    .preview-panel-head {
-      padding: 12px 14px 0;
-      font-size: 0.82rem;
-    }
-    .preview-summary { padding: 13px 15px; }
-    .summary-row { padding: 7px 0; font-size: 0.78rem; }
-    .beam-svg { height: 165px; }
-    .preview-chart-grid { gap: 14px; }
-    .preview-chart { min-height: 150px; padding: 12px 12px 10px; }
-    .chart-svg { height: 108px; }
-    .preview-report-btn {
-      margin-top: 10px;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      width: 100%; padding: 9px 10px;
-      border-radius: 8px;
-      border: 1px solid rgba(148,163,184,0.20);
-      background: rgba(15,23,42,0.62);
-      color: var(--text-hi);
-      font-size: 0.74rem; font-weight: 800;
-    }
-    .preview-statusbar {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 16px;
-      margin-top: 14px; padding: 10px 12px 0;
-      color: var(--text-mid);
-      font-size: 0.72rem; font-weight: 600;
-      border-top: 1px solid rgba(148,163,184,0.11);
-    }
-    .preview-statusbar .ok { display: inline-flex; align-items: center; gap: 8px; }
-    .preview-statusbar .ok::before { content:''; width:7px; height:7px; border-radius:50%; background:#39d353; box-shadow:0 0 10px rgba(57,211,83,.7); }
-    .preview-statusbar strong { color: var(--text-hi); font-weight: 700; }
+    /* ─── Footer ─── */
+    footer{position:relative;z-index:1;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:24px;padding:36px 5vw;border-top:1px solid var(--border);background:color-mix(in srgb,var(--surface) 70%,transparent)}
+    .footer-copy{font:400 .76rem var(--mono);color:var(--muted);text-align:center}
+    .footer-links{display:flex;gap:24px;justify-content:flex-end}
+    .footer-links a{font-size:.9rem;color:var(--muted);transition:color .2s}
+    .footer-links a:hover{color:var(--text)}
 
-    /* ─── TOOLS GRID ─────────────────────────────────────────── */
-    #tools { padding-top: 80px; }
-
-    .tools-header {
-      text-align: center; margin-bottom: 60px;
+    @media (max-width:1000px){.brand-sub{display:none}}
+    @media (max-width:900px){
+      #home{grid-template-columns:1fr;padding-top:50px;padding-bottom:50px}
+      .mock{display:none}
+      #contact{grid-template-columns:1fr;gap:40px}
+      footer{grid-template-columns:1fr;text-align:center}
+      .footer-links{justify-content:center}
+      .seg a{padding:6px 10px;font-size:.8rem}
+      .pill.nav-pill{display:none}
     }
-    .tools-header .section-eyebrow { justify-content: center; display: flex; }
-    .tools-header .section-sub { margin: 0 auto; }
-
-    .tools-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-    }
-
-    .tools-category-header {
-      grid-column: 1 / -1;
-      display: flex; align-items: baseline; gap: 12px;
-      margin-top: 12px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border);
-    }
-    .tools-category-header:first-child { margin-top: 0; }
-    .tools-category-header h3 {
-      font-family: var(--display); font-size: 1.15rem; font-weight: 700;
-      color: var(--text-hi); letter-spacing: -0.01em;
-    }
-    .tools-category-header span {
-      font-family: var(--mono); font-size: 0.72rem; font-weight: 600;
-      letter-spacing: 0.1em; text-transform: uppercase;
-      color: var(--text-lo);
-    }
-
-    .tool-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 28px;
-      display: flex; flex-direction: column;
-      transition: border-color .25s, transform .2s, box-shadow .25s;
-      position: relative; overflow: hidden;
-    }
-    .tool-card::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--card-accent, var(--accent-blue)), transparent);
-      opacity: 0;
-      transition: opacity .25s;
-    }
-    .tool-card:hover {
-      border-color: var(--border-hi);
-      transform: translateY(-3px);
-      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
-    }
-    .tool-card:hover::before { opacity: 1; }
-
-    .tool-icon {
-      width: 48px; height: 48px; border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem; margin-bottom: 18px;
-      background: var(--card-icon-bg, rgba(59,130,246,0.12));
-      border: 1px solid var(--card-icon-border, rgba(59,130,246,0.25));
-    }
-    .tool-number {
-      font-family: var(--mono); font-size: 0.72rem; color: var(--text-lo);
-      letter-spacing: 0.08em; text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-    .tool-name {
-      font-family: var(--display); font-size: 1.25rem; font-weight: 800;
-      letter-spacing: -0.015em;
-      margin-bottom: 5px;
-    }
-    .tool-sub {
-      font-family: var(--mono); font-size: 0.76rem; font-weight: 500;
-      color: var(--card-accent, var(--accent-blue));
-      margin-bottom: 14px;
-    }
-    .tool-desc {
-      color: var(--text-mid); font-size: 0.96rem; line-height: 1.75;
-      flex: 1; margin-bottom: 22px;
-    }
-    .btn-launch {
-      display: inline-flex; align-items: center; gap: 8px;
-      width: 100%;
-      justify-content: center;
-      background: transparent;
-      border: 1px solid var(--card-accent, var(--accent-blue));
-      color: var(--card-accent, var(--accent-blue));
-      font-family: var(--sans); font-size: 0.92rem; font-weight: 700;
-      padding: 10px 18px; border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: background .2s, color .2s, transform .15s;
-    }
-    .btn-launch:hover {
-      background: var(--card-accent, var(--accent-blue));
-      color: #fff;
-      transform: translateY(-1px);
-    }
-    .btn-launch svg { transition: transform .2s; }
-    .btn-launch:hover svg { transform: translateX(3px); }
-
-    /* Card accent themes */
-    .card-blue  { --card-accent: var(--accent-blue);  --card-icon-bg: rgba(59,130,246,0.10); --card-icon-border: rgba(59,130,246,0.25); }
-    .card-teal  { --card-accent: var(--accent-teal);  --card-icon-bg: rgba(20,184,166,0.10); --card-icon-border: rgba(20,184,166,0.25); }
-    .card-cyan  { --card-accent: var(--accent-cyan);  --card-icon-bg: rgba(34,211,238,0.10); --card-icon-border: rgba(34,211,238,0.25); }
-    .card-gold  { --card-accent: var(--accent-gold);  --card-icon-bg: rgba(245,158,11,0.10); --card-icon-border: rgba(245,158,11,0.25); }
-    .card-indigo{ --card-accent: #818cf8;              --card-icon-bg: rgba(129,140,248,0.10);--card-icon-border: rgba(129,140,248,0.25); }
-    .card-green { --card-accent: #4ade80;              --card-icon-bg: rgba(74,222,128,0.10); --card-icon-border: rgba(74,222,128,0.25); }
-    .card-rose  { --card-accent: #fb7185;              --card-icon-bg: rgba(251,113,133,0.10);--card-icon-border: rgba(251,113,133,0.25); }
-
-    /* ─── WHY SECTION ────────────────────────────────────────── */
-    .why-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 20px; margin-top: 48px;
-    }
-    .why-card {
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 28px;
-      transition: border-color .2s;
-    }
-    .why-card:hover { border-color: var(--border-hi); }
-    .why-icon {
-      font-size: 1.6rem; margin-bottom: 14px;
-    }
-    .why-title {
-      font-family: var(--display); font-size: 1.08rem; font-weight: 800;
-      letter-spacing: -0.01em;
-      margin-bottom: 8px;
-    }
-    .why-desc { color: var(--text-mid); font-size: 0.96rem; line-height: 1.75; }
-
-    /* ─── DIVIDER ─────────────────────────────────────────────── */
-    .section-divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 0 5vw;
-    }
-
-    /* ─── ABOUT ──────────────────────────────────────────────── */
-    #about { max-width: 780px; }
-    .about-bio p {
-      color: var(--text-mid); font-size: 1.02rem; line-height: 1.85;
-      margin-bottom: 1.4rem;
-    }
-    .about-bio p:last-child { margin-bottom: 0; }
-    .about-bio strong { color: var(--text-hi); }
-    .about-highlight {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--accent-teal);
-      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-      padding: 18px 22px;
-      margin: 1.6rem 0;
-    }
-    .about-highlight p {
-      margin-bottom: 0 !important;
-      font-style: italic;
-      color: var(--text-hi) !important;
-      font-size: 0.95rem !important;
-    }
-
-    /* ─── CONTACT ────────────────────────────────────────────── */
-    #contact {
-      display: grid;
-      grid-template-columns: 1fr 1.3fr;
-      gap: 80px;
-      align-items: start;
-    }
-    .contact-left .section-sub { margin-bottom: 0; }
-    .contact-methods {
-      display: flex; flex-direction: column; gap: 16px;
-    }
-    .contact-card {
-      display: flex; align-items: center; gap: 18px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 22px 24px;
-      transition: border-color .2s, transform .15s;
-    }
-    .contact-card:hover {
-      border-color: var(--border-hi);
-      transform: translateX(4px);
-    }
-    .contact-card-icon {
-      width: 44px; height: 44px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.2rem; flex-shrink: 0;
-    }
-    .contact-card-body strong {
-      display: block; font-size: 0.92rem; font-weight: 700; margin-bottom: 3px;
-    }
-    .contact-card-body a {
-      font-family: var(--mono); font-size: 0.86rem;
-      color: var(--accent-blue); text-decoration: none;
-      transition: color .2s;
-    }
-    .contact-card-body a:hover { color: var(--accent-cyan); }
-
-    .contact-note {
-      margin-top: 32px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-    }
-    .contact-note p {
-      color: var(--text-mid); font-size: 0.96rem; line-height: 1.75;
-    }
-    .contact-note strong { color: var(--text-hi); }
-
-    /* ─── FOOTER ─────────────────────────────────────────────── */
-    footer {
-      position: relative; z-index: 1;
-      border-top: 1px solid var(--border);
-      padding: 40px 5vw;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      gap: 24px;
-    }
-    .footer-brand {
-      font-family: var(--display); font-size: 1rem; font-weight: 700;
-      display: flex; align-items: center; gap: 8px;
-    }
-    .footer-brand span { color: var(--accent-blue); }
-    .footer-copy {
-      font-family: var(--mono); font-size: 0.76rem;
-      color: var(--text-lo); text-align: center;
-    }
-    .footer-links {
-      display: flex; gap: 24px; justify-content: flex-end;
-    }
-    .footer-links a {
-      font-size: 0.9rem; color: var(--text-mid);
-      transition: color .2s;
-    }
-    .footer-links a:hover { color: var(--text-hi); }
-
-    /* ─── Responsive ─────────────────────────────────────────── */
-    @media (max-width: 900px) {
-      #home {
-        grid-template-columns: 1fr;
-        padding-top: 60px;
-        padding-bottom: 60px;
-      }
-      .hero-preview { display: none; }
-      #contact { grid-template-columns: 1fr; gap: 40px; }
-      footer { grid-template-columns: 1fr; text-align: center; }
-      .footer-links { justify-content: center; }
-    }
-    @media (max-width: 600px) {
-      section { padding: 60px 4vw; }
-      .tools-grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width:600px){section{padding:56px 4vw}.tools-grid{grid-template-columns:1fr}.brand-name span.nm{display:none}}
   </style>
 </head>
 <body>
 
-<!-- ─── Decorative background: crane / skyline / bridge ────────── -->
+<!-- Decorative backdrop: crane / skyline / bridge (palette colours only) -->
 <div class="skyline-bg" aria-hidden="true">
   <svg viewBox="0 0 1600 500" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
-    <!-- distant building silhouettes -->
-    <g fill="rgba(148,163,184,0.05)" stroke="rgba(96,165,250,0.14)" stroke-width="1">
-      <rect x="40"  y="300" width="70"  height="200"/>
-      <rect x="120" y="250" width="55"  height="250"/>
-      <rect x="185" y="330" width="90"  height="170"/>
-      <rect x="1280" y="270" width="60" height="230"/>
-      <rect x="1350" y="320" width="80" height="180"/>
-      <rect x="1440" y="230" width="55" height="270"/>
-      <rect x="1505" y="300" width="65" height="200"/>
+    <g class="sk-b">
+      <rect x="40" y="300" width="70" height="200"/><rect x="120" y="250" width="55" height="250"/><rect x="185" y="330" width="90" height="170"/>
+      <rect x="1280" y="270" width="60" height="230"/><rect x="1350" y="320" width="80" height="180"/><rect x="1440" y="230" width="55" height="270"/><rect x="1505" y="300" width="65" height="200"/>
     </g>
-    <!-- window grid lines on a couple of towers -->
-    <g stroke="rgba(96,165,250,0.10)" stroke-width="1">
-      <path d="M120 270h55M120 300h55M120 330h55M120 360h55M120 390h55M120 420h55M120 450h55"/>
-      <path d="M1440 250h55M1440 280h55M1440 310h55M1440 340h55M1440 370h55M1440 400h55M1440 430h55M1440 460h55"/>
+    <g class="sk-t">
+      <line x1="990" y1="180" x2="990" y2="430"/><line x1="1180" y1="150" x2="1180" y2="430"/>
+      <path d="M900 400Q990 200 1080 400"/><path d="M1080 400Q1180 160 1280 400"/><line x1="880" y1="405" x2="1300" y2="405"/>
+      <path d="M920 402l25-142M960 402l12-172M1000 402v-202M1040 402l-25-172M1070 402l-10-142M1100 402l5-172M1130 402l10-207M1160 402l12-227M1210 402l-12-222M1240 402l-15-172M1270 402l-15-122" stroke-width="1" stroke-opacity=".5"/>
     </g>
-
-    <!-- suspension bridge, right side -->
-    <g stroke="rgba(20,184,166,0.22)" stroke-width="2" fill="none" stroke-linecap="round">
-      <line x1="990"  y1="180" x2="990"  y2="430"/>
-      <line x1="1180" y1="150" x2="1180" y2="430"/>
-      <path d="M900 400 Q 990 200 1080 400"/>
-      <path d="M1080 400 Q 1180 160 1280 400"/>
-      <line x1="880" y1="405" x2="1300" y2="405"/>
-      <g stroke="rgba(20,184,166,0.14)" stroke-width="1">
-        <line x1="920" y1="402" x2="945" y2="260"/>
-        <line x1="960" y1="402" x2="972" y2="230"/>
-        <line x1="1000" y1="402" x2="1000" y2="200"/>
-        <line x1="1040" y1="402" x2="1015" y2="230"/>
-        <line x1="1070" y1="402" x2="1060" y2="260"/>
-        <line x1="1100" y1="402" x2="1105" y2="230"/>
-        <line x1="1130" y1="402" x2="1140" y2="195"/>
-        <line x1="1160" y1="402" x2="1172" y2="175"/>
-        <line x1="1210" y1="402" x2="1198" y2="180"/>
-        <line x1="1240" y1="402" x2="1225" y2="230"/>
-        <line x1="1270" y1="402" x2="1255" y2="280"/>
-      </g>
-    </g>
-
-    <!-- tower crane, left side -->
-    <g stroke="rgba(59,130,246,0.28)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="330" y1="500" x2="330" y2="120"/>
-      <path d="M330 120 h230"/>
-      <path d="M330 120 h-70"/>
-      <path d="M330 150 L 552 128"/>
-      <path d="M330 150 L 268 128"/>
-      <line x1="552" y1="128" x2="552" y2="150"/>
-      <line x1="552" y1="150" x2="552" y2="230"/>
-      <rect x="316" y="480" width="28" height="20" fill="rgba(59,130,246,0.10)"/>
-      <g stroke="rgba(59,130,246,0.16)" stroke-width="1.5">
-        <line x1="330" y1="480" x2="322" y2="420"/>
-        <line x1="330" y1="420" x2="338" y2="480"/>
-        <line x1="330" y1="360" x2="322" y2="300"/>
-        <line x1="330" y1="300" x2="338" y2="360"/>
-        <line x1="330" y1="240" x2="322" y2="180"/>
-        <line x1="330" y1="180" x2="338" y2="240"/>
-      </g>
+    <g class="sk-c">
+      <line x1="330" y1="500" x2="330" y2="120"/><path d="M330 120h230M330 120h-70M330 150L552 128M330 150L268 128"/><line x1="552" y1="128" x2="552" y2="230"/>
+      <path d="M330 480l-8-60M330 420l8 60M330 360l-8-60M330 300l8 60M330 240l-8-60M330 180l8 60" stroke-width="1.5" stroke-opacity=".6"/>
     </g>
   </svg>
 </div>
 
-<!-- ─── NAV ─────────────────────────────────────────────────── -->
+<!-- ─── NAV ─── -->
 <nav>
-  <div class="nav-brand">
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-      <rect x="2" y="18" width="4" height="8" rx="1" fill="#3b82f6"/>
-      <rect x="8" y="12" width="4" height="14" rx="1" fill="#3b82f6"/>
-      <rect x="14" y="6" width="4" height="20" rx="1" fill="#14b8a6"/>
-      <rect x="20" y="10" width="4" height="16" rx="1" fill="#14b8a6"/>
-      <line x1="2" y1="18" x2="24" y2="10" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round"/>
+  <div class="brand">
+    <svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true">
+      <defs><linearGradient id="lg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#0891b2"/><stop offset="1" stop-color="#10b981"/></linearGradient></defs>
+      <rect width="40" height="40" rx="12" fill="url(#lg)"/>
+      <path d="M8 29L20 11l12 18zM14 20h12M20 11v18" fill="none" stroke="#090d16" stroke-width="2.4" stroke-linejoin="round"/>
+      <circle cx="8" cy="29" r="2.2" fill="#090d16"/><circle cx="32" cy="29" r="2.2" fill="#090d16"/><circle cx="20" cy="11" r="2.2" fill="#090d16"/>
     </svg>
-    <span></span>&nbsp;Structural Tools
+    <div>
+      <div class="brand-name"><span class="nm">Structural Tools</span><span class="pill nav-pill" id="nav-count">tools</span></div>
+      <div class="brand-sub">Free browser-based structural engineering calculators</div>
+    </div>
   </div>
-  <ul class="nav-links">
+  <ul class="seg">
     <li><a href="#home" class="active">Home</a></li>
     <li><a href="#tools">Tools</a></li>
+    <li><a class="ext" href="https://drive.google.com/drive/folders/1zi-gwnkX_C1nozFYqLi2gLKbgj_x2wNb?usp=sharing" target="_blank" rel="noopener">User Guides ↗</a></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
 </nav>
 
-<!-- ─── HERO ─────────────────────────────────────────────────── -->
+<!-- ─── HERO ─── -->
 <section id="home">
-  <div class="hero-left">
+  <div>
     <div class="hero-pill">Free · Browser-Based · Always Accessible</div>
-    <h1 class="hero-title">
-      Structural Engineering Tools<br>
-      Built for <span class="hl-blue">Learning</span> and <span class="hl-teal">Practice</span>
-    </h1>
-    <p class="hero-desc">
-      Powerful, easy-to-use calculators and analysis tools for everyday
-      structural engineering tasks — beams, frames, trusses, slabs, and
-      reinforced concrete design.
-    </p>
+    <h1 class="hero-title">Structural Engineering Tools<br>Built for <span class="hl-a">Learning</span> and <span class="hl-g">Practice</span></h1>
+    <p class="hero-desc">Powerful, easy-to-use calculators and analysis tools for everyday structural engineering tasks — beams, frames, trusses, slabs, reinforced concrete and bridge design.</p>
     <div class="hero-cta">
-      <a class="btn-primary" href="#tools">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-        Browse Tools
-      </a>
-      <a class="btn-ghost" href="structural-analysis-2D.html">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor"/></svg>
-        Open Structural Analysis
-      </a>
+      <a class="btn-primary" href="#tools">Browse Tools</a>
+      <a class="btn-ghost" href="https://drive.google.com/drive/folders/1zi-gwnkX_C1nozFYqLi2gLKbgj_x2wNb?usp=sharing" target="_blank" rel="noopener">📘 User Guides ↗</a>
+      <a class="btn-ghost" href="structural-analysis-2d.html">Open Structural Analysis</a>
     </div>
     <div class="hero-badges">
-      <div class="hero-badge">
-        <div class="badge-icon">🆓</div>
-        <div class="badge-text">
-          <strong>Free to Use</strong>
-          <span>100% free, forever</span>
-        </div>
-      </div>
-      <div class="hero-badge">
-        <div class="badge-icon">🌐</div>
-        <div class="badge-text">
-          <strong>No Installation</strong>
-          <span>Run in any browser</span>
-        </div>
-      </div>
-      <div class="hero-badge">
-        <div class="badge-icon">⚙️</div>
-        <div class="badge-text">
-          <strong>Built for Engineers</strong>
-          <span>Students &amp; professionals</span>
-        </div>
-      </div>
+      <div class="hero-badge"><div class="glyph">$0</div><div><strong>Free to Use</strong><span>100% free, forever</span></div></div>
+      <div class="hero-badge"><div class="glyph">WEB</div><div><strong>No Installation</strong><span>Run in any browser</span></div></div>
+      <div class="hero-badge"><div class="glyph">ƒ(x)</div><div><strong>Built for Engineers</strong><span>Students &amp; professionals</span></div></div>
     </div>
   </div>
 
-  <!-- Preview Card -->
-  <div class="hero-preview">
-    <div class="preview-bar">
-      <div class="preview-bar-left">
-        <div class="window-dots">
-          <span class="red"></span><span class="yellow"></span><span class="green"></span>
-        </div>
-        <span class="preview-app-chip">BOEF</span>
-        BOEF v1.0
+  <!-- Mock-up of a tool window: same chrome and graphic language as the tools themselves -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-head">
+      <div class="brand">
+        <svg width="28" height="28" viewBox="0 0 40 40"><rect width="40" height="40" rx="10" fill="url(#lg)"/><path d="M8 29L20 11l12 18zM14 20h12M20 11v18" fill="none" stroke="#090d16" stroke-width="2.6" stroke-linejoin="round"/></svg>
+        <div class="brand-name">Trusses <span class="pill">v0.4.0</span></div>
       </div>
-      <div class="preview-actions" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-      </div>
+      <ul class="seg"><li><a class="active">Inputs</a></li><li><a>Results</a></li><li><a>Theory</a></li></ul>
     </div>
-    <div class="preview-app">
-      <aside class="preview-sidebar">
-        <div class="preview-nav-item">
-          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-          Inputs
-        </div>
-        <div class="preview-nav-item active">
-          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V8M10 20V4M16 20v-6M22 20H2"/></svg>
-          Results
-        </div>
-        <div class="preview-nav-item">
-          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h8M6 10h12M8 14h8M10 18h4"/><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-          Theory
-        </div>
-        <div class="preview-units">Calculate<br><strong></strong></div>
-      </aside>
-
-      <div class="preview-workspace">
-        <div class="preview-top-grid">
-          <div class="preview-panel">
-            <div class="preview-panel-head">
-              <span>Figure 1: Beam Preview</span>
-              <span class="panel-tag">LC1</span>
-            </div>
-            <svg class="beam-svg" viewBox="0 0 510 178" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <text x="255" y="26" text-anchor="middle" fill="#b8c3d8" font-family="monospace" font-size="11">Finite-Length Beam on Elastic Foundation</text>
-              <text x="255" y="43" text-anchor="middle" fill="#58a6ff" font-family="monospace" font-size="10">Midspan Point Load, P  ·  Subgrade Modulus, K</text>
-              <line x1="88" y1="86" x2="422" y2="86" stroke="#22d3ee" stroke-width="8" stroke-linecap="round"/>
-              <line x1="72" y1="120" x2="438" y2="120" stroke="#3a465a" stroke-width="2"/>
-              <g stroke="#39d353" stroke-width="1.5">
-                <path d="M96 86v9l-6 6l12 6l-12 6l12 6l-6 3"/>
-                <path d="M130 86v9l-6 6l12 6l-12 6l12 6l-6 3"/>
-                <path d="M164 86v9l-6 6l12 6l-12 6l12 6l-6 3"/>
-                <path d="M198 86v9l-6 6l12 6l-12 6l12 6l-6 3"/>
-                <path d="M232 86v9l-6 6l12 6l-12 6l12 6l-6 3"/>
-                <path d="M266 86v9l-6 6l12 6l-12 6l12 6l-6 3"/>
-                <path d="M300 86v9l-6 6l12 6l-12 6l12 6l-6 3"/>
-                <path d="M334 86v9l-6 6l12 6l-12 6l12 6l-6 3"/>
-                <path d="M368 86v9l-6 6l12 6l-12 6l12 6l-6 3"/>
-                <path d="M402 86v9l-6 6l12 6l-12 6l12 6l-6 3"/>
-              </g>
-              <g stroke="#f85149" stroke-width="2.6" fill="#f85149">
-                <line x1="255" y1="54" x2="255" y2="78"/>
-                <polygon points="255,86 249,75 261,75"/>
-              </g>
-              <path d="M88 86l-11 20h22L88 86zM422 86l-11 20h22L422 86z" stroke="#cbd5e1" fill="rgba(148,163,184,0.08)"/>
-              <circle cx="82" cy="112" r="3" stroke="#cbd5e1"/><circle cx="94" cy="112" r="3" stroke="#cbd5e1"/>
-              <circle cx="416" cy="112" r="3" stroke="#cbd5e1"/><circle cx="428" cy="112" r="3" stroke="#cbd5e1"/>
-              <text x="82" y="78" fill="#dbeafe" font-size="11" font-family="monospace">A</text>
-              <text x="423" y="78" fill="#dbeafe" font-size="11" font-family="monospace">B</text>
-              <line x1="88" y1="142" x2="422" y2="142" stroke="#4a5568" stroke-width="1"/>
-              <path d="M88 137v10M422 137v10" stroke="#4a5568"/>
-              <text x="88" y="158" text-anchor="middle" fill="#b8c3d8" font-family="monospace" font-size="10">0</text>
-              <text x="255" y="158" text-anchor="middle" fill="#b8c3d8" font-family="monospace" font-size="10">L = 6.00 m</text>
-              <text x="422" y="158" text-anchor="middle" fill="#b8c3d8" font-family="monospace" font-size="10">6.00</text>
-            </svg>
-          </div>
-          <div class="preview-panel preview-summary">
-            <div class="preview-panel-head" style="padding:0 0 8px;">Output Summary</div>
-            <div class="summary-row"><span>Status</span><strong class="teal">Solved</strong></div>
-            <div class="summary-row"><span>Bending Moment Diagram</span><strong class="blue"></strong></div>
-            <div class="summary-row"><span>Shear Force Diagram</span><strong class="teal"></strong></div>
-            <div class="summary-row"><span>Deflection Diagram</span><strong class="gold"></strong></div>
-            <div class="preview-report-btn">View Full Report</div>
-          </div>
-        </div>
-
-        <div class="preview-statusbar">
-          <span class="ok">Analysis complete</span>
-          <span>Nodes: <strong>61</strong>&nbsp;&nbsp; Elements: <strong>60</strong>&nbsp;&nbsp; Load Case: <strong style="color:var(--accent-blue);">LC1</strong></span>
-        </div>
-      </div>
+    <div class="mock-body">
+      <div class="card-title"><span>Figure 1: Live Truss Preview</span><span class="pill">LC1</span></div>
+      <svg class="plot" viewBox="0 0 520 250">
+        <!-- members -->
+        <g class="m" stroke-linecap="round">
+          <line x1="80" y1="170" x2="200" y2="170"><title>Member AB</title></line><line x1="200" y1="170" x2="320" y2="170"><title>Member BC</title></line><line x1="320" y1="170" x2="440" y2="170"><title>Member CD</title></line>
+          <line x1="440" y1="170" x2="320" y2="80"><title>Member DF</title></line><line x1="320" y1="80" x2="200" y2="80"><title>Member FE</title></line><line x1="200" y1="80" x2="80" y2="170"><title>Member EA</title></line>
+          <line x1="200" y1="170" x2="200" y2="80"><title>Member BE</title></line><line x1="200" y1="170" x2="320" y2="80"><title>Member BF</title></line><line x1="320" y1="170" x2="320" y2="80"><title>Member CF</title></line>
+        </g>
+        <!-- pinned supports with hatching -->
+        <g class="sp"><polygon points="80,170 69,187 91,187"><title>Support A: Pinned</title></polygon><polygon points="440,170 429,187 451,187"><title>Support D: Pinned</title></polygon></g>
+        <path class="sa" stroke-width="1.5" d="M64 187h32M424 187h32M68 187l-5 6M74 187l-5 6M80 187l-5 6M86 187l-5 6M92 187l-5 6M428 187l-5 6M434 187l-5 6M440 187l-5 6M446 187l-5 6M452 187l-5 6"/>
+        <!-- loads (rose) -->
+        <g stroke="var(--red)" stroke-width="2" fill="var(--red)">
+          <g><title>Load at B: Pz = -25 kips</title><line x1="200" y1="126" x2="200" y2="156"/><polygon points="200,162 196,154 204,154"/></g>
+          <g><title>Load at C: Pz = -25 kips</title><line x1="320" y1="126" x2="320" y2="156"/><polygon points="320,162 316,154 324,154"/></g>
+          <g><title>Load at F: Px = 28 kips</title><line x1="276" y1="80" x2="306" y2="80"/><polygon points="312,80 304,76 304,84"/></g>
+        </g>
+        <text class="ld" x="206" y="134">Pz = -25</text><text class="ld" x="326" y="134">Pz = -25</text><text class="ld" x="294" y="68" text-anchor="middle">Px = 28</text>
+        <!-- nodes -->
+        <g class="nd"><circle cx="80" cy="170" r="5"/><circle cx="200" cy="170" r="5"/><circle cx="320" cy="170" r="5"/><circle cx="440" cy="170" r="5"/><circle cx="200" cy="80" r="5"/><circle cx="320" cy="80" r="5"/></g>
+        <text class="nl" x="89" y="162">A</text><text class="nl" x="209" y="162">B</text><text class="nl" x="329" y="162">C</text><text class="nl" x="449" y="162">D</text><text class="nl" x="209" y="72">E</text><text class="nl" x="329" y="98">F</text>
+        <!-- coordinate ticks and axis titles -->
+        <g stroke="var(--border2)"><path d="M80 203v4M200 203v4M320 203v4M440 203v4M40 170h-4M40 80h-4"/></g>
+        <text x="80" y="219" text-anchor="middle">0</text><text x="200" y="219" text-anchor="middle">20</text><text x="320" y="219" text-anchor="middle">40</text><text x="440" y="219" text-anchor="middle">60</text>
+        <text x="32" y="173" text-anchor="end">0</text><text x="32" y="83" text-anchor="end">15</text>
+        <text x="260" y="241" text-anchor="middle">x [in]</text><text x="10" y="125" text-anchor="middle" transform="rotate(-90 10 125)">z [in]</text>
+      </svg>
+      <div class="legend"><span class="la" style="color:var(--accent)">━ Member</span><span style="color:var(--green)">● Joint / support</span><span style="color:var(--red)">→ Joint load</span></div>
+      <div class="caption">b = 9 · r = 4 · j = 6 · b + r = 13 vs 2j = 12 · Stable and Indeterminate</div>
+      <div class="status-row"><span class="badge">STABLE</span><span class="badge">EQUILIBRIUM PASSED</span><span style="margin-left:auto">Load case: <b style="color:var(--accent-soft)">LC1</b></span></div>
     </div>
   </div>
 </section>
 
-<!-- ─── TOOLS ─────────────────────────────────────────────────── -->
-<hr class="section-divider"/>
+<!-- ─── TOOLS ─── -->
+<hr class="divider"/>
 <section id="tools">
   <div class="tools-header">
-    <div class="section-eyebrow">Available Tools</div>
-    <h2 class="section-title">Analysis &amp; Design Suite</h2>
-    <p class="section-sub">
-      Fourteen purpose-built calculators covering the core topics of structural
-      analysis and reinforced concrete design — all free, all browser-based.
-    </p>
+    <div class="eyebrow">Available Tools</div>
+    <h2 class="title">Analysis &amp; Design Suite</h2>
+    <p class="sub"><span id="tool-count">Fifteen</span> purpose-built calculators covering the core topics of structural analysis, reinforced concrete and bridge design — all free, all browser-based.</p>
   </div>
 
-  <div class="tools-grid">
-
-    <div class="tools-category-header">
-      <h3>Structural Analysis</h3>
-      <span>4 tools</span>
+  <!-- User guides: easy to find, linked again in the nav, hero and footer -->
+  <div class="guide-banner" id="guides">
+    <div class="tool-icon" aria-hidden="true">
+      <svg class="ic" viewBox="0 0 28 28"><path class="cc" d="M4 6h8a3 3 0 0 1 3 3v14a3 3 0 0 0-3-3H4z"/><path class="cc" d="M24 6h-8a3 3 0 0 0-3 3v14a3 3 0 0 1 3-3h8z"/><path class="sy" d="M7 10h4M7 13.5h4M17 10h4M17 13.5h4"/></svg>
     </div>
-
-    <!-- Structural Analysis 01: Plane Frames 2D -->
-    <div class="tool-card card-blue">
-      <div class="tool-icon">🏗️</div>
-      <div class="tool-number">Structural Analysis 01 · Most Popular</div>
-      <div class="tool-name">Structural Analysis</div>
-      <div class="tool-sub">2D Plane Frame Analysis</div>
-      <p class="tool-desc">
-        Analyze 2D plane frames using the direct stiffness method for
-        reactions, member end forces, bending moment and shear diagrams,
-        and displacements, with a multi-case load manager and optional
-        SRSS response-spectrum (seismic) analysis.
-      </p>
-      <a class="btn-launch" href="structural-analysis-2D.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
+    <div class="guide-text">
+      <h3>User Guides for the Structural Design Tools</h3>
+      <p>Not sure where to start? Open the user manuals for the tools below. They are stored in a shared Google Drive folder.</p>
     </div>
-
-    <!-- Structural Analysis 02: Space Frames 3D -->
-    <div class="tool-card card-teal" style="--card-accent:#8b5cf6;--card-icon-bg:rgba(139,92,246,0.10);--card-icon-border:rgba(139,92,246,0.25);">
-      <div class="tool-icon" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M14 3 24 8.5v11L14 25 4 19.5v-11Z" fill="rgba(139,92,246,0.14)" stroke="#8b5cf6" stroke-width="1.6" stroke-linejoin="round"/>
-          <path d="M4 8.5 14 14l10-5.5M14 14v11" stroke="#c4b5fd" stroke-width="1.2" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <div class="tool-number">Structural Analysis 02 · 3D</div>
-      <div class="tool-name">Structural Analysis 3D</div>
-      <div class="tool-sub">Space Frames &amp; 3D Trusses</div>
-      <p class="tool-desc">
-        Analyze 3D space frame structures using the direct stiffness method
-        for joint reactions, member forces, and displacements with full
-        6-DOF nodal behaviour, including optional 3D SRSS response-spectrum
-        analysis.
-      </p>
-      <a class="btn-launch" href="structural-analysis-3D.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <!-- Structural Analysis 03: Beams -->
-    <div class="tool-card card-green" style="--card-accent:#4ade80;--card-icon-bg:rgba(74,222,128,0.10);--card-icon-border:rgba(74,222,128,0.25);">
-      <div class="tool-icon">📏</div>
-      <div class="tool-number">Structural Analysis 03</div>
-      <div class="tool-name">Structural Analysis — Beams</div>
-      <div class="tool-sub">Continuous Beam Analysis</div>
-      <p class="tool-desc">
-        Analyze multi-span beams under static point and distributed loads
-        using the direct stiffness method, with pin, fixed, and free
-        support conditions, reporting support reactions, shear and moment
-        envelopes, and deflections along the beam.
-      </p>
-      <a class="btn-launch" href="structural-analysis-beams.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <!-- Structural Analysis 04: BOEFs -->
-    <div class="tool-card card-cyan" style="--card-accent:#a855f7;--card-icon-bg:rgba(168,85,247,0.10);--card-icon-border:rgba(168,85,247,0.25);">
-      <div class="tool-icon">🌐</div>
-      <div class="tool-number">Structural Analysis 04</div>
-      <div class="tool-name">Structural Analysis — BOEFs</div>
-      <div class="tool-sub">Beams on Elastic Foundation</div>
-      <p class="tool-desc">
-        Analyze finite-length beams on a Winkler elastic foundation using a
-        consistent beam finite-element formulation, reporting foundation
-        reactions, shear and moment diagrams, and deflections along the
-        beam.
-      </p>
-      <a class="btn-launch" href="structural-analysis-BOEFs.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <div class="tools-category-header">
-      <h3>Two-Way Slabs</h3>
-      <span>3 tools</span>
-    </div>
-
-    <!-- Two-Way Slabs 01: 3D Shell FEM -->
-    <div class="tool-card card-rose" style="--card-accent:#a855f7;--card-icon-bg:rgba(168,85,247,0.10);--card-icon-border:rgba(168,85,247,0.25);">
-      <div class="tool-icon" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="4" y="5" width="20" height="18" rx="2" fill="rgba(168,85,247,0.18)" stroke="#a855f7" stroke-width="1.6"/>
-          <path d="M4 11h20M4 17h20M10 5v18M17 5v18" stroke="#c084fc" stroke-width="1.2"/>
-          <circle cx="10" cy="11" r="1.8" fill="#22d3ee"/>
-          <circle cx="17" cy="17" r="1.8" fill="#22d3ee"/>
-          <path d="M7 22c4-3 10-3 14 0" stroke="#f59e0b" stroke-width="1.4" stroke-linecap="round"/>
-        </svg>
-      </div>
-      <div class="tool-number">Two-Way Slabs 01 · 3D FEA</div>
-      <div class="tool-name">Two-Way Slabs 3D</div>
-      <div class="tool-sub">Shell Finite Element Model</div>
-      <p class="tool-desc">
-        Model two-way reinforced concrete slabs with Q4/T3 Mindlin shell
-        elements over a generated mesh, with contour plots, design-strip
-        aggregate shear/moment diagrams, and one-way and punching shear
-        output tables.
-      </p>
-      <a class="btn-launch" href="two-way-slabs-3D.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <!-- Two-Way Slabs 02: Flat Plates -->
-    <div class="tool-card card-indigo">
-      <div class="tool-icon">⬛</div>
-      <div class="tool-number">Two-Way Slabs 02</div>
-      <div class="tool-name">Two-Way Slabs — Flat Plates</div>
-      <div class="tool-sub">2D Equivalent Frame Method</div>
-      <p class="tool-desc">
-        Analyze and design two-way flat plate slab systems using the
-        Equivalent Frame Method per CSA A23.3, with CSA pattern-loading
-        checks and flexural and shear design outputs.
-      </p>
-      <a class="btn-launch" href="two-way-slabs-flat-plates-2D.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <!-- Two-Way Slabs 03: Waffle Slabs -->
-    <div class="tool-card card-green" style="--card-accent:#4ade80;--card-icon-bg:rgba(74,222,128,0.10);--card-icon-border:rgba(74,222,128,0.25);">
-      <div class="tool-icon" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M4 7.5L14 3l10 4.5v13L14 25 4 20.5v-13Z" fill="rgba(74,222,128,0.12)" stroke="#4ade80" stroke-width="1.5" stroke-linejoin="round"/>
-          <path d="M9 5.25v17.5M14 3v22M19 5.25v17.5M4 11.8h20M4 16.2h20" stroke="#86efac" stroke-width="1.1" opacity="0.9"/>
-          <path d="M4 7.5 14 12l10-4.5M14 12v13" stroke="#22d3ee" stroke-width="1.2" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <div class="tool-number">Two-Way Slabs 03</div>
-      <div class="tool-name">Two-Way Slabs — Waffle Slabs</div>
-      <div class="tool-sub">2D Equivalent Frame Method</div>
-      <p class="tool-desc">
-        Analyze and design reinforced concrete waffle slab systems using the
-        Equivalent Frame Method, including slab-beam stiffness, CSA
-        pattern loading, flexural reinforcement, and one-way and punching
-        shear checks.
-      </p>
-      <a class="btn-launch" href="two-way-slabs-waffle-slabs-2D.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <div class="tools-category-header">
-      <h3>Concrete Design</h3>
-      <span>3 tools</span>
-    </div>
-
-    <!-- Concrete Design 01: Column -->
-    <div class="tool-card card-gold">
-      <div class="tool-icon">🏛️</div>
-      <div class="tool-number">Concrete Design 01</div>
-      <div class="tool-name">Concrete Column Design</div>
-      <div class="tool-sub">Biaxial P–Mx–My Interaction</div>
-      <p class="tool-desc">
-        Design and check reinforced concrete columns using P-Mx-My
-        interaction diagrams per CSA A23.3, with biaxial bending support
-        and a full compression/tension (P+/P−) demand-capacity check.
-      </p>
-      <a class="btn-launch" href="concrete-column-design.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <!-- Concrete Design 02: Slab -->
-    <div class="tool-card card-blue" style="--card-accent:#22d3ee;--card-icon-bg:rgba(34,211,238,0.10);--card-icon-border:rgba(34,211,238,0.25);">
-      <div class="tool-icon">🧱</div>
-      <div class="tool-number">Concrete Design 02</div>
-      <div class="tool-name">Concrete Slab Design</div>
-      <div class="tool-sub">P–M Interaction, Slab Strip</div>
-      <p class="tool-desc">
-        Evaluate the axial force and flexural (P-M) resistance of a 1.0 m
-        reinforced concrete slab strip per CSA A23.3, with an interaction
-        diagram and radial demand-to-capacity ratio checks. Punching shear,
-        one-way shear, deflection, and strip distribution require separate
-        checks.
-      </p>
-      <a class="btn-launch" href="concrete-slab-design.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <!-- Concrete Design 03: Wall -->
-    <div class="tool-card card-indigo" style="--card-accent:#f472b6;--card-icon-bg:rgba(244,114,182,0.10);--card-icon-border:rgba(244,114,182,0.25);">
-      <div class="tool-icon">🧊</div>
-      <div class="tool-number">Concrete Design 03</div>
-      <div class="tool-name">Concrete Wall Design</div>
-      <div class="tool-sub">In-Plane P–M Interaction</div>
-      <p class="tool-desc">
-        Evaluate the in-plane axial-flexural (P-M) resistance of a
-        reinforced concrete shear wall section per CSA A23.3, with
-        distributed web reinforcement, boundary-zone bars, and factored,
-        nominal, or probable resistance curves. In-plane shear, stability,
-        and boundary-element qualification require separate checks.
-      </p>
-      <a class="btn-launch" href="concrete-wall-design.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <div class="tools-category-header">
-      <h3>Bridges</h3>
-      <span>4 tools</span>
-    </div>
-
-    <!-- Bridges 01: Grillage Model -->
-    <div class="tool-card card-rose" style="--card-accent:#fb923c;--card-icon-bg:rgba(251,146,60,0.10);--card-icon-border:rgba(251,146,60,0.25);">
-      <div class="tool-icon" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 9h22M3 14h22M3 19h22" stroke="#fb923c" stroke-width="1.6"/>
-          <path d="M7 6v16M13 6v16M19 6v16M25 6v16" stroke="#fdba74" stroke-width="1.4"/>
-          <circle cx="7" cy="9" r="1.4" fill="#22d3ee"/><circle cx="13" cy="14" r="1.4" fill="#22d3ee"/><circle cx="19" cy="19" r="1.4" fill="#22d3ee"/>
-        </svg>
-      </div>
-      <div class="tool-number">Bridges 01 · 3D</div>
-      <div class="tool-name">Bridges — Grillage Model</div>
-      <div class="tool-sub">3D Grillage Analysis</div>
-      <p class="tool-desc">
-        Model bridge decks as an orthogonal grillage of longitudinal
-        girders and transverse slab-strip members analyzed by a 3D
-        grillage finite-element method under CSA S6 moving loads, with
-        ULS and FLS bending moment, shear, and support reaction envelopes
-        across all girder lines.
-      </p>
-      <a class="btn-launch" href="bridges-grillage-model-3D.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <!-- Bridges 02: Moving Loads -->
-    <div class="tool-card card-teal" style="--card-accent:#38bdf8;--card-icon-bg:rgba(56,189,248,0.10);--card-icon-border:rgba(56,189,248,0.25);">
-      <div class="tool-icon">🌉</div>
-      <div class="tool-number">Bridges 02</div>
-      <div class="tool-name">Bridges — Moving Loads</div>
-      <div class="tool-sub">2D Bridge Girder · CSA S6</div>
-      <p class="tool-desc">
-        Generate bending moment, shear force, and reaction envelopes for a
-        continuous beam under moving truck and lane loads using the
-        direct stiffness method, with built-in CSA S6:25 CL-625 truck and
-        lane presets and a downloadable working file.
-      </p>
-      <a class="btn-launch" href="bridges-moving-loads-2D.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <!-- Bridges 03: Column Pushover -->
-    <div class="tool-card card-gold" style="--card-accent:#f43f5e;--card-icon-bg:rgba(244,63,94,0.10);--card-icon-border:rgba(244,63,94,0.25);">
-      <div class="tool-icon" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 25V9a5 5 0 0 1 10 0v16" stroke="#f43f5e" stroke-width="1.8" stroke-linecap="round"/>
-          <path d="M4 25h20" stroke="#fda4af" stroke-width="1.8" stroke-linecap="round"/>
-          <path d="M4 20l5-4 4 3 6-9 5 3" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        </svg>
-      </div>
-      <div class="tool-number">Bridges 03</div>
-      <div class="tool-name">Bridges — Column Pushover</div>
-      <div class="tool-sub">Nonlinear Static Pushover</div>
-      <p class="tool-desc">
-        Perform a nonlinear static pushover analysis of a reinforced
-        concrete bridge column using moment-curvature-based plastic hinge
-        modelling, generating the lateral force-displacement capacity
-        curve, plastic hinge sequence, and displacement ductility for CSA
-        S6 seismic evaluation.
-      </p>
-      <a class="btn-launch" href="bridges-column-pushover.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
-    <!-- Bridges 04: Shrinkage Deflections -->
-    <div class="tool-card card-cyan" style="--card-accent:#22d3ee;--card-icon-bg:rgba(34,211,238,0.10);--card-icon-border:rgba(34,211,238,0.25);">
-      <div class="tool-icon" aria-hidden="true">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 22h22" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round"/>
-          <path d="M4 22c2-9 5-9 7-16" stroke="#60a5fa" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-          <path d="M4 22c2-6 5-6 7-11" stroke="#c4b5fd" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2 2" fill="none"/>
-          <circle cx="11" cy="6" r="1.4" fill="#f59e0b"/>
-        </svg>
-      </div>
-      <div class="tool-number">Bridges 04</div>
-      <div class="tool-name">Bridges — Shrinkage Deflections</div>
-      <div class="tool-sub">Girder Curvature &amp; Deflection Analysis</div>
-      <p class="tool-desc">
-        Compute continuous-girder deflections and rotations from imposed
-        shrinkage curvature segments using RK4 direct integration and a
-        shooting-method solution across any number of spans, with full
-        deflection tables, curvature/deflection charts, and a downloadable
-        working file.
-      </p>
-      <a class="btn-launch" href="bridges-girder-curvature.html">
-        Launch Tool
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-
+    <a class="btn-primary" href="https://drive.google.com/drive/folders/1zi-gwnkX_C1nozFYqLi2gLKbgj_x2wNb?usp=sharing" target="_blank" rel="noopener">Open User Guides ↗</a>
   </div>
+
+  <div class="tools-grid" id="tools-grid"><!-- cards are generated from the TOOLS list in the script below --></div>
 </section>
 
-<!-- ─── WHY ────────────────────────────────────────────────────── -->
-<hr class="section-divider"/>
-<section id="why" style="padding-top:60px;">
+<!-- ─── WHY ─── -->
+<hr class="divider"/>
+<section id="why" style="padding-top:60px">
   <div class="tools-header">
-    <div class="section-eyebrow">Why Use These Tools?</div>
-    <h2 class="section-title">Designed for Real Engineering Work</h2>
+    <div class="eyebrow">Why Use These Tools?</div>
+    <h2 class="title">Designed for Real Engineering Work</h2>
   </div>
   <div class="why-grid">
-    <div class="why-card">
-      <div class="why-icon">🔍</div>
-      <div class="why-title">Transparent Calculations</div>
-      <p class="why-desc">Step-by-step calculations, code references, and detailed outputs with full transparency — no black boxes.</p>
-    </div>
-    <div class="why-card">
-      <div class="why-icon">📊</div>
-      <div class="why-title">Interactive Visuals</div>
-      <p class="why-desc">Understand structural behaviour through dynamic diagrams, live shear/moment updates, and interactive geometry.</p>
-    </div>
-    <div class="why-card">
-      <div class="why-icon">☁️</div>
-      <div class="why-title">Free Browser Access</div>
-      <p class="why-desc">Use the tools instantly — no installs, no downloads, no sign-up required. Works on any modern browser.</p>
-    </div>
-    <div class="why-card">
-      <div class="why-icon">🇨🇦</div>
-      <div class="why-title">Canadian Code Aligned</div>
-      <p class="why-desc">RC design tools reference CSA A23.3, making them directly relevant for students and practitioners in Canada.</p>
-    </div>
+    <div class="why-card"><div class="glyph">Σ</div><div class="why-title">Transparent Calculations</div><p class="why-desc">Step-by-step calculations, code references, and detailed outputs with full transparency — no black boxes.</p></div>
+    <div class="why-card"><div class="glyph">SVG</div><div class="why-title">Interactive Visuals</div><p class="why-desc">Understand structural behaviour through dynamic diagrams, live shear/moment updates, and interactive geometry.</p></div>
+    <div class="why-card"><div class="glyph">WEB</div><div class="why-title">Free Browser Access</div><p class="why-desc">Use the tools instantly — no installs, no downloads, no sign-up required. Works on any modern browser.</p></div>
+    <div class="why-card"><div class="glyph">CSA</div><div class="why-title">Canadian Code Aligned</div><p class="why-desc">Design tools reference CSA A23.3 and CSA S6, making them directly relevant for students and practitioners in Canada.</p></div>
   </div>
 </section>
 
-
-
-<!-- ─── CONTACT ────────────────────────────────────────────────── -->
-<hr class="section-divider"/>
+<!-- ─── CONTACT ─── -->
+<hr class="divider"/>
 <section id="contact">
-  <div class="contact-left">
-    <div class="section-eyebrow">Contact</div>
-    <h2 class="section-title" style="font-size:clamp(1.8rem,3vw,2.6rem);">Get in Touch</h2>
-    <p class="section-sub">
-      Have feedback, questions, or suggestions for future structural engineering
-      tools? Feel free to reach out — I'd love to hear from you.
-    </p>
+  <div>
+    <div class="eyebrow">Contact</div>
+    <h2 class="title" style="font-size:clamp(1.8rem,3vw,2.6rem)">Get in Touch</h2>
+    <p class="sub">Have feedback, questions, or suggestions for future structural engineering tools? Feel free to reach out — I'd love to hear from you.</p>
   </div>
-
   <div>
     <div class="contact-methods">
-
-      <div class="contact-card">
-        <div class="contact-card-icon" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.25);">
-          ✉️
-        </div>
-        <div class="contact-card-body">
-          <strong>Email</strong>
-          <a href="mailto:jzou778@gmail.com">jzou778@gmail.com</a>
-        </div>
-      </div>
-
-      <div class="contact-card">
-        <div class="contact-card-icon" style="background:rgba(20,184,166,0.12);border:1px solid rgba(20,184,166,0.25);">
-          💼
-        </div>
-        <div class="contact-card-body">
-          <strong>LinkedIn</strong>
-          <a href="https://www.linkedin.com/in/justin-zou-343911265/" target="_blank" rel="noopener">Justin Zou — LinkedIn Profile</a>
-        </div>
-      </div>
-
+      <div class="contact-card"><div class="glyph">@</div><div><strong>Email</strong><a href="mailto:jzou778@gmail.com">jzou778@gmail.com</a></div></div>
+      <div class="contact-card"><div class="glyph">in</div><div><strong>LinkedIn</strong><a href="https://www.linkedin.com/in/justin-zou-343911265/" target="_blank" rel="noopener">Justin Zou — LinkedIn Profile</a></div></div>
+      <div class="contact-card"><div class="glyph">PDF</div><div><strong>User Guides</strong><a href="https://drive.google.com/drive/folders/1zi-gwnkX_C1nozFYqLi2gLKbgj_x2wNb?usp=sharing" target="_blank" rel="noopener">Structural tools — user manuals (Google Drive)</a></div></div>
     </div>
-
-    <div class="contact-note">
-      <p>
-        <strong>Thank you so much for using my tools!</strong> 
-      </p>
-    </div>
+    <div class="contact-note"><p><strong>Thank you so much for using my tools!</strong></p></div>
   </div>
 </section>
 
-<!-- ─── FOOTER ─────────────────────────────────────────────────── -->
+<!-- ─── FOOTER ─── -->
 <footer>
-  <div class="footer-brand">
-    <svg width="20" height="20" viewBox="0 0 28 28" fill="none">
-      <rect x="2" y="18" width="4" height="8" rx="1" fill="#3b82f6"/>
-      <rect x="8" y="12" width="4" height="14" rx="1" fill="#3b82f6"/>
-      <rect x="14" y="6" width="4" height="20" rx="1" fill="#14b8a6"/>
-      <rect x="20" y="10" width="4" height="16" rx="1" fill="#14b8a6"/>
-      <line x1="2" y1="18" x2="24" y2="10" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-    <span></span>&nbsp;Structural Tools
+  <div class="brand">
+    <svg width="26" height="26" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="10" fill="url(#lg)"/><path d="M8 29L20 11l12 18zM14 20h12M20 11v18" fill="none" stroke="#090d16" stroke-width="2.6" stroke-linejoin="round"/></svg>
+    <span>Structural Tools</span>
   </div>
   <div class="footer-copy">© 2026 Structural Tools. All rights reserved.</div>
   <div class="footer-links">
     <a href="#home">Home</a>
-    <a href="#contact">Contact</a>
+    <a href="#tools">Tools</a>
+    <a href="https://drive.google.com/drive/folders/1zi-gwnkX_C1nozFYqLi2gLKbgj_x2wNb?usp=sharing" target="_blank" rel="noopener">User Guides ↗</a>
     <a href="mailto:jzou778@gmail.com">Email</a>
   </div>
 </footer>
 
 <script>
-  // Active nav link on scroll
-  const sections = document.querySelectorAll('section[id]');
-  const navLinks = document.querySelectorAll('.nav-links a');
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        navLinks.forEach(a => a.classList.remove('active'));
-        const active = document.querySelector(`.nav-links a[href="#${entry.target.id}"]`);
-        if (active) active.classList.add('active');
-      }
-    });
-  }, { rootMargin: '-40% 0px -50% 0px' });
-  sections.forEach(s => observer.observe(s));
+  // ── Tool icons: inline SVG built from the shared graphic-language classes ──
+  const ICON = {
+    frame2d:  '<path class="m" d="M7 23V9h14v14"/><path class="sp" d="M4 26l3-3 3 3zM18 26l3-3 3 3z"/><circle class="nd" cx="7" cy="9" r="2"/><circle class="nd" cx="21" cy="9" r="2"/><path class="sr" d="M1 9h2.5"/><path class="fr" d="M5 9l-2.2-1.4v2.8z"/>',
+    frame3d:  '<path class="m" d="M14 4l9 5v10l-9 5-9-5V9z"/><path class="dash" d="M5 9l9 5 9-5M14 14v10"/><circle class="nd" cx="14" cy="4" r="2"/><circle class="nd" cx="5" cy="9" r="2"/><circle class="nd" cx="23" cy="9" r="2"/><circle class="nd" cx="14" cy="14" r="2"/>',
+    beams:    '<path class="m" d="M3 15h22"/><path class="sp" d="M5 15l-2.5 5h5zM14 15l-2.5 5h5zM23 15l-2.5 5h5z"/><path class="sy" d="M5 7h18M8 7v4M14 7v4M20 7v4"/><path class="fy" d="M6.8 9.6L8 12l1.2-2.4zM12.8 9.6L14 12l1.2-2.4zM18.8 9.6L20 12l1.2-2.4z"/>',
+    boefs:    '<path class="m" d="M4 11h20"/><path class="sy" d="M7 11v2l-2 2 4 2-4 2 2 2M14 11v2l-2 2 4 2-4 2 2 2M21 11v2l-2 2 4 2-4 2 2 2"/><path class="sb" d="M3 26h22"/><path class="sr" d="M14 2v5"/><path class="fr" d="M14 9.5l-2-3.5h4z"/>',
+    trusses:  '<path class="m" d="M3 22h22L14 10zM14 10v12M8.5 16L14 22l5.5-6"/><circle class="nd" cx="3" cy="22" r="2"/><circle class="nd" cx="25" cy="22" r="2"/><circle class="nd" cx="14" cy="10" r="2"/><circle class="nd" cx="14" cy="22" r="2"/><path class="sr" d="M14 2v3"/><path class="fr" d="M14 7.5l-2-3h4z"/>',
+    slab3d:   '<path class="cc" d="M3 21l5-12h17l-5 12z"/><path class="sb" d="M7.5 15h17M5.5 18h17M13 9l-4 12M19 9l-4 12"/><circle class="nd" cx="13" cy="15" r="1.8"/><circle class="nd" cx="19" cy="15" r="1.8"/><path class="sy" d="M7 25c4-3 10-3 14 0"/>',
+    flatplate:'<rect class="cc" x="2" y="8" width="24" height="6"/><rect class="cc" x="6" y="14" width="4" height="11"/><rect class="cc" x="18" y="14" width="4" height="11"/><path class="dash" d="M4 12h20"/><circle class="nd" cx="8" cy="12" r="1.3"/><circle class="nd" cx="14" cy="12" r="1.3"/><circle class="nd" cx="20" cy="12" r="1.3"/>',
+    waffle:   '<rect class="cc" x="4" y="4" width="20" height="20"/><path class="sa" stroke-width="1.4" d="M4 11h20M4 17h20M11 4v20M17 4v20"/><circle class="nd" cx="11" cy="11" r="1.7"/><circle class="nd" cx="17" cy="11" r="1.7"/><circle class="nd" cx="11" cy="17" r="1.7"/><circle class="nd" cx="17" cy="17" r="1.7"/>',
+    column:   '<rect class="cc" x="5" y="5" width="18" height="18"/><rect class="dash" x="8" y="8" width="12" height="12"/><circle class="nd" cx="8" cy="8" r="1.7"/><circle class="nd" cx="20" cy="8" r="1.7"/><circle class="nd" cx="8" cy="20" r="1.7"/><circle class="nd" cx="20" cy="20" r="1.7"/><circle class="nd" cx="14" cy="8" r="1.7"/><circle class="nd" cx="14" cy="20" r="1.7"/>',
+    slab:     '<rect class="cc" x="2" y="11" width="24" height="7"/><path class="dash" d="M4 16h20"/><circle class="nd" cx="6" cy="16" r="1.3"/><circle class="nd" cx="11" cy="16" r="1.3"/><circle class="nd" cx="16" cy="16" r="1.3"/><circle class="nd" cx="21" cy="16" r="1.3"/><path class="sy" d="M7 4v4M14 4v4M21 4v4"/><path class="fy" d="M5.8 6.8L7 9.2l1.2-2.4zM12.8 6.8L14 9.2l1.2-2.4zM19.8 6.8L21 9.2l1.2-2.4z"/>',
+    wall:     '<rect class="cc" x="3" y="8" width="22" height="12"/><path class="dash" d="M6 14h16"/><circle class="nd" cx="6" cy="11" r="1.7"/><circle class="nd" cx="6" cy="17" r="1.7"/><circle class="nd" cx="22" cy="11" r="1.7"/><circle class="nd" cx="22" cy="17" r="1.7"/><circle class="nd" cx="14" cy="11" r="1.2"/><circle class="nd" cx="14" cy="17" r="1.2"/>',
+    grillage: '<path class="m" d="M3 9h22M3 14h22M3 19h22"/><path class="sa" stroke-width="1.6" d="M7 5v18M14 5v18M21 5v18"/><circle class="nd" cx="7" cy="9" r="1.8"/><circle class="nd" cx="14" cy="14" r="1.8"/><circle class="nd" cx="21" cy="19" r="1.8"/><circle class="nd" cx="21" cy="9" r="1.8"/>',
+    moving:   '<path class="m" d="M3 14h22"/><path class="sp" d="M5 14l-2.5 5h5zM23 14l-2.5 5h5z"/><path class="sr" d="M10 4v5M17 4v5"/><path class="fr" d="M10 11.5l-2-3h4zM17 11.5l-2-3h4z"/><path class="sy" d="M4 25q10-6 20 0"/>',
+    pushover: '<path class="m" d="M9 25V8"/><path class="sb" d="M4 25h10"/><circle class="nd" cx="9" cy="22" r="2"/><path class="sr" d="M1.5 8h4.5"/><path class="fr" d="M8 8l-3-2v4z"/><path class="sy" d="M15 25q2-12 11-12"/>',
+    shrink:   '<path class="dash" d="M3 14h22"/><path class="m" d="M3 14q11 10 22 0"/><path class="sp" d="M3 14l-2.5 5h5zM25 14l-2.5 5h5z"/><circle class="nd" cx="14" cy="19" r="2"/>'
+  };
 
-  // Fade-in on scroll
-  const cards = document.querySelectorAll('.tool-card, .why-card, .contact-card');
-  const fadeObserver = new IntersectionObserver(entries => {
-    entries.forEach((entry, i) => {
-      if (entry.isIntersecting) {
-        entry.target.style.transitionDelay = (i * 0.04) + 's';
-        entry.target.style.opacity = '1';
-        entry.target.style.transform = 'translateY(0)';
-        fadeObserver.unobserve(entry.target);
-      }
+  // ── Structural design tools (one entry per HTML file in the folder) ──
+  const CATS = [
+    { key:'sa',  title:'Structural Analysis', cls:'c-accent' },
+    { key:'tws', title:'Two-Way Slabs',       cls:'c-green'  },
+    { key:'cd',  title:'Concrete Design',     cls:'c-yellow' },
+    { key:'br',  title:'Bridges',             cls:'c-red'    }
+  ];
+  const TOOLS = [
+    { cat:'sa', no:'Structural Analysis 01 · Most Popular', name:'Structural Analysis', sub:'2D Plane Frame Analysis', icon:'frame2d', href:'structural-analysis-2d.html',
+      desc:'Analyze 2D plane frames using the direct stiffness method for reactions, member end forces, bending moment and shear diagrams, and displacements, with a multi-case load manager and optional SRSS response-spectrum (seismic) analysis.' },
+    { cat:'sa', no:'Structural Analysis 02 · 3D', name:'Structural Analysis 3D', sub:'Space Frames &amp; 3D Trusses', icon:'frame3d', href:'structural-analysis-3d.html',
+      desc:'Analyze 3D space frame structures using the direct stiffness method for joint reactions, member forces, and displacements with full 6-DOF nodal behaviour, including optional 3D SRSS response-spectrum analysis.' },
+    { cat:'sa', no:'Structural Analysis 03', name:'Structural Analysis — Beams', sub:'Continuous Beam Analysis', icon:'beams', href:'structural-analysis-beams.html',
+      desc:'Analyze multi-span beams under static point and distributed loads using the direct stiffness method, with pin, fixed, and free support conditions, reporting support reactions, shear and moment envelopes, and deflections along the beam.' },
+    { cat:'sa', no:'Structural Analysis 04', name:'Structural Analysis — BOEFs', sub:'Beams on Elastic Foundation', icon:'boefs', href:'structural-analysis-boefs.html',
+      desc:'Analyze finite-length beams on a Winkler elastic foundation using a consistent beam finite-element formulation, reporting foundation reactions, shear and moment diagrams, and deflections along the beam.' },
+    { cat:'sa', no:'Structural Analysis 05 · New', name:'Structural Analysis — Trusses', sub:'2D Pin-Jointed Truss Analysis', icon:'trusses', href:'structural-analysis-trusses.html',
+      desc:'Analyze 2D trusses using the direct stiffness method for member axial forces (tension or compression), support reactions, and joint displacements, with pinned, roller, fixed, and spring supports, multiple load cases, an axial force diagram, and a deformed-shape plot.' },
+
+    { cat:'tws', no:'Two-Way Slabs 01 · 3D FEA', name:'Two-Way Slabs 3D', sub:'Shell Finite Element Model', icon:'slab3d', href:'two-way-slabs-3d.html',
+      desc:'Model two-way reinforced concrete slabs with Q4/T3 Mindlin shell elements over a generated mesh, with contour plots, design-strip aggregate shear/moment diagrams, and one-way and punching shear output tables.' },
+    { cat:'tws', no:'Two-Way Slabs 02', name:'Two-Way Slabs — Flat Plates', sub:'2D Equivalent Frame Method', icon:'flatplate', href:'two-way-slabs-flat-plates-2d.html',
+      desc:'Analyze and design two-way flat plate slab systems using the Equivalent Frame Method per CSA A23.3, with CSA pattern-loading checks and flexural and shear design outputs.' },
+    { cat:'tws', no:'Two-Way Slabs 03', name:'Two-Way Slabs — Waffle Slabs', sub:'2D Equivalent Frame Method', icon:'waffle', href:'two-way-slabs-waffle-slabs-2d.html',
+      desc:'Analyze and design reinforced concrete waffle slab systems using the Equivalent Frame Method, including slab-beam stiffness, CSA pattern loading, flexural reinforcement, and one-way and punching shear checks.' },
+
+    { cat:'cd', no:'Concrete Design 01', name:'Concrete Column Design', sub:'Biaxial P–Mx–My Interaction', icon:'column', href:'concrete-column-design.html',
+      desc:'Design and check reinforced concrete columns using P-Mx-My interaction diagrams per CSA A23.3, with biaxial bending support and a full compression/tension (P+/P−) demand-capacity check.' },
+    { cat:'cd', no:'Concrete Design 02', name:'Concrete Slab Design', sub:'P–M Interaction, Slab Strip', icon:'slab', href:'concrete-slab-design.html',
+      desc:'Evaluate the axial force and flexural (P-M) resistance of a 1.0 m reinforced concrete slab strip per CSA A23.3, with an interaction diagram and radial demand-to-capacity ratio checks. Punching shear, one-way shear, deflection, and strip distribution require separate checks.' },
+    { cat:'cd', no:'Concrete Design 03', name:'Concrete Wall Design', sub:'In-Plane P–M Interaction', icon:'wall', href:'concrete-wall-design.html',
+      desc:'Evaluate the in-plane axial-flexural (P-M) resistance of a reinforced concrete shear wall section per CSA A23.3, with distributed web reinforcement, boundary-zone bars, and factored, nominal, or probable resistance curves. In-plane shear, stability, and boundary-element qualification require separate checks.' },
+
+    { cat:'br', no:'Bridges 01 · 3D', name:'Bridges — Grillage Model', sub:'3D Grillage Analysis', icon:'grillage', href:'bridges-grillage-model-3d.html',
+      desc:'Model bridge decks as an orthogonal grillage of longitudinal girders and transverse slab-strip members analyzed by a 3D grillage finite-element method under CSA S6 moving loads, with ULS and FLS bending moment, shear, and support reaction envelopes across all girder lines.' },
+    { cat:'br', no:'Bridges 02', name:'Bridges — Moving Loads', sub:'2D Bridge Girder · CSA S6', icon:'moving', href:'bridges-moving-loads-2d.html',
+      desc:'Generate bending moment, shear force, and reaction envelopes for a continuous beam under moving truck and lane loads using the direct stiffness method, with built-in CSA S6:25 CL-625 truck and lane presets and a downloadable working file.' },
+    { cat:'br', no:'Bridges 03', name:'Bridges — Column Pushover', sub:'Nonlinear Static Pushover', icon:'pushover', href:'bridges-column-pushover.html',
+      desc:'Perform a nonlinear static pushover analysis of a reinforced concrete bridge column using moment-curvature-based plastic hinge modelling, generating the lateral force-displacement capacity curve, plastic hinge sequence, and displacement ductility for CSA S6 seismic evaluation.' },
+    { cat:'br', no:'Bridges 04', name:'Bridges — Shrinkage Deflections', sub:'Girder Curvature &amp; Deflection Analysis', icon:'shrink', href:'bridges-girder-curvature.html',
+      desc:'Compute continuous-girder deflections and rotations from imposed shrinkage curvature segments using RK4 direct integration and a shooting-method solution across any number of spans, with full deflection tables, curvature/deflection charts, and a downloadable working file.' }
+  ];
+
+  // ── Render category headers + cards ──
+  const ARROW = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+  const WORDS = ['Zero','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen','Twenty'];
+  document.getElementById('tool-count').textContent = WORDS[TOOLS.length] || TOOLS.length;
+  document.getElementById('nav-count').textContent = TOOLS.length + ' tools';
+  document.getElementById('tools-grid').innerHTML = CATS.map(c => {
+    const list = TOOLS.filter(t => t.cat === c.key);
+    return `<div class="cat-head ${c.cls}"><h3>${c.title}</h3><span>${list.length} tool${list.length === 1 ? '' : 's'}</span></div>` +
+      list.map(t => `
+    <div class="tool-card ${c.cls}">
+      <div class="tool-icon" aria-hidden="true"><svg class="ic" viewBox="0 0 28 28">${ICON[t.icon]}</svg></div>
+      <div class="tool-number">${t.no}</div>
+      <div class="tool-name">${t.name}</div>
+      <div class="tool-sub">${t.sub}</div>
+      <p class="tool-desc">${t.desc}</p>
+      <a class="btn-launch" href="${t.href}">Launch Tool ${ARROW}</a>
+    </div>`).join('');
+  }).join('');
+
+  // ── Active nav link on scroll ──
+  const navLinks = document.querySelectorAll('.seg a[href^="#"]');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(entries => entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      navLinks.forEach(a => a.classList.remove('active'));
+      const a = document.querySelector(`.seg a[href="#${e.target.id}"]`);
+      if (a) a.classList.add('active');
+    }), { rootMargin: '-40% 0px -50% 0px' });
+    document.querySelectorAll('section[id]').forEach(s => io.observe(s));
+
+    // ── Fade-in on scroll ──
+    const fade = new IntersectionObserver(entries => entries.forEach((e, i) => {
+      if (!e.isIntersecting) return;
+      e.target.style.transitionDelay = (i * 0.04) + 's';
+      e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)';
+      fade.unobserve(e.target);
+    }), { threshold: 0.1 });
+    document.querySelectorAll('.tool-card, .why-card, .contact-card').forEach(c => {
+      c.style.opacity = '0'; c.style.transform = 'translateY(20px)';
+      c.style.transition = 'opacity .5s ease, transform .5s ease, border-color .25s, box-shadow .25s';
+      fade.observe(c);
     });
-  }, { threshold: 0.1 });
-  cards.forEach(c => {
-    c.style.opacity = '0';
-    c.style.transform = 'translateY(20px)';
-    c.style.transition = 'opacity .5s ease, transform .5s ease, border-color .25s, box-shadow .25s';
-    fadeObserver.observe(c);
-  });
+  }
 </script>
 </body>
 </html>

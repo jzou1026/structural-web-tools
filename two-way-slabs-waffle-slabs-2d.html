@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<title>SlabStrip v1.0 — Slabs with Beams, Elastic Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'}};</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js" async></script>
+<style>
+@media print{@page{size:letter portrait;margin:.55in}
+html,body{background:#fff!important;color:#111827!important;font-family:Arial,Helvetica,sans-serif!important;font-size:10pt!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+*{color:#111827!important;background:#fff!important;border-color:#c9ced6!important;box-shadow:none!important}
+.screen-only{display:none!important}.print-report-header{display:block!important}
+table{width:100%!important;border-collapse:collapse!important;font-size:8.3pt!important}thead{display:table-header-group!important}
+tr{break-inside:avoid!important;page-break-inside:avoid!important}
+th,td{padding:4pt 4.5pt!important;border:1px solid #c9ced6!important}th{background:#e8edf5!important;font-weight:700!important}
+svg{max-width:100%!important;height:auto!important;display:block!important;margin:0 auto!important;break-inside:avoid!important;page-break-inside:avoid!important}
+h3,.cardtitle{break-after:avoid!important;page-break-after:avoid!important}
+button,input[type=file]{display:none!important}
+mjx-container{break-inside:avoid!important;page-break-inside:avoid!important;overflow:visible!important;max-width:100%!important}
+.print-eq,.card{break-inside:avoid!important;page-break-inside:avoid!important}}
+.print-report-header{display:none}
+</style></head>
+<body><div id="root"></div>
+<script type="text/babel">
+const {useState,useRef,useEffect,useMemo}=React;
+// ═══ COLOR TOKENS (single source — extracted from sample-tool-R2.html) ═══
+const CLR={bg:"#090d16",surface:"#0f172a",card:"#131B2E",border:"#1e293b",border2:"#334155",accent:"#06b6d4",accentSoft:"#67e8f9",green:"#10b981",red:"#f43f5e",redSoft:"#fb7185",yellow:"#f59e0b",text:"#f8fafc",muted:"#94a3b8",concrete:"#1e293b"};
+const MONO="'JetBrains Mono', monospace", GRAD=`linear-gradient(90deg, ${CLR.accent}, ${CLR.green})`;
+const SVG_BOX={background:CLR.bg,backgroundImage:`linear-gradient(${CLR.card} 1px, transparent 1px), linear-gradient(90deg, ${CLR.card} 1px, transparent 1px)`,backgroundSize:"40px 40px",border:`1px solid ${CLR.border}`,borderRadius:12,fontFamily:MONO,width:"100%",height:"auto"};
+const css=`*{box-sizing:border-box;margin:0;padding:0}body{background:${CLR.bg};color:${CLR.text};font-family:'Inter',system-ui,sans-serif}
+input:focus,select:focus{border-color:${CLR.accent}!important;box-shadow:0 0 0 1px ${CLR.accent}}
+.card{background:${CLR.card};border:1px solid ${CLR.border};border-radius:16px;padding:1.1rem;box-shadow:0 8px 24px rgba(0,0,0,.35);margin-bottom:1rem}
+.cardtitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${CLR.accent};padding-bottom:8px;margin-bottom:10px;border-bottom:1px solid ${CLR.border}}
+table{width:100%;border-collapse:collapse;font-family:${MONO};font-size:12px}th{color:${CLR.muted};text-align:right;padding:5px 6px;font-weight:500;border-bottom:1px solid ${CLR.border}}td{text-align:right;padding:5px 6px;border-bottom:1px solid ${CLR.border}}th:first-child,td:first-child{text-align:left}
+.inp{background:${CLR.surface};border:1px solid ${CLR.border2};border-radius:10px;color:${CLR.accentSoft};font-family:${MONO};font-size:12.5px;padding:6px 9px;width:100%}
+.btn{background:${CLR.border};border:1px solid ${CLR.border2};color:${CLR.text};border-radius:10px;padding:7px 14px;font-size:12px;font-family:inherit}
+.btnp{background:${GRAD};border:none;color:${CLR.bg};font-weight:700;border-radius:10px;padding:7px 14px;font-size:12px}
+.grid2{display:grid;grid-template-columns:minmax(300px,1fr) minmax(300px,1.3fr);gap:1rem}@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}label{font-size:11px;color:${CLR.muted};display:block;margin-bottom:3px}
+.eqbox{background:${CLR.surface};border:1px solid ${CLR.border};border-radius:12px;padding:6px 14px;margin:8px 0}.theory p{font-size:13px;color:${CLR.muted};line-height:1.6;margin:6px 0}`;
+document.head.appendChild(Object.assign(document.createElement("style"),{textContent:css}));
+
+// ═══ SOLVER — reproduces two-way-slabs-R03.xlsx (QKD / MEM01-14 / Calculator). Units: N, mm. ═══
+// SOLVER START
+// Hermitian rotation shape functions N2=x-2x²/L+x³/L², N4=-x²/L+x³/L²; Q_i=∫w(x)N_i(x)dx (5-pt Gauss).
+const GL=[[-0.906179845938664,0.236926885056189],[-0.538469310105683,0.478628670499366],[0,0.568888888888889],[0.538469310105683,0.478628670499366],[0.906179845938664,0.236926885056189]];
+const hermiteFEM=(L,w)=>{let a=0,b=0;GL.forEach(([t,g])=>{const x=L/2*(1+t),q=w(x),wt=g*L/2;a+=wt*q*(x-2*x*x/L+x**3/L**2);b+=wt*q*(-x*x/L+x**3/L**2);});return[a,b];};
+const gaussSolve=(K,b)=>{const n=b.length,A=K.map((r,i)=>[...r,b[i]]);for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(A[r][c])>Math.abs(A[p][c]))p=r;[A[c],A[p]]=[A[p],A[c]];for(let r=0;r<n;r++){if(r===c)continue;const t=A[r][c]/A[c][c];for(let j=c;j<=n;j++)A[r][j]-=t*A[c][j];}}return A.map((r,i)=>r[n]/r[i]);};
+function solveEFM(m){
+  const E=4500*Math.sqrt(m.fc),N=m.nodes.length,nsp=N-1,s=m.strip,hs=m.h,hb=m.hb,bw=m.bw,hw=hb-hs;
+  const dS=hs-m.cover-m.db,dB=m.dB,dvB=Math.max(0.9*dB,0.72*hb),dvS=Math.max(0.9*dS,0.72*hs);
+  const DL=(hs+bw*hw/s)/1000*m.gamma;                                              // kPa, slab + beam stem over strip width
+  const wD=1.25*(DL+m.sdl)*s/1000,wL=1.5*m.ll*s/1000,wf=wD+wL,ld=m.ll/(DL+m.sdl),pattern=ld>0.75;
+  // T-section slab-beam inertia (strip flange l2, stem bw x hw), gross properties
+  const A1=s*hs,A2=bw*hw,yb=(A1*hs/2+A2*(hs+hw/2))/(A1+A2),Isb=s*hs**3/12+A1*(yb-hs/2)**2+bw*hw**3/12+A2*(hs+hw/2-yb)**2;
+  const a1=m.alphaOv>0?m.alphaOv:2.5*bw/s*(hb/hs)**3*(1-hs/hb);                      // Eq. 12.3, slab width l2
+  const bs=Math.min(bw+2*hw,bw+8*hs),sl=s-bs;                                        // beam strip / slab strip widths
+  const L=[],k=[];for(let i=0;i<nsp;i++){L[i]=m.nodes[i+1].x-m.nodes[i].x;k[i]=E*Isb/L[i];}
+  const psiOf=i=>{if(!m.autoPsi)return m.nodes[i].psi;const l1=((L[i-1]??L[i])+(L[i]??L[i-1]))/2,r=s/l1,t=Math.min(1,a1*r); // Table 12.17 (with beams)
+    return Math.min(1,Math.max(0.3,r<=1?0.3+0.7*t:0.6*(r-0.5)+(1.3-0.6*r)*t));};
+  const psi=m.nodes.map((_,i)=>psiOf(i));
+  const K=Array.from({length:N},()=>Array(N).fill(0));
+  m.nodes.forEach((n,i)=>{const Ic=n.c2*n.c1**3/12*psi[i];K[i][i]+=4*E*Ic/n.Lt+4*E*Ic/n.Lb;});
+  for(let i=0;i<nsp;i++){K[i][i]+=4*k[i];K[i+1][i+1]+=4*k[i];K[i][i+1]+=2*k[i];K[i+1][i]+=2*k[i];}
+  const lw=on=>L.map((_,i)=>wD+(on(i)?0.75*wL:0)),id=i=>m.nodes[i].id;
+  let cases;
+  if(!pattern)cases=[{name:"Full factored load on all spans (Cl. 13.8.4.2)",w:L.map(()=>wf)}];
+  else{cases=[];for(let i=0;i<nsp;i++)cases.push({name:`LP+ span ${id(i)}${id(i+1)}`,w:lw(q=>(q-i)%2===0)});
+    for(let j=0;j<N;j++)cases.push({name:`LP− support ${id(j)}`,w:lw(q=>q===j-1||q===j||(q<j-1&&(j-1-q)%2===0)||(q>j&&(q-j)%2===0))});
+    cases.push({name:"Full factored load (Cl. 13.8.4.4)",w:L.map(()=>wf)});}
+  const dL=L.map((l,i)=>Math.min(m.nodes[i].c1/2,0.175*l)),dR=L.map((l,i)=>Math.min(m.nodes[i+1].c1/2,0.175*l));
+  const env=L.map(()=>({pts:Array.from({length:41},()=>({Mx:-Infinity,Mn:Infinity,Vx:-Infinity,Vn:Infinity})),Mbot:-Infinity,tL:Infinity,tR:Infinity,vl:0,vr:0,vls:0,vrs:0}));
+  const interp=(p,x)=>{let j=0;while(j<p.length-2&&p[j+1].x<=x)j++;const a=p[j],b=p[j+1],t=(x-a.x)/(b.x-a.x);return Math.abs(a.V+t*(b.V-a.V));};
+  const red=(M,V,dd)=>M<0?Math.min(0,M+Math.abs(V)*dd):M;
+  cases.forEach(cs=>{
+    const Q=Array(N).fill(0),fe=L.map((l,i)=>hermiteFEM(l,()=>cs.w[i]));
+    fe.forEach(([a,b],i)=>{Q[i]+=a;Q[i+1]+=b;});
+    const th=gaussSolve(K,Q.map(q=>-q));
+    L.forEach((l,i)=>{const w=cs.w[i],Mn=fe[i][0]+4*k[i]*th[i]+2*k[i]*th[i+1],Mf=fe[i][1]+2*k[i]*th[i]+4*k[i]*th[i+1],e=env[i],pts=[];
+      for(let q=0;q<=40;q++){const x=l*q/40,M=w*x*(l-x)/2+Mn*(x/l-1)+Mf*x/l,V=w*(l/2-x)+(Mn+Mf)/l;pts.push({x,M,V});
+        const o=e.pts[q];o.x=x;o.g=m.nodes[i].x+x;o.Mx=Math.max(o.Mx,M);o.Mn=Math.min(o.Mn,M);o.Vx=Math.max(o.Vx,V);o.Vn=Math.min(o.Vn,V);}
+      const V0=w*l/2+(Mn+Mf)/l,VL=-w*l/2+(Mn+Mf)/l;
+      e.Mbot=Math.max(e.Mbot,...pts.map(p=>p.M));
+      e.tL=Math.min(e.tL,red(-Mn,V0,dL[i]));e.tR=Math.min(e.tR,red(Mf,VL,dR[i]));       // M1 = M_CL − V_CL·a/2
+      e.vl=Math.max(e.vl,interp(pts,dL[i]+dvB));e.vr=Math.max(e.vr,interp(pts,l-dR[i]-dvB));
+      e.vls=Math.max(e.vls,interp(pts,dL[i]+dvS));e.vrs=Math.max(e.vrs,interp(pts,l-dR[i]-dvS));});});
+  // Design: Eq. 5.4, A_s,min=0.002Ag, s<=min(3hs,500)
+  const smax=Math.min(3*hs,500);
+  const des=(M,b,d,Ag,ar)=>{const q=d*d-3.85*Math.abs(M)/m.fc/b,A=q<0?Infinity:Math.max(0,0.0015*m.fc*b*(d-Math.sqrt(q))),Am=0.002*Ag;
+    return{A,Am,cnt:ar.map(a=>Math.ceil(A/a)),spc:ar.map(a=>Math.min(Math.floor(b*a/Math.max(A,Am)/10)*10,smax))};};
+  const Vcb=0.65*(230/(1000+dvB))*Math.sqrt(m.fc)*bw*dvB,Vcs=0.65*(230/(1000+dvS))*Math.sqrt(m.fc)*sl*dvS;
+  const spans=env.map((e,i)=>{
+    const kb=a1/(0.3+a1)*(1-s/(3*L[i])),kL=i===0?1:kb,kR=i===nsp-1?1:kb,fr=Math.min(1,a1*s/L[i]);   // Eq. 12.9; 100% to beam at exterior column
+    const loc=[[Math.min(e.tL,0),kL,1],[e.Mbot,kb,0],[Math.min(e.tR,0),kR,1]].map(([M,k,top])=>({M,k,Mb:k*M,Ms:(1-k)*M,
+      B:des(k*M,top?bw:bs,dB,bw*hb,[300,500,700]),S:des((1-k)*M,sl,dS,sl*hs,[200,300,500])}));
+    const vb=[e.vl,e.vr].map(v=>fr*v),vs=[e.vls,e.vrs].map(v=>(1-fr)*v*sl/s);
+    return{name:id(i)+id(i+1),L:L[i],env:e.pts,dL:dL[i],dR:dR[i],loc,kb,fr,vb,vs,okB:vb.map(v=>v<=Vcb),okS:vs.map(v=>v<=Vcs),Vcb,Vcs,ok:vb.every(v=>v<=Vcb)&&vs.every(v=>v<=Vcs)};});
+  return{E,d:dS,dB,a1,bs,sl,Isb,wf,ld,pattern,smax,psi,cases:cases.map(c=>({name:c.name,w:c.w})),spans,ok:spans.every(o=>o.ok)};
+}
+// SOLVER END
+
+// ═══ SHARED UI ═══
+const f=(v,n=1)=>(v==null||!isFinite(v))?"—":Number(v).toFixed(n);
+const DEF={fc:30,fy:400,h:160,hb:600,bw:400,dB:540,alphaOv:0,strip:4800,cover:25,db:15,gamma:24,sdl:1.44,ll:3.6,autoPsi:true,
+ nodes:[["A",0],["B",5000],["C",11000],["D",16000]].map(([id,x])=>({id,x,c1:400,c2:400,Lt:3000,Lb:3000,psi:0.3}))};
+function Legend({items}){return <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:11,color:CLR.muted,fontFamily:MONO,marginTop:8}}>
+ {items.map((it,i)=><span key={i} style={{display:"flex",alignItems:"center",gap:6}}><svg width="22" height="10">{it.dot?<circle cx="11" cy="5" r="4" fill={it.c} stroke={CLR.accent} strokeWidth="1.5"/>:<line x1="0" y1="5" x2="22" y2="5" stroke={it.c} strokeWidth="3" strokeDasharray={it.dash?"4 3":""} strokeLinecap="round"/>}</svg>{it.l}</span>)}</div>;}
+const Card=({t,children,cls})=><div className={"card "+(cls||"")}><div className="cardtitle">{t}</div>{children}</div>;
+const Badge=({ok,a="PASSED",b="EXCEEDED"})=><span style={{display:"inline-block",padding:"2px 10px",borderRadius:999,fontSize:11,fontWeight:700,background:ok?"rgba(16,185,129,.15)":"rgba(244,63,94,.15)",color:ok?CLR.green:CLR.redSoft,border:`1px solid ${ok?CLR.green:CLR.red}`}}>{ok?a:b}</span>;
+function Eq({n,tex,where}){const r=useRef();useEffect(()=>{window.MathJax?.typesetPromise?.([r.current]).catch(()=>{});},[tex]);
+ return <div className="print-eq" ref={r}><div className="eqbox" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>{"$$"+tex+"$$"}</span><span style={{fontFamily:MONO,fontSize:11,color:CLR.accent}}>Eq. {n}</span></div>{where&&<p>{where}</p>}</div>;}
+function Num({v,set,w}){return <input className="inp" type="number" value={v} style={w?{width:w}:{}} onChange={e=>set(parseFloat(e.target.value)||0)}/>;}
+
+// ═══ GRAPHICS (inline SVG) ═══
+function FrameSVG({m,r}){ // live elevation: slab-beam, columns, supports, UDL
+ const W=760,H=260,x0=50,sc=(W-100)/m.nodes[m.nodes.length-1].x,y=130,cl=70;
+ const X=v=>x0+(v-m.nodes[0].x)*sc;
+ const arrows=[];m.nodes.slice(0,-1).forEach((n,i)=>{const a=X(n.x),b=X(m.nodes[i+1].x),k=Math.max(4,Math.round((b-a)/28));
+  for(let q=0;q<=k;q++){const xx=a+(b-a)*q/k;arrows.push(<path key={i+"-"+q} d={`M${xx} 62 L${xx} ${y-8} M${xx-3} ${y-14} L${xx} ${y-8} L${xx+3} ${y-14}`} stroke={CLR.yellow} strokeWidth="1.5" fill="none"/>);}});
+ return <svg viewBox={`0 0 ${W} ${H}`} style={SVG_BOX}>
+  {arrows}<line x1={X(m.nodes[0].x)} x2={X(m.nodes[m.nodes.length-1].x)} y1="62" y2="62" stroke={CLR.yellow} strokeWidth="2"/>
+  <text x={W/2} y="50" fill={CLR.yellow} fontSize="10" textAnchor="middle">wf = {f(r.wf*1,2)} kN/m</text>
+  {m.nodes.map((n,i)=><g key={i}>
+   <line x1={X(n.x)} x2={X(n.x)} y1={y-cl} y2={y+cl} stroke={CLR.accent} strokeWidth="3" strokeLinecap="round" strokeDasharray="0"/>
+   <path d={`M${X(n.x)-9} ${y+cl+12} L${X(n.x)+9} ${y+cl+12} M${X(n.x)-9} ${y+cl} L${X(n.x)} ${y+cl-0} `} stroke={CLR.accent}/>
+   <rect x={X(n.x)-10} y={y+cl} width="20" height="9" fill={CLR.green} fillOpacity=".35" stroke={CLR.accent}/>
+   <circle cx={X(n.x)} cy={y} r="5" fill={CLR.green} stroke={CLR.accent} strokeWidth="1.5"/>
+   <text x={X(n.x)} y={y-cl-8} fill={CLR.text} fontSize="11" textAnchor="middle">{n.id}</text>
+   <text x={X(n.x)} y={y+cl+30} fill={CLR.muted} fontSize="10" textAnchor="middle">{n.c1}×{n.c2}</text></g>)}
+  <line x1={X(m.nodes[0].x)} x2={X(m.nodes[m.nodes.length-1].x)} y1={y} y2={y} stroke={CLR.accent} strokeWidth="3.5" strokeLinecap="round"/>
+  {m.nodes.slice(0,-1).map((n,i)=><text key={i} x={(X(n.x)+X(m.nodes[i+1].x))/2} y={y+18} fill={CLR.muted} fontSize="10" textAnchor="middle">L = {m.nodes[i+1].x-n.x} mm</text>)}
+ </svg>;}
+const nice=v=>{const p=10**Math.floor(Math.log10(v)),q=v/p;return(q<1.5?1:q<3?2:q<7?5:10)*p;};
+function Chart({ser,marks,yl,xmax,limits=[]}){ // generic result chart
+ const W=760,H=300,L=64,R=20,T=18,B=44,all=ser.flatMap(s=>s.pts.map(p=>p[1])).concat(0);
+ const lo=Math.min(...all),hi=Math.max(...all),st=nice((hi-lo||1)/6),y0=Math.floor(lo/st)*st,y1=Math.ceil(hi/st)*st,xs=nice(xmax/8);
+ const X=v=>L+v/xmax*(W-L-R),Y=v=>T+(y1-v)/(y1-y0)*(H-T-B),yt=[],xt=[];
+ for(let v=y0;v<=y1+1e-9;v+=st)yt.push(v);for(let v=0;v<=xmax+1e-9;v+=xs)xt.push(v);
+ return <svg viewBox={`0 0 ${W} ${H}`} style={SVG_BOX}>
+  {yt.map(v=><g key={"y"+v}><line x1={L} x2={W-R} y1={Y(v)} y2={Y(v)} stroke={v===0?CLR.border2:CLR.border} strokeDasharray={v===0?"4 3":""}/><text x={L-6} y={Y(v)+3} fill={CLR.muted} fontSize="10" textAnchor="end">{+v.toPrecision(4)}</text></g>)}
+  {xt.map(v=><g key={"x"+v}><line y1={T} y2={H-B} x1={X(v)} x2={X(v)} stroke={CLR.border}/><text x={X(v)} y={H-B+14} fill={CLR.muted} fontSize="10" textAnchor="middle">{v}</text></g>)}
+  <text x={(L+W-R)/2} y={H-8} fill={CLR.muted} fontSize="10" textAnchor="middle">x along strip (mm)</text>
+  <text transform={`translate(14 ${H/2}) rotate(-90)`} fill={CLR.muted} fontSize="10" textAnchor="middle">{yl}</text>
+  {limits.map((l,i)=><g key={i}><line x1={L} x2={W-R} y1={Y(l.v)} y2={Y(l.v)} stroke={CLR.yellow} strokeDasharray="6 4"/><text x={W-R-4} y={Y(l.v)-4} fill={CLR.yellow} fontSize="10" textAnchor="end">{l.t}</text></g>)}
+  {ser.map((s,i)=>{const d=s.pts.map((p,j)=>(j?"L":"M")+X(p[0])+" "+Y(p[1])).join(" ");
+   return <g key={i}><path d={d+` L${X(s.pts[s.pts.length-1][0])} ${Y(0)} L${X(s.pts[0][0])} ${Y(0)}Z`} fill={s.c} fillOpacity=".15"/><path d={d} fill="none" stroke={s.c} strokeWidth="3" strokeLinejoin="round"/></g>;})}
+  {marks.map((p,i)=><g key={i}><circle cx={X(p.x)} cy={Y(p.y)} r="4.5" fill={CLR.green} stroke={CLR.accent} strokeWidth="1.5"><title>{p.t}</title></circle><text x={X(p.x)} y={Y(p.y)+(p.y>=0?-9:16)} fill={CLR.text} fontSize="9.5" textAnchor="middle">{f(p.y,1)}</text></g>)}
+ </svg>;}
+
+// ═══ TABS ═══
+function InputTab({m,setM,r}){
+ const u=(k)=>v=>setM({...m,[k]:v}),un=(i,k)=>v=>setM({...m,nodes:m.nodes.map((n,j)=>j===i?{...n,[k]:k==="id"?v:v}:n)});
+ const fld=(l,k)=><div><label>{l}</label><Num v={m[k]} set={u(k)}/></div>;
+ return <div className="grid2"><div>
+  <Card t="Material Properties"><div className="g3">{fld("f'c (MPa)","fc")}{fld("fy (MPa)","fy")}{fld("γ concrete (kN/m³)","gamma")}</div></Card>
+  <Card t="Geometric Dimensions"><div className="g3">{fld("Slab h_s (mm)","h")}{fld("Beam depth h_b","hb")}{fld("Beam width b_w","bw")}{fld("Beam d (mm)","dB")}{fld("Design strip l₂ (mm)","strip")}{fld("Cover (mm)","cover")}{fld("Bar dia. (mm)","db")}</div></Card>
+  <Card t="Beam–Slab Stiffness"><div className="g3">{fld("α₁ override (0 = Eq. 12.3)","alphaOv")}<div><label>Column ψ</label><select className="inp" value={m.autoPsi?1:0} onChange={e=>setM({...m,autoPsi:e.target.value==="1"})}><option value={0}>Manual (table)</option><option value={1}>Auto (Table 12.17)</option></select></div></div></Card>
+  <Card t="Loads (kPa)"><div className="g3">{fld("Superimposed DL","sdl")}{fld("Live load","ll")}<div><label>Self-weight (kPa)</label><div className="inp">{f(m.h/1000*m.gamma,2)}</div></div></div></Card>
+ </div><div>
+  <div className="card"><div className="cardtitle">Live Frame Model</div><FrameSVG m={m} r={r}/>
+   <p style={{fontSize:11,color:CLR.muted,fontFamily:MONO,marginTop:8}}>α₁ = {f(r.a1,2)} · d_slab = {f(r.d,0)} mm · E = {f(r.E,0)} MPa · wf = {f(r.wf,2)} kN/m · L/D = {f(r.ld,3)} {r.pattern?"(>0.75: pattern loading required, Cl. 13.8.4.3)":"(<0.75, no pattern loading, Cl. 13.8.4.2)"}</p></div>
+  <Card t="Columns & Nodes (add / delete)"><div style={{overflowX:"auto"}}><table><thead><tr><th>Node</th><th>x</th><th>c₁ ∥ frame</th><th>c₂</th><th>L top</th><th>L bot</th><th>ψ</th><th></th></tr></thead><tbody>
+   {m.nodes.map((n,i)=><tr key={i}><td><input className="inp" style={{width:48}} value={n.id} onChange={e=>un(i,"id")(e.target.value)}/></td>{["x","c1","c2","Lt","Lb","psi"].map(k=><td key={k}><Num v={n[k]} set={un(i,k)} w={k==="psi"?56:78}/></td>)}
+    <td><button className="btn" disabled={m.nodes.length<=2} onClick={()=>setM({...m,nodes:m.nodes.filter((_,j)=>j!==i)})}>✕</button></td></tr>)}</tbody></table></div>
+   <button className="btn" style={{marginTop:8}} onClick={()=>{const l=m.nodes[m.nodes.length-1];setM({...m,nodes:[...m.nodes,{...l,id:String.fromCharCode(l.id.charCodeAt(0)+1),x:l.x+5000}]});}}>+ Add node / span</button></Card></div></div>;}
+
+function ResultsTab({m,r,stale}){
+ const sp=r.spans,x0=m.nodes[0].x,xmax=m.nodes[m.nodes.length-1].x-x0,kn=1e-6,kv=1e-3;
+ const ser=(a,c)=>({pts:sp.flatMap(s=>s.env.map(p=>[p.g-x0,p[a]*(a[0]==="M"?kn:kv)])),c});
+ const mk=[];sp.forEach((s,i)=>{const g=m.nodes[i].x-x0;mk.push({x:g+s.dL,y:s.loc[0].M*kn,t:`${s.name} left face: ${f(s.loc[0].M*kn)} kN·m`},{x:g+s.L-s.dR,y:s.loc[2].M*kn,t:`${s.name} right face: ${f(s.loc[2].M*kn)} kN·m`});});
+ const nm=["Left (Top)","Max (Bot)","Right (Top)"];
+ return <div>
+  {stale&&<Card t="Notice"><Badge ok={false} b="MODEL CHANGED — PRESS ANALYSIS TO UPDATE"/></Card>}
+  <Card t="Overall Status"><Badge ok={r.ok} a="ALL ONE-WAY SHEAR CHECKS PASSED" b="CONCRETE SHEAR EXCEEDED — SHEAR REINFORCEMENT NEEDED"/> <span style={{fontSize:12,color:CLR.muted,marginLeft:10}}>w_f = {f(r.wf,2)} kN/m · L/D = {f(r.ld,3)} → {r.pattern?"pattern loading applied":"full load only"} · α₁ = {f(r.a1,2)} · beam strip b_s = {f(r.bs,0)} mm · slab strip = {f(r.sl,0)} mm · I_sb = {(r.Isb/1e9).toFixed(2)}×10⁹ mm⁴</span></Card>
+  <Card t="Table 1 — Load Patterns Analysed (Cl. 13.8.4, Eq. 1–2); span loads in kN/m"><div style={{overflowX:"auto"}}><table><thead><tr><th>Pattern</th>{sp.map(s=><th key={s.name}>{s.name}</th>)}</tr></thead><tbody>{r.cases.map(c=><tr key={c.name}><td>{c.name}</td>{c.w.map((w,i)=><td key={i}>{f(w,2)}</td>)}</tr>)}</tbody></table></div></Card>
+  <Card t="Figure 1 — Total Strip Bending Moment Envelope (sagging +)"><Chart ser={[ser("Mx",CLR.accent),ser("Mn",CLR.accent)]} marks={mk} yl="M (kN·m)" xmax={xmax}/><Legend items={[{c:CLR.accent,l:"Max / min envelope, Eq. 4"},{c:CLR.green,dot:1,l:"Reduced face moment, Eq. 5 (hover)"}]}/></Card>
+  <Card t="Figure 2 — Shear Force Envelope (total strip)"><Chart ser={[ser("Vx",CLR.green),ser("Vn",CLR.green)]} marks={[]} yl="V (kN)" xmax={xmax}/><Legend items={[{c:CLR.green,l:"Max / min V(x), Eq. 4"}]}/></Card>
+  <Card t="Table 2 — Transverse Distribution & Flexural Design (Eq. 6, 7, 8); beam bars = count, slab = spacing (mm)"><div style={{overflowX:"auto"}}><table><thead><tr><th>Span</th><th>Location</th><th>M</th><th>k_b</th><th>M_beam</th><th>A_s beam</th><th>A_s,min</th><th>20M</th><th>25M</th><th>30M</th><th>M_slab</th><th>A_s slab</th><th>A_s,min</th><th>15M @</th><th>20M @</th></tr></thead><tbody>
+   {sp.flatMap(s=>s.loc.map((o,j)=><tr key={s.name+j}><td>{j?"":s.name}</td><td>{nm[j]}</td><td>{f(o.M*kn)}</td><td>{f(o.k,3)}</td><td>{f(o.Mb*kn)}</td><td>{f(o.B.A)}</td><td>{f(o.B.Am,0)}</td>{o.B.cnt.map((c,i)=><td key={i}>{c}</td>)}<td>{f(o.Ms*kn)}</td><td>{f(o.S.A)}</td><td>{f(o.S.Am,0)}</td><td>{o.S.spc[0]}</td><td>{o.S.spc[1]}</td></tr>))}</tbody></table></div></Card>
+  <Card t="Table 3 — One-Way Shear at d_v from Face (Eq. 9): beam takes min(1, α₁l₂/l₁) of V, slab the remainder"><table><thead><tr><th>Span</th><th>Side</th><th>α₁l₂/l₁</th><th>V beam</th><th>Vr beam</th><th>Util.</th><th>V slab</th><th>Vr slab</th><th>Util.</th><th>Status</th></tr></thead><tbody>
+   {sp.flatMap(s=>["Left","Right"].map((n,j)=><tr key={s.name+j}><td>{j?"":s.name}</td><td>{n}</td><td>{f(s.fr,2)}</td><td>{f(s.vb[j]*kv)}</td><td>{f(s.Vcb*kv)}</td><td>{f(s.vb[j]/s.Vcb,2)}</td><td>{f(s.vs[j]*kv)}</td><td>{f(s.Vcs*kv)}</td><td>{f(s.vs[j]/s.Vcs,2)}</td><td><Badge ok={s.okB[j]&&s.okS[j]} b="Vc EXCEEDED"/></td></tr>))}</tbody></table>
+   <p style={{fontSize:11,color:CLR.muted,fontFamily:MONO,marginTop:8}}>Units: kN·m, kN. Vc is concrete-only, so an exceedance in the beam means stirrups (Chapter 6) are required. Two-way (punching) shear of the slab, when α₁l₂/l₁ &lt; 1, and beam stirrups are not designed here.</p></Card></div>;}
+
+function TheoryTab(){return <div className="theory">
+ <Card t="Part 1 — Engineering Theory (CSA A23.3 Cl. 13.8 / 13.12; textbook Sections 12.6.4 and 12.7)">
+  <p>The design strip (width $l_2$) is analysed as a continuous slab-beam on columns above and below (far ends fixed). Slab-beam stiffness uses the gross T-section of the strip flange and beam stem; columns use $\psi I_c$ (Table 12.17, slabs with beams, computed automatically when selected). Joint rotations are the unknowns of the stiffness matrix.</p>
+  <Eq n={1} tex="Q_i=\int_0^L w(x)\,N_i(x)\,dx,\quad N_2=x-\tfrac{2x^2}{L}+\tfrac{x^3}{L^2},\ N_4=-\tfrac{x^2}{L}+\tfrac{x^3}{L^2}" where="Hermitian fixed-end moments for the factored line load w(x); 5-point Gauss integration (exact for uniform loads, giving wL²/12)."/>
+  <Eq n={2} tex="[K]\{\theta\}=-\{Q\},\quad M_n=Q_2+\tfrac{4EI}{L}\theta_n+\tfrac{2EI}{L}\theta_f,\ \ M_f=Q_4+\tfrac{2EI}{L}\theta_n+\tfrac{4EI}{L}\theta_f" where="K is the global rotational stiffness matrix (slab-beam 4EI/L, 2EI/L plus column terms 4 E psi Ic / Lc), E = 4500 sqrt(f'c) MPa, I the T-section inertia of the slab-beam."/>
+  <p><b>Pattern loading (Cl. 13.8.4, Fig. 12.49).</b> If $LL/DL\le0.75$ only full factored load is analysed; otherwise LP+ (each span and alternates carry $w_D+\tfrac34w_L$), LP− (each support: adjacent and alternate spans) and the full load are analysed automatically and enveloped.</p>
+  <Eq n={3} tex="M(x)=\tfrac{wx(L-x)}{2}+M_n\left(\tfrac{x}{L}-1\right)+M_f\tfrac{x}{L},\quad V(x)=w\left(\tfrac{L}{2}-x\right)+\tfrac{M_n+M_f}{L}" where="x from the near node, 41 stations per span."/>
+  <Eq n={4} tex="M_{env}(x)=\max_c M_c(x),\ \min_c M_c(x)" where="Envelope over load patterns c."/>
+  <Eq n={5} tex="M_1=M_{CL}-V_{CL}\tfrac{a}{2},\quad \tfrac{a}{2}=\min(c_1/2,\,0.175\,l_1)" where="Reduced hogging moment at the column face (Cl. 13.8.5.1); positive design moment is the maximum tabulated span moment."/>
+  <Eq n={6} tex="M_b=\left[\tfrac{\alpha_1}{0.3+\alpha_1}\left(1-\tfrac{l_2}{3l_1}\right)\right]M,\qquad M_s=M-M_b" where="Eq. 12.9 (Cl. 13.12.2.1) transverse distribution to the beam strip and the slab strip. At the exterior column 100% of the negative moment goes to the beam strip (Cl. 13.12.2.2). l1 is the centre-to-centre length of the span; alpha1 from Eq. 12.3, alpha1 = 2.5 bw/l2 (h/hs)^3 (1 - hs/h), with slab width l2 (an override is available; Example 12.2 uses 5500 mm for direction 1 and gets 7.0)."/>
+  <Eq n={7} tex="b_s=\min(b_w+2h_w,\ b_w+8h_s),\qquad l_{slab}=l_2-b_s" where="Effective flange width of the beam strip (h_w = beam depth below the slab) and the remaining slab-strip width (Example 12.2: 1280 mm and 3.5 m)."/>
+  <Eq n={8} tex="A_s=0.0015f'_c\,b\left(d-\sqrt{d^2-\tfrac{3.85M_f}{f'_c\,b}}\right),\quad A_{s,min}=0.002A_g,\ \ s\le\min(3h_s,500)" where="Eq. 5.4, Cl. 7.8.1 and Cl. 13.10.4. Beam: b = b_s for positive moment (flange in compression), b = bw for negative, d = beam d, A_g = bw·h. Slab strip: b = l_slab, d = h_s − cover − bar dia., spacing = b·A_bar/max(A_s, A_s,min) floored to 10 mm."/>
+  <Eq n={9} tex="V_b=\min\!\left(1,\tfrac{\alpha_1l_2}{l_1}\right)V,\quad V_s=\left(1-\tfrac{\alpha_1l_2}{l_1}\right)V\tfrac{l_{slab}}{l_2},\quad V_r=0.65\tfrac{230}{1000+d_v}\sqrt{f'_c}\,b\,d_v,\ d_v=\max(0.9d,0.72h)" where="Shear shared by beam and slab per Cl. 13.4 / Section 12.9.5 (V_s = 0 when alpha1 l2/l1 >= 1), read at d_v from the column face. V_r is the workbook-style simplified form retained from v1."/>
+  <p><b>Additions / assumptions.</b> Pass/fail badges; generalised pattern rules; the split of V between beam and slab and the slab-strip share by width (interpretation of 12.9.5); A_s,min = 0.002 bw h for the beam stem (the textbook gives only the slab value); Eq. 5.4 applied to the beam as a rectangular section. Beam stirrups, two-way shear when alpha1 l2/l1 &lt; 1, corner reinforcement and beam torsion are not designed. Cracking is ignored.</p></Card>
+ <Card t="Part 2 — Coding Theory"><p>React state holds one <code>model</code> object. <code>solveEFM(model)</code> (pure function, commented SOLVER block) assembles Eq. 1–2 (Hermitian load vector), loops over the load patterns, solves each by Gaussian elimination and returns diagrams and design checks; the UI only renders. Graphics are inline SVG built from the shared <code>SVG_BOX</code> style, <code>Legend</code> component and one <code>CLR</code> object. Save writes <code>{`{version, savedAt, model}`}</code> JSON; Open reads it back. Print waits for <code>MathJax.typesetPromise()</code>, then calls <code>window.print()</code> after a 300 ms delay; print CSS forces a light theme, keeps SVG colors and avoids breaks inside tables, figures and equations.</p></Card>
+ <Card t="Part 3 — References (APA 7)"><p>CSA Group. (2019). <i>Design of concrete structures</i> (CSA A23.3-19). CSA Group. <span style={{color:CLR.yellow}}>[edition/year taken from the workbook; clause numbers not independently verified]</span></p>
+  <p>Textbook “Design of Two-Way Slabs”, Section 12.7 Elastic Analysis (pp. 597–633), Examples 12.3–12.5. <span style={{color:CLR.yellow}}>[author, publisher, edition and year not stated in the supplied pages; unverified]</span></p></Card></div>;}
+
+function App(){
+ const [m,setM]=useState(DEF),[tab,setTab]=useState("Input"),[printing,setPrinting]=useState(false),fi=useRef();
+ const r=useMemo(()=>solveEFM(m),[m]),[res,setRes]=useState(null);
+ const run=()=>{setRes({m:JSON.parse(JSON.stringify(m)),r:solveEFM(m)});setTab("Results");};
+ const stale=res&&JSON.stringify(res.m)!==JSON.stringify(m);
+ const save=()=>{const b=new Blob([JSON.stringify({version:"1.0",savedAt:new Date().toISOString(),model:m},null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=`SlabStrip_working_${new Date().toISOString().replace(/[:.]/g,"-")}.json`;document.body.appendChild(a);a.click();a.remove();};
+ const load=e=>{const fl=e.target.files[0];if(!fl)return;const rd=new FileReader();rd.onload=ev=>{try{const p=JSON.parse(ev.target.result);if(p.model){setM(p.model);setRes(null);setTab("Input");}}catch(x){alert("Could not parse working file: "+x.message);}};rd.readAsText(fl);e.target.value="";};
+ const print=async()=>{setPrinting(true);await new Promise(r=>setTimeout(r,200));try{await window.MathJax?.typesetPromise?.();}catch(e){}setTimeout(()=>{window.print();setPrinting(false);},300);};
+ useEffect(()=>{window.MathJax?.typesetPromise?.().catch(()=>{});},[tab]);
+ const show=t=>printing||tab===t;
+ return <div style={{minHeight:"100vh"}}>
+  <div className="screen-only" style={{background:"rgba(15,23,42,.9)",backdropFilter:"blur(12px)",borderBottom:`1px solid ${CLR.border}`,padding:".8rem 1.5rem",display:"flex",alignItems:"center",gap:"1.25rem",flexWrap:"wrap",position:"sticky",top:0,zIndex:50}}>
+   <svg width="38" height="38" viewBox="0 0 40 40" style={{borderRadius:12}}><defs><linearGradient id="lg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#0891b2"/><stop offset="1" stopColor={CLR.green}/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#lg)"/><path d="M8 24 L32 24 M12 14 L12 30 M28 14 L28 30" stroke={CLR.bg} strokeWidth="2.6" strokeLinecap="round"/></svg>
+   <div><div style={{fontWeight:700,fontSize:18}}>SlabStrip <span style={{fontSize:11,fontFamily:MONO,color:CLR.accentSoft,border:`1px solid ${CLR.border2}`,borderRadius:999,padding:"1px 8px"}}>v1.0</span></div><div style={{fontSize:11,color:CLR.muted}}>Slabs with Beams · Elastic Analysis (stiffness matrix EFM) · CSA A23.3 Cl. 13.8 / 13.12</div></div>
+   <div style={{display:"flex",gap:2,marginLeft:"auto",background:CLR.surface,padding:5,borderRadius:12,border:`1px solid ${CLR.border}`}}>{["Input","Results","Theory"].map(t=><button key={t} onClick={()=>setTab(t)} style={{background:tab===t?CLR.accent:"none",border:"none",borderRadius:8,color:tab===t?CLR.bg:CLR.muted,padding:"7px 16px",fontSize:12.5,fontWeight:tab===t?700:500,fontFamily:"inherit"}}>{t}</button>)}</div>
+   <button className="btn" onClick={save}>Save</button><button className="btn" onClick={()=>fi.current.click()}>Open</button><input ref={fi} type="file" accept=".json" style={{display:"none"}} onChange={load}/><button className="btn" onClick={print}>Print PDF Report</button><button className="btnp" onClick={run}>▶ Analysis</button></div>
+  <div className="print-report-header" style={{padding:"0 0 10px"}}><h2>Two-Way Slab with Beams — Elastic Analysis Design Strip Report</h2></div>
+  <div style={{padding:"1.25rem 1.5rem",maxWidth:1280,margin:"0 auto"}}>{show("Input")&&<InputTab m={m} setM={setM} r={r}/>}{show("Results")&&(res?<ResultsTab m={res.m} r={res.r} stale={stale}/>:<Card t="Results"><p style={{fontSize:13,color:CLR.muted}}>Press ▶ Analysis to run the Equivalent Frame analysis.</p></Card>)}{show("Theory")&&<TheoryTab/>}</div></div>;}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script></body></html>
