@@ -3,19 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trusses v0.3.3 — Structural Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <title>Trusses v0.4.0 — 2D Truss Structural Analysis</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js" id="MathJax-script" async></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0d1117; color: #e6edf3; font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace; }
+    body { background: #090d16; color: #f8fafc; font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; }
+    ::selection { background: #06b6d4; color: #090d16; }
+    input:focus, select:focus { border-color: #06b6d4 !important; box-shadow: 0 0 0 1px #06b6d4; }
     input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
     select { -webkit-appearance: none; appearance: none; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0d1117; }
-    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
-
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    button { cursor: pointer; }
 
     /* ── PRINT / PDF REPORT STYLES ─────────────────────────────────────────── */
     .print-report-header { display: none; }
@@ -24,7 +35,6 @@
 
     @media print {
       @page { size: letter portrait; margin: 0.55in; }
-
       html, body {
         background: #ffffff !important;
         color: #111827 !important;
@@ -33,173 +43,90 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-
+      /* Force every element to the light report theme, regardless of any
+         inline dark-theme style (SVG canvases, inputs, selects, cards all
+         set inline `background` colors for the on-screen dark UI) — an
+         `!important` rule always wins over a non-important inline style
+         no matter how specific the inline style is, so this reliably
+         strips every dark background from the printed/PDF output. */
       * {
         color: #111827 !important;
+        background: #ffffff !important;
         border-color: #c9ced6 !important;
         box-shadow: none !important;
-        text-shadow: none !important;
       }
-
-      header, nav, .screen-only { display: none !important; }
-
-      #root, main {
-        background: #ffffff !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        max-width: none !important;
-        width: 100% !important;
-      }
-
-      .print-report-header {
-        display: block !important;
-        margin: 0 0 14pt 0 !important;
-        padding-bottom: 10pt !important;
-        border-bottom: 2px solid #111827 !important;
-        break-after: avoid;
-        page-break-after: avoid;
-      }
-
-      .print-report-header h1 {
-        font-size: 18pt !important;
-        line-height: 1.2 !important;
-        margin: 0 0 4pt 0 !important;
-        font-weight: 800 !important;
-      }
-
-      .print-report-header .meta {
-        font-size: 8.5pt !important;
-        line-height: 1.45 !important;
-        color: #374151 !important;
-      }
-
-      .print-avoid {
-        background: #ffffff !important;
-        border: 1px solid #c9ced6 !important;
-        border-radius: 0 !important;
-        margin: 0 0 12pt 0 !important;
-        padding: 10pt !important;
-        overflow: visible !important;
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-      }
-
-      .print-table-section {
-        padding: 0 !important;
-      }
-
-      .print-table-section > div:first-child,
-      .print-diagram-section > div:first-child {
-        padding: 8pt 9pt !important;
-        background: #eef2f7 !important;
-        border-bottom: 1px solid #c9ced6 !important;
-      }
-
-      .print-table-section > div:nth-child(2) {
-        overflow: visible !important;
-      }
-
-      .report-results-block > div,
-      .report-grid > div {
-        background: #ffffff !important;
-        color: #111827 !important;
-      }
-
-      .report-results-block > div > div:first-child,
-      .report-grid > div > div:first-child {
-        background: #eef2f7 !important;
-        color: #111827 !important;
-        border-bottom: 1px solid #c9ced6 !important;
-      }
-
-      .report-grid {
-        display: block !important;
-      }
-
-      table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-        font-size: 8.3pt !important;
-        page-break-inside: auto !important;
-      }
-
+      .screen-only { display: none !important; }
+      .print-report-header { display: block !important; }
+      table { width: 100% !important; border-collapse: collapse !important; font-size: 8.3pt !important; page-break-inside: auto !important; }
       thead { display: table-header-group !important; }
-      tfoot { display: table-footer-group !important; }
-
-      tr {
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-      }
-
-      th, td {
-        padding: 4pt 4.5pt !important;
-        border: 1px solid #c9ced6 !important;
-        background: #ffffff !important;
-        color: #111827 !important;
-      }
-
-      th {
-        background: #e8edf5 !important;
-        font-size: 7.6pt !important;
-        font-weight: 700 !important;
-      }
-
-      svg {
-        max-width: 100% !important;
-        height: auto !important;
-        display: block !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-      }
-
-      .print-diagram-section {
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-      }
-
-      .print-diagram-section svg {
-        max-height: 3.25in !important;
-      }
-
-      .report-results-block {
-        display: block !important;
-      }
+      tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+      th, td { padding: 4pt 4.5pt !important; border: 1px solid #c9ced6 !important; background: #ffffff !important; color: #111827 !important; }
+      th { background: #e8edf5 !important; font-size: 7.6pt !important; font-weight: 700 !important; }
+      svg { max-width: 100% !important; height: auto !important; display: block !important; margin-left: auto !important; margin-right: auto !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+      /* Buttons have no meaning on paper; file pickers/checkboxes belong
+         only to the editable tabs, which are already fully hidden above.
+         Dropdowns (Load Combination, Diagram Type, etc.) are intentionally
+         left visible — browsers render a <select>'s current value as
+         static, readable text when printed, which is informative in a
+         report (e.g. showing which load combination the diagrams use). */
+      button, input[type="file"] { display: none !important; }
+      /* MathJax equations must never split across pages or be clipped */
+      mjx-container { break-inside: avoid !important; page-break-inside: avoid !important; overflow: visible !important; max-width: 100% !important; }
+      .print-eq { break-inside: avoid !important; page-break-inside: avoid !important; }
     }
   </style>
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useCallback, useEffect, useRef } = React;
+  <script type="text/babel" data-presets="react">
+const { useState, useCallback, useEffect, useRef, useMemo } = React;
 
-    // ── COLORS ─────────────────────────────────────────────────────────────────
-    const CLR = {
-      bg: "#0d1117", surface: "#161b22", card: "#1c2333", border: "#30363d",
-      accent: "#58a6ff", green: "#3fb950", red: "#f85149", yellow: "#d29922",
-      text: "#e6edf3", muted: "#8b949e", teal: "#39d353", violet: "#bc8cff",
-      orange: "#f0883e",
-    };
+// ── COLORS (matching Two Way Slabs reference tool palette) ─────────────────
+// -- COLORS (dark slate / cyan / emerald / amber / rose graphic language) --
+const CLR = {
+  bg: "#090d16", surface: "#0f172a", card: "#131B2E", border: "#1e293b", border2: "#334155",
+  accent: "#06b6d4", accentSoft: "#67e8f9", green: "#10b981", red: "#f43f5e", redSoft: "#fb7185",
+  yellow: "#f59e0b", text: "#f8fafc", muted: "#94a3b8", teal: "#10b981", violet: "#a78bfa",
+  orange: "#f59e0b", concrete: "#1e293b",
+};
+const MONO = "'JetBrains Mono', monospace";
+const GRAD = "linear-gradient(90deg, #06b6d4, #34d399)";
+// Shared look of EVERY SVG graphic: dark plot box, faint square grid, rounded corners, mono labels.
+const SVG_BOX = {
+  background: CLR.bg,
+  backgroundImage: "linear-gradient(#131B2E 1px, transparent 1px), linear-gradient(90deg, #131B2E 1px, transparent 1px)",
+  backgroundSize: "40px 40px", border: `1px solid ${CLR.border}`, borderRadius: 12, fontFamily: MONO,
+};
 
-    // ── STYLES ─────────────────────────────────────────────────────────────────
-    const S = {
-      app: { minHeight:"100vh", background:CLR.bg, color:CLR.text, fontFamily:"'JetBrains Mono','Fira Code','Cascadia Code',monospace", display:"flex", flexDirection:"column" },
-      header: { background:CLR.surface, borderBottom:`1px solid ${CLR.border}`, padding:"0 2rem", display:"flex", alignItems:"center", gap:"2rem", minHeight:60 },
-      nav: { display:"flex", gap:0, marginLeft:"auto" },
-      navBtn: active => ({ background:"none", border:"none", borderBottom: active ? `2px solid ${CLR.accent}` : "2px solid transparent", color: active ? CLR.accent : CLR.muted, padding:"18px 20px", cursor:"pointer", fontSize:13, fontFamily:"inherit", fontWeight: active ? 700 : 400, letterSpacing:"0.05em", transition:"color 0.15s,border-color 0.15s" }),
-      main: { flex:1, padding:"2rem", maxWidth:1300, margin:"0 auto", width:"100%" },
-      card: { background:CLR.card, border:`1px solid ${CLR.border}`, borderRadius:8, padding:"1.5rem", marginBottom:"1.5rem" },
-      h2: { fontSize:14, fontWeight:700, color:CLR.accent, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"1rem" },
-      table: { width:"100%", borderCollapse:"collapse", fontSize:12 },
-      th: { background:"#21262d", color:CLR.muted, padding:"7px 10px", textAlign:"center", fontWeight:600, letterSpacing:"0.06em", fontSize:11, textTransform:"uppercase", borderBottom:`1px solid ${CLR.border}` },
-      td: { padding:"6px 10px", textAlign:"center", borderBottom:"1px solid #21262d", color:CLR.text },
-      input: { background:"#0d1117", border:`1px solid ${CLR.border}`, borderRadius:4, color:CLR.text, fontFamily:"inherit", fontSize:12, padding:"4px 7px", width:"100%", textAlign:"center", outline:"none" },
-      select: { background:"#0d1117", border:`1px solid ${CLR.border}`, borderRadius:4, color:CLR.text, fontFamily:"inherit", fontSize:12, padding:"4px 7px", width:"100%", textAlign:"center", outline:"none", cursor:"pointer" },
-      btn: (v="primary") => ({ background: v==="primary"?CLR.accent : v==="danger"?"#3d1f1f":"#21262d", color: v==="danger"?CLR.red : v==="primary"?"#000":CLR.text, border:`1px solid ${v==="danger"?CLR.red : v==="primary"?CLR.accent:CLR.border}`, borderRadius:6, padding:"8px 18px", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, letterSpacing:"0.08em" }),
-      badge: color => ({ display:"inline-block", background:color+"22", color, border:`1px solid ${color}55`, borderRadius:4, padding:"2px 8px", fontSize:11, fontWeight:700 }),
-    };
+// -- STYLES --
+const S = {
+  app: { minHeight: "100vh", background: CLR.bg, color: CLR.text, display: "flex", flexDirection: "column" },
+  header: { background: "rgba(15,23,42,0.9)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${CLR.border}`, padding: "0.8rem 1.5rem", display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap", position: "sticky", top: 0, zIndex: 50 },
+  brand: { fontWeight: 700, fontSize: 15, color: CLR.text, display: "flex", alignItems: "center", gap: 12 },
+  brandBadge: { fontSize: 11, fontFamily: MONO, color: "#22d3ee", background: "#083344", border: "1px solid rgba(21,94,117,0.7)", borderRadius: 999, padding: "1px 8px" },
+  nav: { display: "flex", gap: 2, marginLeft: "auto", flexWrap: "wrap", background: "rgba(15,23,42,0.8)", padding: 5, borderRadius: 12, border: `1px solid ${CLR.border}` },
+  navBtn: active => ({ background: active ? CLR.accent : "none", border: "none", borderRadius: 8, color: active ? CLR.bg : CLR.muted, padding: "7px 16px", cursor: "pointer", fontSize: 12.5, fontFamily: "inherit", fontWeight: active ? 700 : 500, transition: "all 0.2s" }),
+  main: { flex: 1, padding: "1.5rem", maxWidth: 1500, margin: "0 auto", width: "100%" },
+  card: { background: "rgba(19,27,46,0.85)", border: `1px solid ${CLR.border}`, borderRadius: 16, padding: "1.25rem", marginBottom: "1.25rem", boxShadow: "0 10px 25px rgba(0,0,0,0.35)" },
+  h2: { fontSize: 12, fontWeight: 700, color: CLR.accent, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "0.9rem", paddingBottom: "0.7rem", borderBottom: `1px solid ${CLR.border}`, display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" },
+  h3: { fontSize: 12, fontWeight: 700, color: CLR.text, marginBottom: "0.6rem" },
+  table: { width: "100%", borderCollapse: "collapse", fontSize: 11.5, fontFamily: MONO },
+  th: { background: "rgba(15,23,42,0.9)", color: CLR.muted, padding: "7px 8px", textAlign: "center", fontWeight: 600, fontSize: 10.5, textTransform: "uppercase", borderBottom: `1px solid ${CLR.border}`, whiteSpace: "nowrap" },
+  td: { padding: "5px 6px", textAlign: "center", borderBottom: `1px solid ${CLR.border}`, color: CLR.text },
+  input: { background: CLR.bg, border: `1px solid ${CLR.border2}`, borderRadius: 10, color: CLR.accentSoft, fontFamily: MONO, fontSize: 12, padding: "5px 8px", width: "100%", textAlign: "center", outline: "none" },
+  select: { background: CLR.bg, border: `1px solid ${CLR.border2}`, borderRadius: 10, color: CLR.accentSoft, fontFamily: MONO, fontSize: 12, padding: "5px 8px", width: "100%", outline: "none" },
+  btn: (v = "primary") => ({ background: v === "primary" ? GRAD : v === "danger" ? "rgba(244,63,94,0.1)" : v === "ghost" ? "transparent" : CLR.border, color: v === "danger" ? CLR.redSoft : v === "primary" ? CLR.bg : "#e2e8f0", border: v === "primary" ? "none" : `1px solid ${v === "danger" ? "rgba(244,63,94,0.35)" : CLR.border2}`, borderRadius: 12, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 12, fontWeight: 700, boxShadow: v === "primary" ? "0 8px 20px rgba(6,182,212,0.25)" : "none" }),
+  badge: color => ({ display: "inline-block", background: color + "22", color, border: `1px solid ${color}55`, borderRadius: 999, padding: "2px 10px", fontSize: 10.5, fontWeight: 700 }),
+  tabRow: { display: "flex", gap: 6, marginBottom: "1rem", flexWrap: "wrap" },
+  subTab: active => ({ background: active ? CLR.accent + "22" : "transparent", color: active ? CLR.accent : CLR.muted, border: `1px solid ${active ? CLR.accent + "66" : CLR.border2}`, borderRadius: 999, padding: "5px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 11.5, fontWeight: 700 }),
+  smallMuted: { fontSize: 10.5, color: CLR.muted },
+};
 
+
+// ════════════════════════════════════════════════════════════════════
+// SOLVER — carried over UNCHANGED from Trusses v0.3.3 (direct stiffness).
+// No interface code below this banner until the INTERFACE banner.
+// ════════════════════════════════════════════════════════════════════
     // ── DEFAULT DATA ───────────────────────────────────────────────────────────
     const DEFAULT_SUPPORTS = [
       { id:1, joint:"A", x:0,  z:0,  type:"Pinned", kx:0, kz:0 },
@@ -491,795 +418,500 @@
     const fmt6 = v => typeof v === "number" ? v.toFixed(6) : v;
     const fmtSci = v => typeof v === "number" ? v.toExponential(3) : v;
 
-    // ── SVG DIAGRAM ───────────────────────────────────────────────────────────
-    function TrussDiagram({ supports, joints, members, results, displacements, scale }) {
-      const allNodes = {};
-      supports.forEach(s => { if (s.joint.trim()) allNodes[s.joint.trim()] = { x: +s.x||0, z: +s.z||0 }; });
-      joints.forEach(j => { if (j.joint.trim()) allNodes[j.joint.trim()] = { x: +j.x||0, z: +j.z||0 }; });
 
-      const xs = Object.values(allNodes).map(n => n.x);
-      const zs = Object.values(allNodes).map(n => n.z);
-      if (xs.length === 0) return <div style={{ color:CLR.muted, padding:"2rem", textAlign:"center" }}>No nodes to display.</div>;
+// ════════════════════════════════════════════════════════════════════
+// INTERFACE — everything below is UI only (no analysis math).
+// ════════════════════════════════════════════════════════════════════
+const VERSION = "v0.4.0";
+const APP_NAME = "Trusses";
 
-      const minX = Math.min(...xs), maxX = Math.max(...xs);
-      const minZ = Math.min(...zs), maxZ = Math.max(...zs);
-      const W = 560, H = 260, PAD = 48;
-      const rangeX = maxX - minX || 1, rangeZ = maxZ - minZ || 1;
-      const scaleX = (W - 2*PAD) / rangeX, scaleZ = (H - 2*PAD) / rangeZ;
-      const sc = Math.min(scaleX, scaleZ);
+const num = v => (v === null || v === undefined || v === "" ? 0 : +v || 0);
+const fnum = (v, dp = 3) => (typeof v !== "number" || Number.isNaN(v)) ? "—" : (Math.abs(v) < 5 * Math.pow(10, -dp - 1) ? (0).toFixed(dp) : v.toFixed(dp));
+const clean = v => (Math.abs(v) < 1e-9 ? 0 : v); // hides -0 / round-off in the print of reactions
 
-      const toSvg = (x, z) => ({
-        sx: PAD + (x - minX) * sc,
-        sy: H - PAD - (z - minZ) * sc,
-      });
+function downloadText(filename, text, mime) {
+  const blob = new Blob([text], { type: mime || "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
-      // Build force lookup
-      const forceMap = {};
-      if (results) results.forEach(r => { forceMap[r.name] = r.force; });
+// ── SAVE WORKING FILE (same JSON mechanism as the sample tool) ──────────
+function saveWorkingFile(model) {
+  const data = JSON.stringify({ version: "1.0", app: APP_NAME, savedAt: new Date().toISOString(), model }, null, 2);
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  downloadText(`Trusses_working_${stamp}.json`, data, "application/json");
+}
 
-      // Deformed shape
-      const dispMap = {};
-      if (displacements) displacements.forEach(d => { dispMap[d.joint] = d; });
-      const defScale = scale||200;
+// ── Numbered display equation (MathJax) + variable definitions ──────────
+function Eq({ n, tex, where }) {
+  return (
+    <div className="print-eq" style={{ margin: "0.75rem 0 1rem" }}>
+      <div style={{ background: CLR.bg, border: `1px solid ${CLR.border}`, borderRadius: 12, padding: "0.6rem 1rem", display: "flex", alignItems: "center", gap: 12, overflowX: "auto" }}>
+        <div style={{ flex: 1 }}>{"\\[" + tex + "\\]"}</div>
+        <div style={{ fontSize: 11, color: CLR.muted, whiteSpace: "nowrap" }}>Equation {n}</div>
+      </div>
+      <div style={{ fontSize: 12, color: CLR.muted, lineHeight: 1.7, marginTop: 6 }}>{where}</div>
+    </div>
+  );
+}
 
-      const SpringSupports = ({ s, x, y }) => {
-        if (!s) return null;
-        const kx = Math.max(0, +s.kx || 0);
-        const kz = Math.max(0, +s.kz || 0);
-        if (kx <= 1e-12 && kz <= 1e-12) return null;
-        const color = CLR.yellow;
-        const zig = pts => pts.map(p => `${p[0]},${p[1]}`).join(' ');
-        return <g>
-          {kx > 1e-12 && <g>
-            <title>{`Horizontal translational spring kx = ${fmt3(kx)}`}</title>
-            <line x1={x+7} y1={y} x2={x+12} y2={y} stroke={color} strokeWidth="1.5"/>
-            <polyline points={zig([[x+12,y],[x+16,y-4],[x+20,y+4],[x+24,y-4],[x+28,y+4],[x+32,y]])} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
-            <line x1={x+32} y1={y-8} x2={x+32} y2={y+8} stroke={color} strokeWidth="1.5"/>
-            <line x1={x+36} y1={y-8} x2={x+36} y2={y+8} stroke={color} strokeWidth="1.5"/>
-            <line x1={x+40} y1={y-8} x2={x+40} y2={y+8} stroke={color} strokeWidth="1.5"/>
-            <text x={x+26} y={y-10} textAnchor="middle" fill={color} fontSize="9" fontWeight="800">kx</text>
-          </g>}
-          {kz > 1e-12 && <g>
-            <title>{`Vertical translational spring kz = ${fmt3(kz)}`}</title>
-            <line x1={x} y1={y-7} x2={x} y2={y-12} stroke={color} strokeWidth="1.5"/>
-            <polyline points={zig([[x,y-12],[x-4,y-16],[x+4,y-20],[x-4,y-24],[x+4,y-28],[x,y-32]])} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round"/>
-            <line x1={x-8} y1={y-32} x2={x+8} y2={y-32} stroke={color} strokeWidth="1.5"/>
-            <line x1={x-8} y1={y-36} x2={x+8} y2={y-36} stroke={color} strokeWidth="1.5"/>
-            <line x1={x-8} y1={y-40} x2={x+8} y2={y-40} stroke={color} strokeWidth="1.5"/>
-            <text x={x+11} y={y-28} fill={color} fontSize="9" fontWeight="800">kz</text>
-          </g>}
+// ── Legend row under every graphic (shared component) ───────────────────
+function DiagramLegend({ items, note }) {
+  return (
+    <div style={{ display: "flex", gap: 18, flexWrap: "wrap", justifyContent: "center", fontSize: 11, fontFamily: MONO, marginTop: 8 }}>
+      {items.map(([c, t], i) => <span key={i} style={{ color: c }}>{t}</span>)}
+      {note && <span style={{ color: CLR.muted }}>{note}</span>}
+    </div>
+  );
+}
+
+// ── Support glyph: triangle (green 35%) + accent rim + hatching ─────────
+function SupportGlyph({ s, x, y }) {
+  const t = s.type, kx = Math.max(0, +s.kx || 0), kz = Math.max(0, +s.kz || 0);
+  const hatch = (x0, x1, yy) => Array.from({ length: 6 }, (_, i) => {
+    const hx = x0 + (x1 - x0) * i / 5;
+    return <line key={i} x1={hx} y1={yy} x2={hx - 5} y2={yy + 6} stroke={CLR.accent} strokeWidth={1} />;
+  });
+  const g = [];
+  if (t === "Pinned" || t === "Roller-X" || t === "Roller-Z") {
+    g.push(<polygon key="tri" points={`${x},${y} ${x - 11},${y + 17} ${x + 11},${y + 17}`} fill={CLR.green} fillOpacity={0.35} stroke={CLR.accent} strokeWidth={1.5} />);
+    if (t === "Pinned") { g.push(<line key="gl" x1={x - 15} y1={y + 17} x2={x + 15} y2={y + 17} stroke={CLR.accent} strokeWidth={1.5} />, ...hatch(x - 12, x + 15, y + 17)); }
+    else { g.push(<circle key="r1" cx={x - 5} cy={y + 20} r={3} fill={CLR.green} stroke={CLR.accent} strokeWidth={1} />, <circle key="r2" cx={x + 5} cy={y + 20} r={3} fill={CLR.green} stroke={CLR.accent} strokeWidth={1} />, <line key="gl" x1={x - 15} y1={y + 23} x2={x + 15} y2={y + 23} stroke={CLR.accent} strokeWidth={1.5} />, ...hatch(x - 12, x + 15, y + 23)); }
+  } else if (t === "Fixed") {
+    g.push(<rect key="fx" x={x - 14} y={y + 5} width={28} height={7} fill={CLR.green} fillOpacity={0.35} stroke={CLR.accent} strokeWidth={1.5} />, ...hatch(x - 12, x + 15, y + 12));
+  }
+  const zig = pts => pts.map(p => p.join(",")).join(" ");
+  if (kx > 1e-12) g.push(<g key="kx"><polyline points={zig([[x + 7, y], [x + 12, y], [x + 16, y - 4], [x + 20, y + 4], [x + 24, y - 4], [x + 28, y + 4], [x + 32, y]])} fill="none" stroke={CLR.yellow} strokeWidth={1.5} strokeLinejoin="round" /><line x1={x + 33} y1={y - 8} x2={x + 33} y2={y + 8} stroke={CLR.yellow} strokeWidth={1.5} /><text x={x + 22} y={y - 10} fill={CLR.yellow} fontSize={9} textAnchor="middle">kx</text><title>{`Horizontal spring kx = ${kx}`}</title></g>);
+  if (kz > 1e-12) g.push(<g key="kz"><polyline points={zig([[x, y - 7], [x, y - 12], [x - 4, y - 16], [x + 4, y - 20], [x - 4, y - 24], [x + 4, y - 28], [x, y - 32]])} fill="none" stroke={CLR.yellow} strokeWidth={1.5} strokeLinejoin="round" /><line x1={x - 8} y1={y - 33} x2={x + 8} y2={y - 33} stroke={CLR.yellow} strokeWidth={1.5} /><text x={x + 11} y={y - 26} fill={CLR.yellow} fontSize={9}>kz</text><title>{`Vertical spring kz = ${kz}`}</title></g>);
+  return <g><title>{`Support ${s.joint}: ${t}`}</title>{g}</g>;
+}
+
+// ── Truss graphic. mode: "model" | "axial" | "deformed" ─────────────────
+// One component draws all three figures so every graphic shares one style (SVG_BOX).
+function TrussFigure({ supports, joints, members, result, mode, defScale, u }) {
+  const W = 680, H = 340, PAD = 64;
+  const nodes = {};
+  supports.forEach(s => { const k = s.joint.trim(); if (k) nodes[k] = { x: num(s.x), z: num(s.z) }; });
+  joints.forEach(j => { const k = j.joint.trim(); if (k) nodes[k] = { x: num(j.x), z: num(j.z) }; });
+  const names = Object.keys(nodes);
+  if (!names.length) return <div style={{ color: CLR.muted, padding: "2rem", textAlign: "center" }}>No nodes to display.</div>;
+  const xs = names.map(k => nodes[k].x), zs = names.map(k => nodes[k].z);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  const sc = Math.min((W - 2 * PAD) / (maxX - minX || 1), (H - 2 * PAD) / (maxZ - minZ || 1));
+  const ox = (W - sc * (maxX - minX)) / 2, oy = (H + sc * (maxZ - minZ)) / 2;
+  const P = (x, z) => ({ sx: ox + (x - minX) * sc, sy: oy - (z - minZ) * sc });
+  const mem = members.filter(m => m.near.trim() && m.far.trim() && nodes[m.near.trim()] && nodes[m.far.trim()] && m.near.trim() !== m.far.trim());
+  const forceOf = {}; if (result && result.results) result.results.forEach(r => { forceOf[r.name] = r.force; });
+  const disp = {}; if (result && result.displacements) result.displacements.forEach(d => { disp[d.joint] = d; });
+  const maxN = Math.max(1e-9, ...Object.values(forceOf).map(Math.abs));
+  const uniq = a => [...new Set(a.map(v => +v.toFixed(6)))].sort((p, q) => p - q);
+  const tx = uniq(xs), tz = uniq(zs);
+  const arrow = (key, x, y, dx, dy, label, col, lcol) => {
+    const L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, ex = x + dx, ey = y + dy;
+    return <g key={key}>
+      <line x1={x} y1={y} x2={ex - ux * 6} y2={ey - uy * 6} stroke={col} strokeWidth={2} />
+      <polygon points={`${ex},${ey} ${ex - ux * 8 - uy * 4},${ey - uy * 8 + ux * 4} ${ex - ux * 8 + uy * 4},${ey - uy * 8 - ux * 4}`} fill={col} />
+      <text x={x + dx * 1.35 + (dy !== 0 ? 10 : 0)} y={y + dy * 1.35 + (dy !== 0 ? 3 : -6)} fill={lcol} fontSize={10} textAnchor="middle">{label}</text>
+    </g>;
+  };
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={SVG_BOX}>
+      {/* axis ticks + titles (coordinate labels) */}
+      {tx.map(v => { const p = P(v, minZ); return <g key={"tx" + v}><line x1={p.sx} y1={H - 30} x2={p.sx} y2={H - 25} stroke={CLR.border2} /><text x={p.sx} y={H - 14} fill={CLR.muted} fontSize={10} textAnchor="middle">{v}</text></g>; })}
+      {tz.map(v => { const p = P(minX, v); return <g key={"tz" + v}><line x1={30} y1={p.sy} x2={35} y2={p.sy} stroke={CLR.border2} /><text x={26} y={p.sy + 3} fill={CLR.muted} fontSize={10} textAnchor="end">{v}</text></g>; })}
+      <text x={W / 2} y={H - 2} fill={CLR.muted} fontSize={10} textAnchor="middle">x [{u.dist}]</text>
+      <text x={9} y={H / 2} fill={CLR.muted} fontSize={10} textAnchor="middle" transform={`rotate(-90 9 ${H / 2})`}>z [{u.dist}]</text>
+
+      {/* members */}
+      {mem.map((m, i) => {
+        const a = nodes[m.near.trim()], b = nodes[m.far.trim()];
+        const p1 = P(a.x, a.z), p2 = P(b.x, b.z), nm = m.name || `${m.near}-${m.far}`;
+        const L = Math.hypot(b.x - a.x, b.z - a.z);
+        if (mode === "deformed") {
+          const d1 = disp[m.near.trim()] || { x: 0, z: 0 }, d2 = disp[m.far.trim()] || { x: 0, z: 0 };
+          const q1 = P(a.x + (d1.x || 0) * defScale, a.z + (d1.z || 0) * defScale), q2 = P(b.x + (d2.x || 0) * defScale, b.z + (d2.z || 0) * defScale);
+          return <g key={i}><title>{`Member ${nm}: L = ${fnum(L, 3)} ${u.dist}`}</title>
+            <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.border2} strokeWidth={2} strokeDasharray="6,4" />
+            <line x1={q1.sx} y1={q1.sy} x2={q2.sx} y2={q2.sy} stroke={CLR.accent} strokeWidth={3.5} strokeLinecap="round" /></g>;
+        }
+        const dx = p2.sx - p1.sx, dy = p2.sy - p1.sy, pl = Math.hypot(dx, dy) || 1, nx = -dy / pl, ny = dx / pl;
+        let band = null;
+        if (mode === "axial" && forceOf[nm] !== undefined) {
+          const N = forceOf[nm], d = (Math.abs(N) / maxN) * 30 * Math.sign(N || 1), mx = (p1.sx + p2.sx) / 2 + nx * (d + Math.sign(d || 1) * 12), my = (p1.sy + p2.sy) / 2 + ny * (d + Math.sign(d || 1) * 12);
+          const fc = N > 0 ? CLR.red : CLR.yellow; // tension = rose, compression = amber
+          band = <g>
+            {Math.abs(N) > 1e-6 && <polygon points={`${p1.sx},${p1.sy} ${p2.sx},${p2.sy} ${p2.sx + nx * d},${p2.sy + ny * d} ${p1.sx + nx * d},${p1.sy + ny * d}`} fill={fc + "26"} stroke={fc} strokeWidth={1.7} />}
+            {Math.abs(N) > 1e-6 && [0.25, 0.5, 0.75].map(t => <line key={t} x1={p1.sx + dx * t} y1={p1.sy + dy * t} x2={p1.sx + dx * t + nx * d} y2={p1.sy + dy * t + ny * d} stroke={fc} strokeWidth={1} strokeOpacity={0.72} />)}
+            <text x={mx} y={my + 3} fill={Math.abs(N) > 1e-6 ? fc : CLR.muted} fontSize={9.5} fontWeight="700" textAnchor="middle">{Math.abs(N) > 1e-6 ? `${fnum(Math.abs(N), 2)} ${N > 0 ? "(T)" : "(C)"}` : "0"}</text>
+          </g>;
+        }
+        return <g key={i}><title>{`Member ${nm}: ${m.near}–${m.far}, L = ${fnum(L, 3)} ${u.dist}, EA = ${num(m.E) * num(m.A)}`}</title>
+          {band}
+          <line x1={p1.sx} y1={p1.sy} x2={p2.sx} y2={p2.sy} stroke={CLR.accent} strokeWidth={mode === "axial" ? 3 : 3.5} strokeLinecap="round" />
+          {mode === "model" && <text x={(p1.sx + p2.sx) / 2 + nx * 10} y={(p1.sy + p2.sy) / 2 + ny * 10 + 3} fill={CLR.muted} fontSize={10} textAnchor="middle">{nm}</text>}
         </g>;
-      };
+      })}
 
-      return (
-        <svg width={W} height={H} style={{ display:"block", margin:"0 auto", background:"transparent" }}>
-          {/* Members */}
-          {members.filter(m=>m.near.trim()&&m.far.trim()).map((m,i) => {
-            const n1 = allNodes[m.near.trim()], n2 = allNodes[m.far.trim()];
-            if (!n1||!n2) return null;
-            const {sx:x1,sy:y1} = toSvg(n1.x, n1.z);
-            const {sx:x2,sy:y2} = toSvg(n2.x, n2.z);
-            const f = forceMap[m.name||`${m.near}-${m.far}`];
-            const stroke = f===undefined ? CLR.muted : f > 1e-6 ? CLR.orange : f < -1e-6 ? CLR.accent : CLR.muted;
-            const sw = f===undefined ? 1.5 : Math.max(1.5, Math.min(4, 1.5 + Math.abs(f)/20));
-            return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={stroke} strokeWidth={sw} strokeLinecap="round" />;
-          })}
-          {/* Deformed shape overlay */}
-          {displacements && members.filter(m=>m.near.trim()&&m.far.trim()).map((m,i) => {
-            const n1 = allNodes[m.near.trim()], n2 = allNodes[m.far.trim()];
-            if (!n1||!n2) return null;
-            const d1 = dispMap[m.near.trim()], d2 = dispMap[m.far.trim()];
-            if (!d1||!d2) return null;
-            const {sx:x1,sy:y1} = toSvg(n1.x + (d1.x||0)*defScale, n1.z + (d1.z||0)*defScale);
-            const {sx:x2,sy:y2} = toSvg(n2.x + (d2.x||0)*defScale, n2.z + (d2.z||0)*defScale);
-            return <line key={"d"+i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={CLR.violet} strokeWidth={1} strokeDasharray="4,3" opacity={0.6} />;
-          })}
-          {/* Nodes */}
-          {Object.entries(allNodes).map(([nm, nd]) => {
-            const {sx, sy} = toSvg(nd.x, nd.z);
-            const supportObj = supports.find(s => s.joint.trim() === nm);
-            const isSupport = !!supportObj;
-            return (
-              <g key={nm}>
-                <SpringSupports s={supportObj} x={sx} y={sy} />
-                <circle cx={sx} cy={sy} r={isSupport?5:4} fill={isSupport?CLR.green:CLR.accent} stroke={CLR.bg} strokeWidth={1.5} />
-                <text x={sx} y={sy-8} textAnchor="middle" fontSize={10} fill={CLR.text} fontFamily="monospace">{nm}</text>
-              </g>
-            );
-          })}
-          {/* Load arrows */}
-          {joints.map((j,i) => {
-            if (!j.joint.trim()) return null;
-            const nd = allNodes[j.joint.trim()];
-            if (!nd) return null;
-            const {sx,sy} = toSvg(nd.x, nd.z);
-            const Px = j.Px===null||j.Px===undefined||j.Px==="" ? 0 : +j.Px;
-            const Pz = j.Pz===null||j.Pz===undefined||j.Pz==="" ? 0 : +j.Pz;
-            const arrowLen = 18;
-            const els = [];
-            if (Math.abs(Px) > 1e-10) {
-              const dir = Px > 0 ? 1 : -1;
-              els.push(
-                <g key="px">
-                  <line x1={sx} y1={sy} x2={sx + dir*arrowLen} y2={sy} stroke={CLR.yellow} strokeWidth={2} />
-                  <polygon points={`${sx+dir*arrowLen},${sy} ${sx+dir*(arrowLen-6)},${sy-4} ${sx+dir*(arrowLen-6)},${sy+4}`} fill={CLR.yellow} />
-                  <text x={sx+dir*(arrowLen+8)} y={sy+4} fontSize={9} fill={CLR.yellow} textAnchor="middle">{Math.abs(Px)}</text>
-                </g>
-              );
-            }
-            if (Math.abs(Pz) > 1e-10) {
-              const dir = Pz > 0 ? -1 : 1;
-              els.push(
-                <g key="pz">
-                  <line x1={sx} y1={sy} x2={sx} y2={sy + dir*arrowLen} stroke={CLR.yellow} strokeWidth={2} />
-                  <polygon points={`${sx},${sy+dir*arrowLen} ${sx-4},${sy+dir*(arrowLen-6)} ${sx+4},${sy+dir*(arrowLen-6)}`} fill={CLR.yellow} />
-                  <text x={sx+12} y={sy+dir*(arrowLen+4)} fontSize={9} fill={CLR.yellow}>{Math.abs(Pz)}</text>
-                </g>
-              );
-            }
-            return <g key={i}>{els}</g>;
-          })}
-          {/* Legend */}
-          <g transform="translate(10,10)">
-            <line x1={0} y1={4} x2={20} y2={4} stroke={CLR.orange} strokeWidth={2.5} />
-            <text x={24} y={8} fontSize={9} fill={CLR.orange}>Tension</text>
-            <line x1={0} y1={16} x2={20} y2={16} stroke={CLR.accent} strokeWidth={2.5} />
-            <text x={24} y={20} fontSize={9} fill={CLR.accent}>Compression</text>
-            <line x1={0} y1={28} x2={20} y2={28} stroke={CLR.violet} strokeWidth={1} strokeDasharray="4,3" />
-            <text x={24} y={32} fontSize={9} fill={CLR.violet}>Deformed (×{defScale})</text>
-          </g>
-        </svg>
-      );
-    }
+      {/* supports */}
+      {supports.map((s, i) => { const nd = nodes[s.joint.trim()]; if (!nd) return null; const p = P(nd.x, nd.z); return <SupportGlyph key={"s" + i} s={s} x={p.sx} y={p.sy} />; })}
 
-    // ── INPUTS VIEW ───────────────────────────────────────────────────────────
-    function InputsView({ supports, setSupports, joints, setJoints, members, setMembers, units, setUnits, loadCases, setLoadCases, activeLoadCaseId, setActiveLoadCaseId, combos, setCombos, onCalculate }) {
-      const nextSupId = useRef(supports.length + 1);
-      const nextJntId = useRef(joints.length + 1);
-      const nextMemId = useRef(members.length + 1);
-      const u = UNIT_SETS[units];
+      {/* nodes */}
+      {names.map(k => { const p = P(nodes[k].x, nodes[k].z), isS = supports.some(s => s.joint.trim() === k); return (
+        <g key={k}><title>{`Joint ${k}: x = ${nodes[k].x}, z = ${nodes[k].z}`}</title>
+          <circle cx={p.sx} cy={p.sy} r={isS ? 5.5 : 5} fill={CLR.green} stroke={CLR.accent} strokeWidth={1.5} />
+          <text x={p.sx + 9} y={p.sy - 8} fill={CLR.text} fontSize={11} fontWeight="700">{k}</text>
+        </g>); })}
 
-      // Support helpers
-      const updateSup = (id, field, val) => setSupports(prev => prev.map(s => s.id===id ? {...s,[field]:val} : s));
-      const addSup = () => { nextSupId.current++; setSupports(prev => [...prev, {id:nextSupId.current, joint:"", x:"", z:"", type:"Pinned", kx:0, kz:0}]); };
-      const delSup = id => setSupports(prev => prev.filter(s => s.id!==id));
+      {/* applied loads (model figure only) */}
+      {mode === "model" && joints.map((j, i) => {
+        const nd = nodes[j.joint.trim()]; if (!nd) return null; const p = P(nd.x, nd.z), Px = num(j.Px), Pz = num(j.Pz), out = [];
+        if (Math.abs(Px) > 1e-10) out.push(arrow("x" + i, p.sx - Math.sign(Px) * 44, p.sy, Math.sign(Px) * 36, 0, `Px = ${Px}`, CLR.red, CLR.redSoft));
+        if (Math.abs(Pz) > 1e-10) out.push(arrow("z" + i, p.sx, p.sy + Math.sign(Pz) * 44, 0, -Math.sign(Pz) * 36, `Pz = ${Pz}`, CLR.red, CLR.redSoft));
+        return <g key={"L" + i}><title>{`Load at ${j.joint}: Px = ${Px}, Pz = ${Pz} ${u.load}`}</title>{out}</g>;
+      })}
+    </svg>
+  );
+}
 
-      // Joint helpers
-      const updateJnt = (id, field, val) => setJoints(prev => prev.map(j => j.id===id ? {...j,[field]:val} : j));
-      const addJnt = () => { nextJntId.current++; setJoints(prev => [...prev, {id:nextJntId.current, joint:"", x:"", z:"", Px:null, Pz:null}]); };
-      const delJnt = id => setJoints(prev => prev.filter(j => j.id!==id));
+// Quick model counts for the live caption (display only; the solver recomputes its own)
+function modelStats(supports, joints, members, loadCase) {
+  const names = new Set();
+  supports.forEach(s => s.joint.trim() && names.add(s.joint.trim()));
+  joints.forEach(j => j.joint.trim() && names.add(j.joint.trim()));
+  members.forEach(m => { m.near.trim() && names.add(m.near.trim()); m.far.trim() && names.add(m.far.trim()); });
+  const b = members.filter(m => m.near.trim() && m.far.trim() && m.near.trim() !== m.far.trim()).length;
+  const r = supports.reduce((a, s) => a + (s.type === "Pinned" || s.type === "Fixed" ? 2 : s.type === "Roller-X" || s.type === "Roller-Z" ? 1 : 0), 0);
+  const j = names.size;
+  let sumP = 0; joints.forEach(jt => { const L = jointLoadsFor(loadCase, jt.joint.trim()); sumP += Math.hypot(L.Px, L.Pz); });
+  return { b, r, j, sumP, status: b + r < 2 * j ? "Unstable" : b + r === 2 * j ? "Stable and Determinate" : "Stable and Indeterminate" };
+}
 
-      // Member helpers
-      const updateMem = (id, field, val) => setMembers(prev => prev.map(m => m.id===id ? {...m,[field]:val} : m));
-      const addMem = () => { nextMemId.current++; setMembers(prev => [...prev, {id:nextMemId.current, near:"", far:"", name:"", E:4176000, A:1}]); };
-      const delMem = id => setMembers(prev => prev.filter(m => m.id!==id));
+// ── INPUTS TAB ───────────────────────────────────────────────────────────
+const nextId = arr => Math.max(0, ...arr.map(r => r.id || 0)) + 1;
+const CardHead = ({ title, onAdd, children }) => (
+  <div style={S.h2}><span>{title}</span><span style={{ display: "flex", gap: 8, alignItems: "center", textTransform: "none", letterSpacing: 0 }}>{children}{onAdd && <button style={{ ...S.btn("secondary"), padding: "3px 12px", fontSize: 11 }} onClick={onAdd}>+ Add</button>}</span></div>
+);
+const DelBtn = ({ onClick }) => <button style={{ ...S.btn("danger"), padding: "3px 9px", fontSize: 10 }} onClick={onClick} title="Delete row">✕</button>;
+const Cell = ({ children }) => <td style={S.td}>{children}</td>;
 
-      const activeLoadCase = loadCases.find(lc => lc.id === activeLoadCaseId) || loadCases[0];
+function InputsView({ M, setM, onCalculate, activeLC, u }) {
+  const { supports, joints, members, loadCases, units } = M;
+  const upd = (key, id, field, val) => setM(m => ({ ...m, [key]: m[key].map(r => r.id === id ? { ...r, [field]: val } : r) }));
+  const del = (key, id) => setM(m => ({ ...m, [key]: m[key].filter(r => r.id !== id) }));
+  const add = (key, row) => setM(m => ({ ...m, [key]: [...m[key], { id: nextId(m[key]), ...row }] }));
+  const setActive = id => setM(m => ({ ...m, activeLoadCaseId: id }));
+  const addLC = () => setM(m => { const id = nextId(m.loadCases); return { ...m, loadCases: [...m.loadCases, { id, name: `LC${id}`, type: "Dead", jointLoads: {} }], activeLoadCaseId: id }; });
+  const delLC = id => setM(m => m.loadCases.length > 1 ? { ...m, loadCases: m.loadCases.filter(l => l.id !== id), activeLoadCaseId: m.activeLoadCaseId === id ? m.loadCases.find(l => l.id !== id).id : m.activeLoadCaseId } : m);
+  const setJointLoad = (joint, field, val) => setM(m => ({ ...m, loadCases: m.loadCases.map(lc => lc.id !== m.activeLoadCaseId ? lc : { ...lc, jointLoads: { ...(lc.jointLoads || {}), [joint]: { ...jointLoadsFor(lc, joint), [field]: val === "" ? "" : +val } } }) }));
+  const st = modelStats(supports, joints, members, activeLC);
+  const loaded = applyJointLoads(joints, activeLC.jointLoads || {});
+  const inp = (val, onChange, extra = {}) => <input style={S.input} value={val} onChange={e => onChange(e.target.value)} {...extra} />;
+  const numIn = (val, onChange, extra = {}) => inp(val, onChange, { type: "number", step: "any", ...extra });
 
-      const updateLC = (id, field, val) => setLoadCases(prev => prev.map(lc => lc.id===id ? {...lc, [field]:val} : lc));
-      const addLC = () => {
-        const id = Math.max(0, ...loadCases.map(lc => lc.id)) + 1;
-        setLoadCases(prev => [...prev, { id, name:`LC${id}`, type:"Dead", jointLoads:{} }]);
-        setActiveLoadCaseId(id);
-      };
-      const delLC = id => {
-        setLoadCases(prev => prev.length > 1 ? prev.filter(lc => lc.id !== id) : prev);
-        if (activeLoadCaseId === id) setActiveLoadCaseId(loadCases[0]?.id || 1);
-      };
-      const updateJointLoad = (joint, field, val) => {
-        setLoadCases(prev => prev.map(lc => {
-          if (lc.id !== activeLoadCaseId) return lc;
-          const current = jointLoadsFor(lc, joint);
-          return {
-            ...lc,
-            jointLoads: {
-              ...(lc.jointLoads || {}),
-              [joint]: { ...current, [field]: val === "" ? "" : +val }
-            }
-          };
-        }));
-      };
-
-      const updateCombo = (id, field, val) => setCombos(prev => prev.map(c => c.id===id ? {...c, [field]:val} : c));
-      const updateComboFactor = (id, key, val) => setCombos(prev => prev.map(c => c.id===id ? {...c, factors:{...c.factors, [key]: +val || 0}} : c));
-      const addCombo = () => {
-        const id = Math.max(0, ...combos.map(c => c.id)) + 1;
-        setCombos(prev => [...prev, { id, name:`Combo ${id}`, enabled:true, factors:{D:1, L:0, S:0, W:0, E:0} }]);
-      };
-      const delCombo = id => setCombos(prev => prev.length > 1 ? prev.filter(c => c.id !== id) : prev);
-
-      const resetDefault = () => {
-        setSupports(DEFAULT_SUPPORTS);
-        setJoints(DEFAULT_JOINTS);
-        setMembers(DEFAULT_MEMBERS);
-        setLoadCases(DEFAULT_LOAD_CASES);
-        setCombos(DEFAULT_COMBOS);
-        setActiveLoadCaseId(DEFAULT_LOAD_CASES[0].id);
-        nextSupId.current = DEFAULT_SUPPORTS.length + 1;
-        nextJntId.current = DEFAULT_JOINTS.length + 1;
-        nextMemId.current = DEFAULT_MEMBERS.length + 1;
-      };
-
-      return (
+  return (
+    <div>
+      <div className="screen-only" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.25rem", flexWrap: "wrap" }}>
         <div>
-          {/* Header row */}
-          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:"1.5rem", flexWrap:"wrap" }}>
-            <div>
-              <div style={{ fontSize:22, fontWeight:800, color:CLR.text, letterSpacing:"-0.02em" }}>Truss Inputs</div>
-              <div style={{ color:CLR.muted, fontSize:12, marginTop:2 }}>Define supports, joints (loaded or not), and members. x-axis = horizontal, z-axis = vertical.</div>
-            </div>
-            <div style={{ marginLeft:"auto", display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-              <span style={{ color:CLR.muted, fontSize:12 }}>Units:</span>
-              <select style={{ ...S.select, width:"auto", padding:"6px 10px" }} value={units} onChange={e=>setUnits(e.target.value)}>
-                {Object.keys(UNIT_SETS).map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-              <button style={S.btn("ghost")} onClick={resetDefault}>↺ Reset Example</button>
-              <button style={{ ...S.btn("primary"), padding:"8px 24px", fontSize:13 }} onClick={onCalculate}>▶ Analyze</button>
-            </div>
-          </div>
-
-          <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
-            <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}`, gap:12 }}>
-              <div>
-                <div style={S.h2}>Load Case Manager</div>
-                <div style={{ color:CLR.muted, fontSize:11 }}>Choose the active load case, then enter joint loads in Table 2.</div>
-              </div>
-              <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addLC}>+ Add Case</button>
-            </div>
-            <div style={{ overflowX:"auto" }}>
-              <table style={S.table}>
-                <thead><tr>
-                  <th style={S.th}>Active</th>
-                  <th style={S.th}>Case</th>
-                  <th style={S.th}>Load Type</th>
-                  <th style={S.th}>—</th>
-                </tr></thead>
-                <tbody>
-                  {loadCases.map((lc,i)=>(
-                    <tr key={lc.id} style={{ background:i%2===0?"transparent":"#ffffff05" }}>
-                      <td style={S.td}><input type="radio" checked={activeLoadCaseId===lc.id} onChange={()=>setActiveLoadCaseId(lc.id)} /></td>
-                      <td style={S.td}><input style={S.input} value={lc.name} onChange={e=>updateLC(lc.id,"name",e.target.value)} /></td>
-                      <td style={S.td}>
-                        <select style={S.select} value={lc.type} onChange={e=>updateLC(lc.id,"type",e.target.value)}>
-                          {LOAD_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
-                        </select>
-                      </td>
-                      <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delLC(lc.id)}>✕</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Load combination manager removed: v0.3.3 default uses LC1 only. */}
-
-          <div className="screen-only" style={{ ...S.card, marginBottom:"1.5rem" }}>
-            <div style={{ display:"flex", alignItems:"center", marginBottom:"1rem", gap:16 }}>
-              <div>
-                <div style={S.h2}>Figure 1: Truss Preview</div>
-                <div style={{ color:CLR.muted, fontSize:11 }}>
-                  Live geometry preview from the current supports, joints, members, and active load case joint loads.
-                </div>
-              </div>
-            </div>
-            <TrussDiagram
-              supports={supports}
-              joints={applyJointLoads(joints, activeLoadCase?.jointLoads || {})}
-              members={members}
-              results={null}
-              displacements={null}
-              scale={200}
-            />
-          </div>
-
-          <div className="report-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.5rem" }}>
-            {/* Table 1: Supports */}
-            <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden" }}>
-              <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}`, gap:12 }}>
-                <div style={S.h2}>Table 1: Supports</div>
-                <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addSup}>+ Add</button>
-              </div>
-              <div style={{ overflowX:"auto" }}>
-                <table style={S.table}>
-                  <thead><tr>
-                    <th style={S.th}>Joint</th>
-                    <th style={S.th}>x [{u.dist}]</th>
-                    <th style={S.th}>z [{u.dist}]</th>
-                    <th style={S.th}>Type</th>
-                    <th style={S.th}>kx [{u.load}/{u.dist}]</th>
-                    <th style={S.th}>kz [{u.load}/{u.dist}]</th>
-                    <th style={S.th}>—</th>
-                  </tr></thead>
-                  <tbody>
-                    {supports.map((s,i) => (
-                      <tr key={s.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
-                        <td style={S.td}><input style={S.input} value={s.joint} onChange={e=>updateSup(s.id,"joint",e.target.value)} /></td>
-                        <td style={S.td}><input style={S.input} type="number" step="any" value={s.x} onChange={e=>updateSup(s.id,"x",e.target.value)} /></td>
-                        <td style={S.td}><input style={S.input} type="number" step="any" value={s.z} onChange={e=>updateSup(s.id,"z",e.target.value)} /></td>
-                        <td style={S.td}>
-                          <select style={S.select} value={s.type} onChange={e=>updateSup(s.id,"type",e.target.value)}>
-                            <option>Pinned</option>
-                            <option>Roller-X</option>
-                            <option>Roller-Z</option>
-                            <option>Fixed</option>
-                            <option>Free</option>
-                          </select>
-                        </td>
-                        <td style={S.td}><input style={S.input} type="number" min="0" step="any" value={s.kx || 0} onChange={e=>updateSup(s.id,"kx",e.target.value)} title="Horizontal translational spring stiffness" /></td>
-                        <td style={S.td}><input style={S.input} type="number" min="0" step="any" value={s.kz || 0} onChange={e=>updateSup(s.id,"kz",e.target.value)} title="Vertical translational spring stiffness" /></td>
-                        <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delSup(s.id)}>✕</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Table 4: Units info card */}
-            <div style={{ ...S.card }}>
-              <div style={S.h2}>Table 4: Unit Convention</div>
-              <table style={S.table}>
-                <thead><tr><th style={S.th}>Quantity</th><th style={S.th}>Unit</th></tr></thead>
-                <tbody>
-                  <tr><td style={S.td}>Load (Px, Pz)</td><td style={{ ...S.td, color:CLR.teal }}>{u.load}</td></tr>
-                  <tr style={{ background:"#ffffff05" }}><td style={S.td}>Distance (x, z, L)</td><td style={{ ...S.td, color:CLR.teal }}>{u.dist}</td></tr>
-                  <tr><td style={S.td}>Modulus (E)</td><td style={{ ...S.td, color:CLR.teal }}>{u.load}/{u.dist}²</td></tr>
-                  <tr style={{ background:"#ffffff05" }}><td style={S.td}>Area (A)</td><td style={{ ...S.td, color:CLR.teal }}>{u.dist}²</td></tr>
-                  <tr><td style={S.td}>Spring stiffness (kx, kz)</td><td style={{ ...S.td, color:CLR.teal }}>{u.load}/{u.dist}</td></tr>
-                  <tr style={{ background:"#ffffff05" }}><td style={S.td}>Axial Force</td><td style={{ ...S.td, color:CLR.teal }}>{u.load}</td></tr>
-                  <tr style={{ background:"#ffffff05" }}><td style={S.td}>Sign convention</td><td style={{ ...S.td, color:CLR.yellow, fontSize:10 }}>+x right · +z up</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Table 2: Joints */}
-          <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
-            <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}`, gap:12 }}>
-              <div style={S.h2}>Table 2: Joints (Free Nodes)</div>
-              <div style={{ color:CLR.muted, fontSize:11, marginLeft:8 }}>Loads shown for active case: <strong style={{color:CLR.yellow}}>{activeLoadCase?.name}</strong> / {activeLoadCase?.type}.</div>
-              <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addJnt}>+ Add</button>
-            </div>
-            <div style={{ overflowX:"auto" }}>
-              <table style={S.table}>
-                <thead><tr>
-                  <th style={S.th}>Joint</th>
-                  <th style={S.th}>x [{u.dist}]</th>
-                  <th style={S.th}>z [{u.dist}]</th>
-                  <th style={S.th}>Px [{u.load}]</th>
-                  <th style={S.th}>Pz [{u.load}]</th>
-                  <th style={S.th}>—</th>
-                </tr></thead>
-                <tbody>
-                  {joints.map((j,i) => (
-                    <tr key={j.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
-                      <td style={S.td}><input style={S.input} value={j.joint} onChange={e=>updateJnt(j.id,"joint",e.target.value)} /></td>
-                      <td style={S.td}><input style={S.input} type="number" step="any" value={j.x} onChange={e=>updateJnt(j.id,"x",e.target.value)} /></td>
-                      <td style={S.td}><input style={S.input} type="number" step="any" value={j.z} onChange={e=>updateJnt(j.id,"z",e.target.value)} /></td>
-                      <td style={S.td}><input style={S.input} type="number" step="any" placeholder="0" value={jointLoadsFor(activeLoadCase, j.joint.trim()).Px || ""} onChange={e=>updateJointLoad(j.joint.trim(),"Px",e.target.value)} /></td>
-                      <td style={S.td}><input style={S.input} type="number" step="any" placeholder="0" value={jointLoadsFor(activeLoadCase, j.joint.trim()).Pz || ""} onChange={e=>updateJointLoad(j.joint.trim(),"Pz",e.target.value)} /></td>
-                      <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delJnt(j.id)}>✕</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Table 3: Members */}
-          <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
-            <div style={{ display:"flex", alignItems:"center", padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}`, gap:12 }}>
-              <div style={S.h2}>Table 3: Members</div>
-              <button style={{ ...S.btn("ghost"), marginLeft:"auto", padding:"4px 12px", fontSize:11 }} onClick={addMem}>+ Add</button>
-            </div>
-            <div style={{ overflowX:"auto" }}>
-              <table style={S.table}>
-                <thead><tr>
-                  <th style={S.th}>Near</th>
-                  <th style={S.th}>Far</th>
-                  <th style={S.th}>Label</th>
-                  <th style={S.th}>E [{u.load}/{u.dist}²]</th>
-                  <th style={S.th}>A [{u.dist}²]</th>
-                  <th style={S.th}>—</th>
-                </tr></thead>
-                <tbody>
-                  {members.map((m,i) => (
-                    <tr key={m.id} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
-                      <td style={S.td}><input style={S.input} value={m.near} onChange={e=>updateMem(m.id,"near",e.target.value)} /></td>
-                      <td style={S.td}><input style={S.input} value={m.far}  onChange={e=>updateMem(m.id,"far",e.target.value)}  /></td>
-                      <td style={S.td}><input style={S.input} value={m.name} onChange={e=>updateMem(m.id,"name",e.target.value)} /></td>
-                      <td style={S.td}><input style={S.input} type="number" step="any" value={m.E} onChange={e=>updateMem(m.id,"E",e.target.value)} /></td>
-                      <td style={S.td}><input style={S.input} type="number" step="any" value={m.A} onChange={e=>updateMem(m.id,"A",e.target.value)} /></td>
-                      <td style={S.td}><button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:10 }} onClick={()=>delMem(m.id)}>✕</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Warning */}
-          <div style={{ ...S.card, background:"#161b22", fontSize:11, color:CLR.muted }}>
-            <strong style={{ color:CLR.yellow }}>⚠ Notes:</strong>&nbsp;
-            Supports define pinned/roller boundary conditions and optional translational spring stiffnesses kx/kz.
-            Use Type = Free with nonzero kx/kz for a pure spring support. Free joints can carry loads.
-            Nodes referenced in Members that don't appear in Supports or Joints will be treated as free with zero load.
-            Positive forces = Tension; Negative = Compression.
-          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>Truss Inputs</div>
+          <div style={S.smallMuted}>Define supports, joints (loaded or not) and members. x = horizontal, z = vertical (up).</div>
         </div>
-      );
-    }
-
-    // ── RESULTS VIEW ───────────────────────────────────────────────────────────
-    function ResultsView({ result, comboResults, supports, joints, members, units }) {
-      const u = UNIT_SETS[units];
-      const [defScale, setDefScale] = useState(200);
-
-      if (!result) return (
-        <div style={{ textAlign:"center", padding:"4rem", color:CLR.muted }}>
-          <div style={{ fontSize:48, marginBottom:16 }}>🔩</div>
-          <div style={{ fontSize:16, fontWeight:700, color:CLR.text }}>No results yet</div>
-          <div style={{ fontSize:13, marginTop:8 }}>Go to Inputs and press Analyze.</div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={S.smallMuted}>Units</span>
+          <select style={{ ...S.select, width: "auto" }} value={units} onChange={e => setM(m => ({ ...m, units: e.target.value }))}>{Object.keys(UNIT_SETS).map(k => <option key={k}>{k}</option>)}</select>
+          <button style={S.btn("secondary")} onClick={() => setM(defaultModel())}>↺ Reset Example</button>
+          <button style={S.btn("primary")} onClick={onCalculate}>▶ Analyze</button>
         </div>
-      );
+      </div>
 
-      if (result.error) return (
-        <div style={{ ...S.card, border:`1px solid ${CLR.red}44` }}>
-          <div style={{ fontSize:14, fontWeight:700, color:CLR.red, marginBottom:8 }}>✗ Solver Error</div>
-          <div style={{ color:CLR.muted, fontSize:13 }}>{result.error}</div>
-          <div style={{ marginTop:12, fontSize:12, color:CLR.muted }}>
-            b = {result.b} members · r = {result.r} reactions · j = {result.j} joints · b+r = {result.b+result.r} · 2j = {2*result.j}
-          </div>
-          <div style={{ fontSize:12, color:CLR.yellow, marginTop:4 }}>{result.stability}</div>
-        </div>
-      );
-
-      const { results, reactions, displacements, stability, b, r, j, hasDuplicate, hasDupNode } = result;
-
-      return (
-        <div className="report-results-block">
-          <div className="print-report-header">
-            <h1>Truss Analysis Report</h1>
-            <div className="meta">
-              Generated by Trusses v0.3.3 · Units: {u.load}/{u.dist}<br />
-              Status: {stability} · Members b = {b} · Reactions r = {r} · Joints j = {j} · b + r = {b+r} · 2j = {2*j}
-            </div>
-          </div>
-
-          <div className="screen-only" style={{ display:"flex", alignItems:"center", gap:12, marginBottom:"1.5rem", flexWrap:"wrap" }}>
-            <div>
-              <div style={{ fontSize:22, fontWeight:800, color:CLR.text, letterSpacing:"-0.02em" }}>Analysis Results</div>
-              <div style={{ color:CLR.muted, fontSize:12, marginTop:2 }}>Print or save a clean PDF report containing the summary, diagram, forces, reactions, and displacements.</div>
-            </div>
-            <button style={{ ...S.btn("primary"), marginLeft:"auto", padding:"9px 22px", fontSize:13 }} onClick={() => window.print()}>🖨 Print / Save PDF Report</button>
-          </div>
-
-          {/* Summary cards */}
-          <div className="print-avoid" style={{ ...S.card, background:"linear-gradient(135deg,#1c2b3a 0%,#1c2333 100%)", border:`1px solid ${CLR.accent}44`, display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:"1.5rem", marginBottom:"2rem" }}>
-            <div>
-              <div style={{ fontSize:11, color:CLR.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:6 }}>Status</div>
-              <div style={{ fontSize:15, fontWeight:800, color: stability.includes("Unstable")?CLR.red : CLR.green }}>
-                {stability.includes("Unstable") ? "✗" : "✓"} {stability}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize:11, color:CLR.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:6 }}>Members (b)</div>
-              <div style={{ fontSize:28, fontWeight:800, color:CLR.accent, lineHeight:1 }}>{b}</div>
-            </div>
-            <div>
-              <div style={{ fontSize:11, color:CLR.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:6 }}>Reactions (r)</div>
-              <div style={{ fontSize:28, fontWeight:800, color:CLR.teal, lineHeight:1 }}>{r}</div>
-            </div>
-            <div>
-              <div style={{ fontSize:11, color:CLR.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:6 }}>Joints (j)</div>
-              <div style={{ fontSize:28, fontWeight:800, color:CLR.violet, lineHeight:1 }}>{j}</div>
-            </div>
-            <div>
-              <div style={{ fontSize:11, color:CLR.muted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:6 }}>b + r vs 2j</div>
-              <div style={{ fontSize:18, fontWeight:800, color:CLR.yellow }}>{b+r} vs {2*j}</div>
-            </div>
-          </div>
-
-          {/* Load combination summary removed: no default load combinations. */}
-
-          {/* Warnings */}
-          {(hasDuplicate || hasDupNode) && (
-            <div className="print-avoid" style={{ ...S.card, background:"#1f1a10", border:`1px solid ${CLR.yellow}44`, marginBottom:"1.5rem" }}>
-              <div style={{ fontSize:13, fontWeight:700, color:CLR.yellow, marginBottom:6 }}>⚠ Warnings</div>
-              {hasDuplicate && <div style={{ fontSize:12, color:CLR.muted }}>• You've inputted the same member twice (duplicate near–far pair detected).</div>}
-              {hasDupNode   && <div style={{ fontSize:12, color:CLR.muted }}>• Duplicate node coordinates detected.</div>}
-            </div>
-          )}
-
-          {/* Model preview removed from Results page; print report still includes result tables. */}
-
-          <div className="report-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.5rem" }}>
-            {/* Table 1: Axial Forces */}
-            <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden" }}>
-              <div style={{ padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}` }}>
-                <div style={S.h2}>Table 1: Axial Forces</div>
-              </div>
-              <table style={S.table}>
-                <thead><tr>
-                  <th style={S.th}>Member</th>
-                  <th style={S.th}>Force [{u.load}]</th>
-                  <th style={S.th}>Sign</th>
-                </tr></thead>
-                <tbody>
-                  {results.map((r,i) => {
-                    const T = r.force > 1e-6, C = r.force < -1e-6;
-                    return (
-                      <tr key={i} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
-                        <td style={{ ...S.td, fontWeight:700, color:CLR.accent }}>{r.name}</td>
-                        <td style={{ ...S.td, color: T?CLR.orange:C?CLR.accent:CLR.muted, fontWeight:600 }}>{fmt3(Math.abs(r.force))}</td>
-                        <td style={S.td}>
-                          {T && <span style={S.badge(CLR.orange)}>(T)</span>}
-                          {C && <span style={S.badge(CLR.accent)}>(C)</span>}
-                          {!T&&!C && <span style={S.badge(CLR.muted)}>—</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Table 2: Reaction Forces */}
-            <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden" }}>
-              <div style={{ padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}` }}>
-                <div style={S.h2}>Table 2: Reaction Forces</div>
-              </div>
-              <table style={S.table}>
-                <thead><tr>
-                  <th style={S.th}>Joint</th>
-                  <th style={S.th}>Type</th>
-                  <th style={S.th}>Rx [{u.load}]</th>
-                  <th style={S.th}>Rz [{u.load}]</th>
-                  <th style={S.th}>Spring Rx [{u.load}]</th>
-                  <th style={S.th}>Spring Rz [{u.load}]</th>
-                </tr></thead>
-                <tbody>
-                  {reactions.map((r,i) => (
-                    <tr key={i} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
-                      <td style={{ ...S.td, fontWeight:700, color:CLR.green }}>{r.joint}</td>
-                      <td style={S.td}>{r.supportLabel || r.type || "—"}</td>
-                      <td style={{ ...S.td, color: Math.abs(r.Rx)>1e-6?CLR.text:CLR.muted }}>{fmt3(r.Rx)}</td>
-                      <td style={{ ...S.td, color: Math.abs(r.Rz)>1e-6?CLR.text:CLR.muted }}>{fmt3(r.Rz)}</td>
-                      <td style={{ ...S.td, color: Math.abs(r.springRx)>1e-6?CLR.yellow:CLR.muted }}>{fmt3(r.springRx || 0)}</td>
-                      <td style={{ ...S.td, color: Math.abs(r.springRz)>1e-6?CLR.yellow:CLR.muted }}>{fmt3(r.springRz || 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Table 3: Nodal Displacements */}
-          <div className="print-avoid print-table-section" style={{ ...S.card, padding:0, overflow:"hidden" }}>
-            <div style={{ padding:"1rem 1.25rem 0.75rem", borderBottom:`1px solid ${CLR.border}` }}>
-              <div style={S.h2}>Table 3: Nodal Displacements</div>
-            </div>
-            <table style={S.table}>
-              <thead><tr>
-                <th style={S.th}>Joint</th>
-                <th style={S.th}>x [{u.dist}]</th>
-                <th style={S.th}>z [{u.dist}]</th>
-                <th style={S.th}>δx [{u.dist}]</th>
-                <th style={S.th}>δz [{u.dist}]</th>
-              </tr></thead>
-              <tbody>
-                {displacements.map((d,i) => (
-                  <tr key={i} style={{ background: i%2===0?"transparent":"#ffffff05" }}>
-                    <td style={{ ...S.td, fontWeight:700, color:CLR.violet }}>{d.joint}</td>
-                    <td style={{ ...S.td, color:CLR.muted }}>{d.coords.x}</td>
-                    <td style={{ ...S.td, color:CLR.muted }}>{d.coords.z}</td>
-                    <td style={{ ...S.td, color: Math.abs(d.x)>1e-10?CLR.text:CLR.muted }}>{fmtSci(d.x)}</td>
-                    <td style={{ ...S.td, color: Math.abs(d.z)>1e-10?CLR.text:CLR.muted }}>{fmtSci(d.z)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      );
-    }
-
-    // ── THEORY VIEW ───────────────────────────────────────────────────────────
-    function TheoryView() {
-      return (
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.3fr) minmax(0,1fr)", gap: "1.25rem", alignItems: "start" }}>
         <div>
-          <div style={{ ...S.card }}>
-            <div style={S.h2}>Method: Direct Stiffness (Finite Element)</div>
-            <p style={{ fontSize:13, color:CLR.muted, lineHeight:1.7, marginBottom:"1rem" }}>
-              Trusses v0.3.3 solves 2D pin-jointed trusses using the <strong style={{ color:CLR.text }}>Direct Stiffness Method</strong>.
-              Each member is a two-force bar element. The global stiffness equation K·D = Q is assembled from
-              per-member local stiffness matrices. Optional translational spring supports are added directly to the
-              corresponding global diagonal stiffness terms before boundary conditions are applied and the system is solved via Gaussian elimination.
-            </p>
-            <div style={{ ...S.card, background:"#0d1117", fontSize:12, lineHeight:2, color:CLR.teal }}>
-              <div><span style={{ color:CLR.muted }}>Member stiffness (local): </span>  k = EA/L</div>
-              <div><span style={{ color:CLR.muted }}>Direction cosines:         </span>  cₓ = Δx/L,  c_z = Δz/L</div>
-              <div><span style={{ color:CLR.muted }}>Axial force:               </span>  N = (EA/L)·[cₓ c_z -cₓ -c_z]·{"{d}"}</div>
-              <div><span style={{ color:CLR.muted }}>Global system:             </span>  [K]·{"{D}"} = {"{Q}"}</div>
-              <div><span style={{ color:CLR.muted }}>Spring support:            </span>  Kii = Kii + kspring</div>
-              <div><span style={{ color:CLR.muted }}>Spring reaction:           </span>  Rspring = kspring·δ</div>
-              <div><span style={{ color:CLR.muted }}>Stability check:           </span>  b + r vs 2j, with springs adding elastic restraint</div>
-            </div>
+          <div style={S.card}>
+            <CardHead title="Load Cases" onAdd={addLC} />
+            <table style={S.table}><thead><tr><th style={S.th}>Active</th><th style={S.th}>Case</th><th style={S.th}>Load Type</th><th style={S.th}>—</th></tr></thead>
+              <tbody>{loadCases.map(lc => <tr key={lc.id}>
+                <Cell><input type="radio" checked={M.activeLoadCaseId === lc.id} onChange={() => setActive(lc.id)} /></Cell>
+                <Cell>{inp(lc.name, v => upd("loadCases", lc.id, "name", v))}</Cell>
+                <Cell><select style={S.select} value={lc.type} onChange={e => upd("loadCases", lc.id, "type", e.target.value)}>{LOAD_TYPES.map(t => <option key={t}>{t}</option>)}</select></Cell>
+                <Cell><DelBtn onClick={() => delLC(lc.id)} /></Cell></tr>)}</tbody></table>
+            <div style={{ ...S.smallMuted, marginTop: 8 }}>Joint loads in the Joints card belong to the active case.</div>
           </div>
-          <div className="report-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"1.5rem" }}>
-            <div style={{ ...S.card }}>
-              <div style={S.h2}>Support Types</div>
-              <table style={S.table}>
-                <thead><tr><th style={S.th}>Type</th><th style={S.th}>DOFs Fixed</th><th style={S.th}>Reactions</th></tr></thead>
-                <tbody>
-                  {[["Pinned","x, z","Rx, Rz"],["Roller-X","z only","Rz"],["Roller-Z","x only","Rx"],["Fixed","x, z","Rx, Rz"],["Free + kx/kz","none; elastic only","Spring Rx/Rz"]].map(([t,d,r],i)=>(
-                    <tr key={i} style={{ background:i%2===0?"transparent":"#ffffff05" }}>
-                      <td style={{ ...S.td, color:CLR.green, fontWeight:700 }}>{t}</td>
-                      <td style={S.td}>{d}</td>
-                      <td style={{ ...S.td, color:CLR.teal }}>{r}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ ...S.card }}>
-              <div style={S.h2}>Stability & Determinacy</div>
-              <table style={S.table}>
-                <thead><tr><th style={S.th}>Condition</th><th style={S.th}>Classification</th></tr></thead>
-                <tbody>
-                  {[["b + r < 2j","Unstable (mechanism)"],["b + r = 2j","Stable & Determinate"],["b + r > 2j","Stable & Indeterminate"]].map(([c,l],i)=>(
-                    <tr key={i} style={{ background:i%2===0?"transparent":"#ffffff05" }}>
-                      <td style={{ ...S.td, color:CLR.yellow, fontFamily:"monospace" }}>{c}</td>
-                      <td style={{ ...S.td, color:i===0?CLR.red:i===1?CLR.teal:CLR.violet }}>{l}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div style={{ marginTop:12, fontSize:11, color:CLR.muted }}>b = members · r = conventional restrained reactions · j = joints. Springs add elastic stiffness but are not counted as classical restraints in b+r.</div>
-            </div>
+
+          <div style={S.card}>
+            <CardHead title="Supports" onAdd={() => add("supports", { joint: "", x: "", z: "", type: "Pinned", kx: 0, kz: 0 })} />
+            <div style={{ overflowX: "auto" }}><table style={S.table}><thead><tr><th style={S.th}>Joint</th><th style={S.th}>x [{u.dist}]</th><th style={S.th}>z [{u.dist}]</th><th style={S.th}>Type</th><th style={S.th}>kx [{u.load}/{u.dist}]</th><th style={S.th}>kz [{u.load}/{u.dist}]</th><th style={S.th}>—</th></tr></thead>
+              <tbody>{supports.map(s => <tr key={s.id}>
+                <Cell>{inp(s.joint, v => upd("supports", s.id, "joint", v))}</Cell>
+                <Cell>{numIn(s.x, v => upd("supports", s.id, "x", v))}</Cell>
+                <Cell>{numIn(s.z, v => upd("supports", s.id, "z", v))}</Cell>
+                <Cell><select style={S.select} value={s.type} onChange={e => upd("supports", s.id, "type", e.target.value)}>{["Pinned", "Roller-X", "Roller-Z", "Fixed", "Free"].map(t => <option key={t}>{t}</option>)}</select></Cell>
+                <Cell>{numIn(s.kx || 0, v => upd("supports", s.id, "kx", v), { min: 0 })}</Cell>
+                <Cell>{numIn(s.kz || 0, v => upd("supports", s.id, "kz", v), { min: 0 })}</Cell>
+                <Cell><DelBtn onClick={() => del("supports", s.id)} /></Cell></tr>)}</tbody></table></div>
+          </div>
+
+          <div style={S.card}>
+            <CardHead title="Joints (Free Nodes)" onAdd={() => add("joints", { joint: "", x: "", z: "", Px: null, Pz: null })}>
+              <span style={S.smallMuted}>Loads for <b style={{ color: CLR.yellow }}>{activeLC.name}</b> ({activeLC.type})</span></CardHead>
+            <div style={{ overflowX: "auto" }}><table style={S.table}><thead><tr><th style={S.th}>Joint</th><th style={S.th}>x [{u.dist}]</th><th style={S.th}>z [{u.dist}]</th><th style={S.th}>Px [{u.load}]</th><th style={S.th}>Pz [{u.load}]</th><th style={S.th}>—</th></tr></thead>
+              <tbody>{joints.map(j => { const L = jointLoadsFor(activeLC, j.joint.trim()); return <tr key={j.id}>
+                <Cell>{inp(j.joint, v => upd("joints", j.id, "joint", v))}</Cell>
+                <Cell>{numIn(j.x, v => upd("joints", j.id, "x", v))}</Cell>
+                <Cell>{numIn(j.z, v => upd("joints", j.id, "z", v))}</Cell>
+                <Cell>{numIn(L.Px || "", v => setJointLoad(j.joint.trim(), "Px", v), { placeholder: "0" })}</Cell>
+                <Cell>{numIn(L.Pz || "", v => setJointLoad(j.joint.trim(), "Pz", v), { placeholder: "0" })}</Cell>
+                <Cell><DelBtn onClick={() => del("joints", j.id)} /></Cell></tr>; })}</tbody></table></div>
+          </div>
+
+          <div style={S.card}>
+            <CardHead title="Members" onAdd={() => add("members", { near: "", far: "", name: "", E: 4176000, A: 1 })} />
+            <div style={{ overflowX: "auto" }}><table style={S.table}><thead><tr><th style={S.th}>Near</th><th style={S.th}>Far</th><th style={S.th}>Label</th><th style={S.th}>E [{u.load}/{u.dist}²]</th><th style={S.th}>A [{u.dist}²]</th><th style={S.th}>—</th></tr></thead>
+              <tbody>{members.map(m => <tr key={m.id}>
+                <Cell>{inp(m.near, v => upd("members", m.id, "near", v))}</Cell>
+                <Cell>{inp(m.far, v => upd("members", m.id, "far", v))}</Cell>
+                <Cell>{inp(m.name, v => upd("members", m.id, "name", v))}</Cell>
+                <Cell>{numIn(m.E, v => upd("members", m.id, "E", v))}</Cell>
+                <Cell>{numIn(m.A, v => upd("members", m.id, "A", v))}</Cell>
+                <Cell><DelBtn onClick={() => del("members", m.id)} /></Cell></tr>)}</tbody></table></div>
           </div>
         </div>
-      );
-    }
 
-    // ── APP ────────────────────────────────────────────────────────────────────
-    function App() {
-      const [tab, setTab] = useState("inputs");
-      const [supports, setSupports] = useState(DEFAULT_SUPPORTS);
-      const [joints, setJoints] = useState(DEFAULT_JOINTS);
-      const [members, setMembers] = useState(DEFAULT_MEMBERS);
-      const [units, setUnits] = useState(DEFAULT_UNITS);
-      const [loadCases, setLoadCases] = useState(DEFAULT_LOAD_CASES);
-      const [activeLoadCaseId, setActiveLoadCaseId] = useState(DEFAULT_LOAD_CASES[0].id);
-      const [combos, setCombos] = useState(DEFAULT_COMBOS);
-      const [result, setResult] = useState(null);
-      const [comboResults, setComboResults] = useState([]);
-
-      const saveWorkingFile = () => {
-        // Save the current truss model by producing a new HTML file with the same source code,
-        // but with the DEFAULT_* input constants replaced by the live React state.
-        // The downloaded file opens like a fresh app, with this model becoming the new default.
-        const clone = document.documentElement.cloneNode(true);
-        const root = clone.querySelector("#root");
-        if (root) root.innerHTML = "";
-        let html = "<!DOCTYPE html>\n" + clone.outerHTML;
-
-        const safeLiteral = (value) => JSON.stringify(value, null, 2)
-          .replace(/</g, "\\u003C")
-          .replace(/>/g, "\\u003E")
-          .replace(/&/g, "\\u0026")
-          .replace(/\u2028/g, "\\u2028")
-          .replace(/\u2029/g, "\\u2029");
-
-        const replaceConstAssignment = (source, constName, literal) => {
-          const marker = "const " + constName + " =";
-          const start = source.indexOf(marker);
-          if (start < 0) return source;
-          let i = start + marker.length;
-          while (i < source.length && /\s/.test(source[i])) i++;
-          let depth = 0;
-          let quote = null;
-          let escaped = false;
-          let end = i;
-          for (; end < source.length; end++) {
-            const ch = source[end];
-            if (quote) {
-              if (escaped) {
-                escaped = false;
-              } else if (ch === "\\") {
-                escaped = true;
-              } else if (ch === quote) {
-                quote = null;
-              }
-              continue;
-            }
-            if (ch === '"' || ch === "'" || ch === "`") {
-              quote = ch;
-            } else if (ch === "[" || ch === "{") {
-              depth++;
-            } else if (ch === "]" || ch === "}") {
-              depth--;
-            } else if (ch === ";" && depth <= 0) {
-              end++;
-              break;
-            }
-          }
-          return source.slice(0, start) + "const " + constName + " = " + literal + ";" + source.slice(end);
-        };
-
-        const savedSupports = JSON.parse(JSON.stringify(supports));
-        const savedJoints = JSON.parse(JSON.stringify(joints));
-        const savedMembers = JSON.parse(JSON.stringify(members));
-        const savedLoadCases = JSON.parse(JSON.stringify(loadCases));
-        const savedCombos = JSON.parse(JSON.stringify(combos));
-
-        html = replaceConstAssignment(html, "DEFAULT_UNITS", safeLiteral(units));
-        html = replaceConstAssignment(html, "DEFAULT_SUPPORTS", safeLiteral(savedSupports));
-        html = replaceConstAssignment(html, "DEFAULT_JOINTS", safeLiteral(savedJoints));
-        html = replaceConstAssignment(html, "DEFAULT_MEMBERS", safeLiteral(savedMembers));
-        html = replaceConstAssignment(html, "DEFAULT_LOAD_CASES", safeLiteral(savedLoadCases));
-        html = replaceConstAssignment(html, "DEFAULT_COMBOS", safeLiteral(savedCombos));
-
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-        const blob = new Blob([html], { type:"text/html;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Trusses_v0_3_3_working_${timestamp}.html`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      };
-
-      const handleCalculate = () => {
-        const activeLoadCase = loadCases.find(lc => lc.id === activeLoadCaseId) || loadCases[0];
-        const res = runLoadCaseAnalysis(supports, joints, members, activeLoadCase);
-        const comboRes = combos.filter(c => c.enabled).map(c => ({
-          id: c.id,
-          name: c.name,
-          result: runCombinationAnalysis(supports, joints, members, loadCases, c)
-        }));
-        setResult(res);
-        setComboResults(comboRes);
-        setTab("results");
-      };
-
-      const tabs = [
-        { id:"inputs",  label:"Inputs" },
-        { id:"results", label:"Results" },
-        { id:"theory",  label:"Theory" },
-      ];
-
-      return (
-        <div style={S.app}>
-          <header style={S.header}>
-            <div>
-              <div style={{ fontSize:16, fontWeight:800, color:CLR.accent, letterSpacing:"0.05em" }}>Trusses v0.3.3</div>
-              <div style={{ fontSize:10, color:CLR.muted, letterSpacing:"0.1em" }}>STRUCTURAL ANALYSIS · DIRECT STIFFNESS</div>
+        <div style={{ position: "sticky", top: 92 }}>
+          <div style={S.card}>
+            <CardHead title="Figure 1: Live Truss Preview" />
+            <TrussFigure supports={supports} joints={loaded} members={members} mode="model" u={u} />
+            <DiagramLegend items={[[CLR.accent, "━ Member"], [CLR.green, "● Joint / support"], [CLR.red, "→ Joint load"], [CLR.yellow, "∿ Spring (kx, kz)"]]} />
+            <div style={{ ...S.smallMuted, marginTop: 8, textAlign: "center", fontFamily: MONO }}>
+              b = {st.b} · r = {st.r} · j = {st.j} · b + r = {st.r + st.b} vs 2j = {2 * st.j} · {st.status} · Σ|P| = {fnum(st.sumP, 2)} {u.load}
             </div>
-            <nav style={S.nav}>
-              {tabs.map(t => (
-                <button key={t.id} style={S.navBtn(tab===t.id)} onClick={() => setTab(t.id)}>
-                  {t.label}
-                  {t.id==="results" && result && !result.error && <span style={{ marginLeft:6, ...S.badge(CLR.green), fontSize:9, padding:"1px 5px" }}>✓</span>}
-                  {t.id==="results" && result && result.error  && <span style={{ marginLeft:6, ...S.badge(CLR.red),   fontSize:9, padding:"1px 5px" }}>✗</span>}
-                </button>
-              ))}
-            </nav>
-            <button style={{ ...S.btn("secondary"), marginLeft:12, whiteSpace:"nowrap" }} onClick={saveWorkingFile}>💾 Save Working File</button>
-          </header>
-          <main style={S.main}>
-            {tab==="inputs"  && <InputsView  supports={supports} setSupports={setSupports} joints={joints} setJoints={setJoints} members={members} setMembers={setMembers} units={units} setUnits={setUnits} loadCases={loadCases} setLoadCases={setLoadCases} activeLoadCaseId={activeLoadCaseId} setActiveLoadCaseId={setActiveLoadCaseId} combos={combos} setCombos={setCombos} onCalculate={handleCalculate} />}
-            {tab==="results" && <ResultsView result={result} comboResults={comboResults} supports={supports} joints={applyJointLoads(joints, (loadCases.find(lc=>lc.id===activeLoadCaseId)||loadCases[0]).jointLoads || {})} members={members} units={units} />}
-            {tab==="theory"  && <TheoryView />}
-          </main>
+          </div>
+          <div style={S.card}>
+            <CardHead title="Unit Convention" />
+            <table style={S.table}><tbody>
+              {[["Load (Px, Pz), axial force", u.load], ["Distance (x, z, L)", u.dist], ["Modulus E", `${u.load}/${u.dist}²`], ["Area A", `${u.dist}²`], ["Spring k", `${u.load}/${u.dist}`], ["Sign convention", "+x right · +z up · tension +"]].map(([a, b]) => <tr key={a}><td style={{ ...S.td, textAlign: "left" }}>{a}</td><td style={{ ...S.td, color: CLR.accentSoft }}>{b}</td></tr>)}
+            </tbody></table>
+            <div style={{ ...S.smallMuted, marginTop: 8, lineHeight: 1.6 }}>Use Type = Free with nonzero kx/kz for a pure elastic support. Nodes used only in Members are treated as free with zero load.</div>
+          </div>
         </div>
-      );
-    }
+      </div>
+    </div>
+  );
+}
 
-    ReactDOM.render(<App />, document.getElementById("root"));
+// ── RESULTS TAB ──────────────────────────────────────────────────────────
+// Static-equilibrium residuals (ADDED CHECK, not in the v0.3.3 source — see Theory, Equation 8).
+function equilibriumCheck(result, loadedJoints) {
+  const at = {}; result.displacements.forEach(d => { at[d.joint] = d.coords; });
+  let Px = 0, Pz = 0, Mp = 0, Rx = 0, Rz = 0, Mr = 0, mag = 0;
+  loadedJoints.forEach(j => { const c = at[j.joint.trim()] || { x: 0, z: 0 }, fx = num(j.Px), fz = num(j.Pz); Px += fx; Pz += fz; Mp += c.x * fz - c.z * fx; mag += Math.hypot(fx, fz); });
+  result.reactions.forEach(r => { const c = at[r.joint] || { x: 0, z: 0 }; Rx += r.Rx; Rz += r.Rz; Mr += c.x * r.Rz - c.z * r.Rx; });
+  const span = Math.max(1, ...Object.values(at).map(c => Math.max(Math.abs(c.x), Math.abs(c.z))));
+  const tol = 1e-6 * Math.max(1, mag);
+  const rows = [["ΣFx", Px, Rx, Px - Rx, tol], ["ΣFz", Pz, Rz, Pz - Rz, tol], ["ΣM about origin", Mp, Mr, Mp - Mr, tol * span]];
+  return { rows, ok: rows.every(r => Math.abs(r[3]) <= r[4]) };
+}
+
+function ResultsView({ result, supports, joints, members, units, loadCaseName }) {
+  const u = UNIT_SETS[units];
+  const [defScale, setDefScale] = useState(200);
+  if (!result) return <div style={{ ...S.card, textAlign: "center", padding: "3rem", color: CLR.muted }}><div style={{ fontSize: 16, fontWeight: 700, color: CLR.text }}>No results yet</div><div style={{ fontSize: 13, marginTop: 8 }}>Go to Inputs and press Analyze.</div></div>;
+  if (result.error) return <div style={{ ...S.card, border: `1px solid ${CLR.red}66` }}><div style={{ fontWeight: 700, color: CLR.red, marginBottom: 8 }}>Solver error</div><div style={{ color: CLR.muted, fontSize: 13 }}>{result.error}</div><div style={{ marginTop: 10, fontSize: 12, color: CLR.muted, fontFamily: MONO }}>b = {result.b} · r = {result.r} · j = {result.j} · b + r = {result.b + result.r} vs 2j = {2 * result.j} · {result.stability}</div></div>;
+  const { results, reactions, displacements, stability, b, r, j, hasDuplicate, hasDupNode } = result;
+  const stable = !stability.includes("Unstable");
+  const eq = equilibriumCheck(result, joints);
+  const Stat = ({ label, children }) => <div><div style={{ ...S.smallMuted, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{label}</div>{children}</div>;
+  const big = c => ({ fontSize: 26, fontWeight: 700, color: c, fontFamily: MONO, lineHeight: 1 });
+  const Table = ({ title, cap, head, rows }) => (
+    <div className="print-avoid" style={S.card}>
+      <div style={S.h2}><span>{title}</span><span style={{ ...S.smallMuted, textTransform: "none", letterSpacing: 0 }}>{cap}</span></div>
+      <div style={{ overflowX: "auto" }}><table style={S.table}><thead><tr>{head.map((h, i) => <th key={i} style={S.th}>{h}</th>)}</tr></thead><tbody>{rows}</tbody></table></div>
+    </div>);
+
+  return (
+    <div>
+      <div className="screen-only" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: "1.25rem", flexWrap: "wrap" }}>
+        <div><div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>Analysis Results</div><div style={S.smallMuted}>Load case {loadCaseName}. Use Print / PDF in the header for the report.</div></div>
+      </div>
+
+      <div className="print-avoid" style={{ ...S.card, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "1.25rem" }}>
+        <Stat label="Overall status"><span style={S.badge(stable ? CLR.green : CLR.red)}>{stable ? "STABLE" : "UNSTABLE"}</span><div style={{ ...S.smallMuted, marginTop: 6 }}>{stability}</div></Stat>
+        <Stat label="Members (b)"><div style={big(CLR.accent)}>{b}</div></Stat>
+        <Stat label="Reactions (r)"><div style={big(CLR.green)}>{r}</div></Stat>
+        <Stat label="Joints (j)"><div style={big(CLR.accentSoft)}>{j}</div></Stat>
+        <Stat label="b + r vs 2j"><div style={{ ...big(CLR.yellow), fontSize: 18 }}>{b + r} vs {2 * j}</div></Stat>
+        <Stat label="Equilibrium (Eq. 8)"><span style={S.badge(eq.ok ? CLR.green : CLR.red)}>{eq.ok ? "PASSED" : "FAILED"}</span></Stat>
+      </div>
+
+      {(hasDuplicate || hasDupNode) && <div className="print-avoid" style={{ ...S.card, border: `1px solid ${CLR.yellow}55` }}>
+        <div style={{ fontWeight: 700, color: CLR.yellow, marginBottom: 6, fontSize: 13 }}>Warnings</div>
+        {hasDuplicate && <div style={{ fontSize: 12, color: CLR.muted }}>• Duplicate member (same near–far pair) detected.</div>}
+        {hasDupNode && <div style={{ fontSize: 12, color: CLR.muted }}>• Duplicate node coordinates detected.</div>}</div>}
+
+      <div className="print-avoid" style={S.card}>
+        <div style={S.h2}><span>Figure 2: Member Axial Force Diagram</span><span style={{ ...S.smallMuted, textTransform: "none", letterSpacing: 0 }}>Equation 5</span></div>
+        <TrussFigure supports={supports} joints={joints} members={members} result={result} mode="axial" u={u} />
+        <DiagramLegend items={[[CLR.accent, "━ Member"], [CLR.green, "● Joint / support"], [CLR.red, "▮ Tension (T)"], [CLR.yellow, "▮ Compression (C)"]]} note={`Band width ∝ |N|, labels in ${u.load}`} />
+      </div>
+
+      <div className="print-avoid" style={S.card}>
+        <div style={S.h2}><span>Figure 3: Deformed Shape</span><span className="screen-only" style={{ display: "flex", alignItems: "center", gap: 8, textTransform: "none", letterSpacing: 0, ...S.smallMuted }}>Scale ×<input style={{ ...S.input, width: 80 }} type="number" min="0" step="any" value={defScale} onChange={e => setDefScale(+e.target.value || 0)} /></span></div>
+        <TrussFigure supports={supports} joints={joints} members={members} result={result} mode="deformed" defScale={defScale} u={u} />
+        <DiagramLegend items={[[CLR.border2, "┄ Undeformed"], [CLR.accent, `━ Deformed (×${defScale})`], [CLR.green, "● Joint / support"]]} note="Displacements per Equation 4" />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(420px,1fr))", gap: "1.25rem" }}>
+        <Table title="Table 1: Axial Forces" cap="Equation 5" head={["Member", `Force [${u.load}]`, "Sign"]} rows={results.map((m, i) => { const T = m.force > 1e-6, C = m.force < -1e-6; return <tr key={i}><td style={{ ...S.td, color: CLR.accent, fontWeight: 700 }}>{m.name}</td><td style={{ ...S.td, color: T ? CLR.red : C ? CLR.yellow : CLR.muted }}>{fnum(Math.abs(m.force), 3)}</td><td style={S.td}>{T ? "(T)" : C ? "(C)" : "—"}</td></tr>; })} />
+        <Table title="Table 2: Support Reactions" cap="Equation 6" head={["Joint", "Type", `Rx [${u.load}]`, `Rz [${u.load}]`, `Spring Rx`, `Spring Rz`]} rows={reactions.map((m, i) => <tr key={i}><td style={{ ...S.td, color: CLR.green, fontWeight: 700 }}>{m.joint}</td><td style={S.td}>{m.supportLabel || m.type}</td><td style={S.td}>{fnum(clean(m.Rx), 3)}</td><td style={S.td}>{fnum(clean(m.Rz), 3)}</td><td style={S.td}>{fnum(clean(m.springRx || 0), 3)}</td><td style={S.td}>{fnum(clean(m.springRz || 0), 3)}</td></tr>)} />
+      </div>
+      <Table title="Table 3: Nodal Displacements" cap="Equation 4" head={["Joint", `x [${u.dist}]`, `z [${u.dist}]`, `δx [${u.dist}]`, `δz [${u.dist}]`]} rows={displacements.map((d, i) => <tr key={i}><td style={{ ...S.td, color: CLR.accentSoft, fontWeight: 700 }}>{d.joint}</td><td style={{ ...S.td, color: CLR.muted }}>{d.coords.x}</td><td style={{ ...S.td, color: CLR.muted }}>{d.coords.z}</td><td style={S.td}>{d.x.toExponential(3)}</td><td style={S.td}>{d.z.toExponential(3)}</td></tr>)} />
+      <Table title="Table 4: Static Equilibrium Check" cap="Equation 8 (added check; not in the v0.3.3 source)" head={["Check", "Applied loads", "Reactions", "Residual", "Status"]} rows={eq.rows.map(([k, a, bb, res, tol], i) => <tr key={i}><td style={{ ...S.td, fontWeight: 700 }}>{k}</td><td style={S.td}>{fnum(a, 3)}</td><td style={S.td}>{fnum(bb, 3)}</td><td style={S.td}>{res.toExponential(2)}</td><td style={S.td}><span style={S.badge(Math.abs(res) <= tol ? CLR.green : CLR.red)}>{Math.abs(res) <= tol ? "PASSED" : "FAILED"}</span></td></tr>)} />
+    </div>
+  );
+}
+
+// ── DEFAULT MODEL ────────────────────────────────────────────────────────
+function defaultModel() {
+  return JSON.parse(JSON.stringify({
+    units: DEFAULT_UNITS, supports: DEFAULT_SUPPORTS, joints: DEFAULT_JOINTS, members: DEFAULT_MEMBERS,
+    loadCases: DEFAULT_LOAD_CASES, activeLoadCaseId: DEFAULT_LOAD_CASES[0].id, combos: DEFAULT_COMBOS,
+  }));
+}
+
+// ── THEORY & DOCUMENTATION TAB ───────────────────────────────────────────
+function TheoryView() {
+  const ref = useRef(null);
+  useEffect(() => { if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise([ref.current]).catch(() => {}); }, []);
+  const H = ({ children }) => <h3 style={{ color: CLR.accent, marginTop: 16, fontSize: 13 }}>{children}</h3>;
+  return (
+    <div ref={ref} style={{ ...S.card, lineHeight: 1.7, fontSize: 13 }}>
+      <div style={S.h2}>Part 1: Engineering Theory</div>
+
+      <H>1. Bar element</H>
+      <p>Each member is a two-force, pin-ended bar that carries axial force only. Its axial stiffness is:</p>
+      <Eq n={1} tex={"k = \\frac{EA}{L}"} where={"where $k$ is the member axial stiffness, $E$ the elastic modulus, $A$ the cross-sectional area and $L$ the member length."} />
+      <Eq n={2} tex={"c_x = \\frac{x_f - x_n}{L},\\quad c_z = \\frac{z_f - z_n}{L},\\quad L = \\sqrt{(x_f-x_n)^2 + (z_f-z_n)^2}"} where={"where $(x_n, z_n)$ and $(x_f, z_f)$ are the near- and far-joint coordinates and $c_x$, $c_z$ are the direction cosines of the member axis."} />
+
+      <H>2. Assembly and solution</H>
+      <p>The element matrix in global axes, ordered $[u_n, w_n, u_f, w_f]$, is superposed into the global stiffness matrix at the shared degrees of freedom (direct stiffness method):</p>
+      <Eq n={3} tex={"\\mathbf{k}_g = \\frac{EA}{L}\\begin{bmatrix} c_x^2 & c_xc_z & -c_x^2 & -c_xc_z \\\\ c_xc_z & c_z^2 & -c_xc_z & -c_z^2 \\\\ -c_x^2 & -c_xc_z & c_x^2 & c_xc_z \\\\ -c_xc_z & -c_z^2 & c_xc_z & c_z^2 \\end{bmatrix}"} where={"where $\\mathbf{k}_g$ is the 4×4 element stiffness in global axes; $u$ and $w$ are the x and z translations."} />
+      <p>Translational spring supports add $k_x$ and $k_z$ to the diagonal terms of their joint. Conventional restraints are imposed with the penalty method (a very large stiffness added on each restrained DOF), and the system is solved by Gaussian elimination with partial pivoting; a near-zero pivot is reported as a mechanism.</p>
+      <Eq n={4} tex={"\\left(\\mathbf{K} + \\mathbf{K}_s + \\beta\\,\\mathbf{I}_r\\right)\\mathbf{D} = \\mathbf{F}"} where={"where $\\mathbf{K}$ is the assembled global stiffness, $\\mathbf{K}_s$ the diagonal spring stiffness, $\\beta = 10^{20}$ the penalty value, $\\mathbf{I}_r$ the identity restricted to restrained DOFs, $\\mathbf{D}$ the joint displacements and $\\mathbf{F}$ the applied joint loads."} />
+
+      <H>3. Member forces and reactions</H>
+      <Eq n={5} tex={"N = \\frac{EA}{L}\\left[c_x\\,(u_f-u_n) + c_z\\,(w_f-w_n)\\right]"} where={"where $N$ is the axial force (tension positive) and $u$, $w$ are the joint displacements from Equation 4."} />
+      <Eq n={6} tex={"R_i = \\beta\\,D_i\\ \\text{(restrained DOF)},\\qquad R_i^{s} = k_i\\,D_i,\\qquad R_i^{tot} = R_i + R_i^{s}"} where={"where $R_i$ is the restraint reaction, $R_i^{s}$ the spring reaction and $k_i$ the spring stiffness at DOF $i$. As in v0.3.3, reactions are reported as the force the structure exerts on the support."} />
+
+      <H>4. Stability and determinacy</H>
+      <Eq n={7} tex={"b + r \\;\\begin{cases} < 2j & \\text{unstable} \\\\ = 2j & \\text{stable, determinate} \\\\ > 2j & \\text{stable, indeterminate} \\end{cases}"} where={"where $b$ is the number of members, $r$ the number of restrained DOFs and $j$ the number of joints. Springs add elastic stiffness but are not counted in $r$."} />
+
+      <H>5. Items added beyond the v0.3.3 calculation source</H>
+      <p>The solver (Equations 1 to 7) is carried over unchanged. The following are <b>additions</b> and do not change any result:</p>
+      <Eq n={8} tex={"\\sum P_x - \\sum R_x = 0,\\quad \\sum P_z - \\sum R_z = 0,\\quad \\sum \\left(x P_z - z P_x\\right) - \\sum \\left(x R_z - z R_x\\right) = 0"} where={"where $P$ are applied joint loads, $R$ the reported reactions and $(x, z)$ the joint coordinates. A residual within $10^{-6}$ of the load magnitude shows PASSED. This check, the PASSED/FAILED and STABLE/UNSTABLE badges, and the three figures are additions; the trusses have no capacity or code check, so no EXCEEDED state exists."} />
+
+      <div style={{ ...S.h2, marginTop: 28 }}>Part 2: Coding Theory</div>
+      <p>The app is a single HTML file. React 18 (UMD) is compiled in the browser by Babel. The solver functions (<code>solveTruss</code>, <code>gaussianElim</code> and the load-case helpers) sit in their own commented section and contain no interface code. The model (units, supports, joints, members, load cases) lives in one React state object. <b>Analyze</b> runs the active load case and stores the result together with a snapshot of the model, so the figures always match the tables. Every graphic is inline SVG drawn by one component (<code>TrussFigure</code>) using the shared <code>CLR</code> tokens and <code>SVG_BOX</code> style, with one <code>DiagramLegend</code> component and native SVG tooltips. <b>Save</b> downloads the model as JSON and <b>Open</b> reads it back. <b>Print / PDF</b> waits for MathJax to finish typesetting, then calls <code>window.print()</code>; the print stylesheet turns the dark UI into a light report and keeps tables, figures and equations from splitting across pages.</p>
+
+      <div style={{ ...S.h2, marginTop: 28 }}>Part 3: References</div>
+      <div style={{ fontSize: 12.5, color: CLR.muted, lineHeight: 1.7 }}>
+        {[
+          "Hibbeler, R. C. (2017). Structural analysis (10th ed.). Pearson.",
+          "Logan, D. L. (2017). A first course in the finite element method (6th ed.). Cengage Learning.",
+          "McGuire, W., Gallagher, R. H., & Ziemian, R. D. (2000). Matrix structural analysis (2nd ed.). John Wiley & Sons.",
+          "Przemieniecki, J. S. (1968). Theory of matrix structural analysis. McGraw-Hill.",
+        ].map((r, i) => <p key={i} style={{ paddingLeft: "2rem", textIndent: "-2rem", marginBottom: 8 }}>{r}</p>)}
+        <p style={{ fontSize: 11.5, marginTop: 10 }}>Flag: editions, years and publishers above are given from memory and were not verified against publisher records; none has a DOI listed. Please confirm before citing formally.</p>
+      </div>
+    </div>
+  );
+}
+
+// ── APP SHELL ────────────────────────────────────────────────────────────
+const TABS = [{ id: "inputs", label: "Inputs" }, { id: "results", label: "Results" }, { id: "theory", label: "Theory" }];
+
+function App() {
+  const [M, setM] = useState(defaultModel());
+  const [tab, setTab] = useState("inputs");
+  const [run, setRun] = useState(null); // { res, snap }
+  const fileRef = useRef(null);
+  const activeLC = M.loadCases.find(l => l.id === M.activeLoadCaseId) || M.loadCases[0];
+  const u = UNIT_SETS[M.units];
+
+  const handleCalculate = () => {
+    const res = runLoadCaseAnalysis(M.supports, M.joints, M.members, activeLC);
+    setRun({ res, snap: { supports: M.supports, joints: applyJointLoads(M.joints, activeLC.jointLoads || {}), members: M.members, units: M.units, lc: activeLC.name } });
+    setTab("results");
+  };
+  const handleLoadFile = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const p = JSON.parse(evt.target.result), m = p.model;
+        if (!m || !Array.isArray(m.supports) || !Array.isArray(m.joints) || !Array.isArray(m.members) || !Array.isArray(m.loadCases) || !m.loadCases.length) throw new Error("not a Trusses working file");
+        setM({ ...defaultModel(), ...m, combos: m.combos || [] }); setRun(null); setTab("inputs");
+      } catch (err) { alert("Could not read working file: " + err.message); }
+    };
+    reader.readAsText(file); e.target.value = "";
+  };
+  // Wait until MathJax has typeset every equation before the print dialog captures the page
+  const handlePrintReport = async () => {
+    try { if (window.MathJax && window.MathJax.typesetPromise) await window.MathJax.typesetPromise(); } catch (e) {}
+    setTimeout(() => window.print(), 300);
+  };
+  const st = modelStats(M.supports, M.joints, M.members, activeLC);
+
+  return (
+    <div style={S.app}>
+      <div style={S.header} className="screen-only">
+        <div style={S.brand}>
+          <svg width="38" height="38" viewBox="0 0 40 40" style={{ borderRadius: 12, boxShadow: "0 6px 16px rgba(6,182,212,0.3)" }}>
+            <defs><linearGradient id="trLg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stopColor="#0891b2" /><stop offset="1" stopColor="#10b981" /></linearGradient></defs>
+            <rect width="40" height="40" rx="12" fill="url(#trLg)" />
+            <path d="M8 29 L20 11 L32 29 Z M14 20 L26 20 M20 11 L20 29" fill="none" stroke="#090d16" strokeWidth="2.4" strokeLinejoin="round" />
+            <circle cx="8" cy="29" r="2.2" fill="#090d16" /><circle cx="32" cy="29" r="2.2" fill="#090d16" /><circle cx="20" cy="11" r="2.2" fill="#090d16" />
+          </svg>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 18 }}>{APP_NAME}</span><span style={S.brandBadge}>{VERSION}</span></div>
+            <div style={{ fontSize: 11, color: CLR.muted, fontWeight: 400 }}>2D Truss Structural Analysis · Direct Stiffness Method</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button style={S.btn("secondary")} onClick={() => saveWorkingFile(M)}>💾 Save</button>
+          <button style={S.btn("secondary")} onClick={() => fileRef.current.click()}>📂 Open</button>
+          <input ref={fileRef} type="file" accept=".json" style={{ display: "none" }} onChange={handleLoadFile} />
+          <button style={S.btn("secondary")} onClick={handlePrintReport}>🖨 Print / PDF</button>
+        </div>
+        <div style={S.nav}>
+          {TABS.map(t => <button key={t.id} style={S.navBtn(tab === t.id)} onClick={() => setTab(t.id)}>{t.label}{t.id === "results" && run && run.res && <span style={{ marginLeft: 6, ...S.badge(run.res.error ? CLR.red : CLR.green), fontSize: 9, padding: "0 6px" }}>{run.res.error ? "✗" : "✓"}</span>}</button>)}
+        </div>
+      </div>
+
+      <div style={S.main} className="screen-only">
+        {tab === "inputs" && <InputsView M={M} setM={setM} onCalculate={handleCalculate} activeLC={activeLC} u={u} />}
+        {tab === "results" && <ResultsView result={run && run.res} supports={run ? run.snap.supports : M.supports} joints={run ? run.snap.joints : M.joints} members={run ? run.snap.members : M.members} units={run ? run.snap.units : M.units} loadCaseName={run ? run.snap.lc : activeLC.name} />}
+        {tab === "theory" && <TheoryView />}
+      </div>
+
+      {/* Print report (hidden on screen, shown by the @media print rules) */}
+      <div className="print-report-header">
+        <h1 style={{ fontSize: 18, marginBottom: 4 }}>{APP_NAME} {VERSION} — Truss Analysis Report</h1>
+        <div style={{ fontSize: 10, color: "#555" }}>Generated {new Date().toLocaleString()} · Units {M.units} · Load case {activeLC.name}</div>
+        <div style={{ marginTop: 14 }} className="print-avoid">
+          <h2 style={{ fontSize: 13, marginBottom: 6 }}>Model Summary</h2>
+          <p style={{ fontSize: 11, marginBottom: 8 }}>{st.j} joints, {st.b} members, {st.r} restrained DOF — {st.status}.</p>
+          <TrussFigure supports={M.supports} joints={applyJointLoads(M.joints, activeLC.jointLoads || {})} members={M.members} mode="model" u={u} />
+          <DiagramLegend items={[[CLR.accent, "━ Member"], [CLR.green, "● Joint / support"], [CLR.red, "→ Joint load"], [CLR.yellow, "∿ Spring"]]} note="Figure 1: model" />
+        </div>
+        {run && <div style={{ marginTop: 14 }}><ResultsView result={run.res} supports={run.snap.supports} joints={run.snap.joints} members={run.snap.members} units={run.snap.units} loadCaseName={run.snap.lc} /></div>}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
   </script>
 </body>
 </html>
